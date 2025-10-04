@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/round_corners"
+    android:orientation="vertical"
+    android:padding="15dp"
+    android:layout_marginBottom="15dp">
+
+
+    <TextView
+        android:id="@+id/catalogTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="Tytuł katalogu"
+        android:textSize="18sp" />
+
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/catalogCreationDateTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📅 Data utworzenia:"
+            android:layout_marginBottom="3dp"/>
+        <TextView
+            android:id="@+id/catalogCreationDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+
+            android:text="2024-15-06" />
+
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/catalogLastEditedTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✏️ Ostatnia edycja:"
+            android:layout_marginBottom="3dp"/>
+
+        <TextView
+            android:id="@+id/catalogLastEdited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:text="2024-15-06 15:00:11" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/catalogAdressTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📍 Lokalizacja:"
+            android:layout_marginBottom="3dp"/>
+
+        <TextView
+            android:id="@+id/catalogAdress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:text="TU LOKALIZACJA " />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal">
+
+        <Button
+            android:id="@+id/catalogDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="15dp"
+            android:backgroundTint="#f23022"
+            android:text="🗑️ Usuń" />
+
+        <Button
+            android:id="@+id/catalogEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#3FAB1F"
+            android:text="✏️ Edytuj" />
+    </LinearLayout>
+
+
+</LinearLayout>
