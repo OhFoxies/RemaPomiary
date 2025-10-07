@@ -4,8 +4,10 @@
     android:layout_height="wrap_content"
     android:background="@drawable/round_corners"
     android:orientation="vertical"
+
     android:padding="15dp"
-    android:layout_marginBottom="15dp">
+    android:layout_marginBottom="15dp"
+    android:id="@+id/measurementMain">
 
 
     <TextView
@@ -14,7 +16,7 @@
         android:layout_height="wrap_content"
         android:padding="5dp"
         android:text="Tytuł katalogu"
-        android:textSize="18sp" />
+        android:textSize="24sp" />
 
 
 
@@ -29,12 +31,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="📅 Data utworzenia:"
+            android:textSize="18sp"
+
             android:layout_marginBottom="3dp"/>
         <TextView
             android:id="@+id/catalogCreationDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
 
             android:text="2024-15-06" />
 
@@ -53,36 +58,60 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="✏️ Ostatnia edycja:"
+            android:textSize="18sp"
+
             android:layout_marginBottom="3dp"/>
 
         <TextView
             android:id="@+id/catalogLastEdited"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
+
             android:text="2024-15-06 15:00:11" />
 
     </LinearLayout>
 
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:id="@+id/itemMeasurementData"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="5dp">
 
         <TextView
             android:id="@+id/catalogAdressTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textSize="18sp"
             android:text="📍 Lokalizacja:"
             android:layout_marginBottom="3dp"/>
 
         <TextView
-            android:id="@+id/catalogAdress"
-            android:layout_width="wrap_content"
+            android:id="@+id/catalogCity"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
+            android:textSize="18sp"
+
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+        <TextView
+            android:id="@+id/catalogStreet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+        <TextView
+            android:id="@+id/catalogPostalCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+
+            android:layout_marginStart="25dp"
             android:text="TU LOKALIZACJA " />
     </LinearLayout>
 
@@ -90,6 +119,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
+        android:id="@+id/itemMeasurementControls"
         android:orientation="horizontal"
         android:gravity="center_horizontal">
 

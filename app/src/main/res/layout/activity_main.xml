@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        tools:context=".MainActivity">
+        tools:context=".ui.activities.MainActivity">
 
         <TextView
             android:id="@+id/textView"
@@ -164,20 +164,74 @@
 
 
         </LinearLayout>
-        <TextView
-            android:id="@+id/createdCatalogs"
-            android:layout_width="match_parent"
+
+
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:padding="6sp"
-            android:text="Utworzone katalogi"
-            android:textSize="34sp"
-            android:layout_marginBottom="20dp"/>
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/createdCatalogs"
+                android:layout_width="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="6sp"
+                android:text="Utworzone katalogi"
+                android:textSize="34sp"
+                android:layout_marginBottom="20dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_horizontal"
+                android:id="@+id/sortSection">
+
+
+
+                <TextView
+                    android:id="@+id/sortBy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+
+                    android:text="Sortowanie:"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="15dp"
+                    android:layout_marginBottom="20dp"/>
+                <Spinner
+                    android:id="@+id/sortBySpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+
+
+            </LinearLayout>
+
+
+            <TextView
+                android:id="@+id/noCatalogs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Brak katalogów"
+                android:textSize="24sp"
+                android:layout_marginEnd="15dp"
+                android:layout_marginBottom="20dp"/>
+
+
+        </LinearLayout>
+
+
 
         <com.google.android.flexbox.FlexboxLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
+            android:id="@+id/catalogs"
             app:alignItems="center"
             app:flexDirection="row"
             app:flexWrap="wrap"
