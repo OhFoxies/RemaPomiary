@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".ui.activities.CatalogActivity">
+
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#DDDDDD"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/backButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀ Powrót"
+                android:gravity="center_vertical"
+                android:textSize="18sp"
+                android:layout_marginEnd="16dp" />
+
+            <TextView
+                android:id="@+id/catalogName"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="Katalog - nazwa"
+                android:gravity="center_vertical"
+
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/options"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="8dp"
+            app:flexDirection="row"
+            app:flexWrap="wrap"
+            app:justifyContent="center"
+            app:alignItems="stretch">
+
+            <LinearLayout
+                android:id="@+id/templates"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/templatesTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Szablony mieszkań"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/templatesDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajdują się szablony przypisane do katalogu. Kliknij, aby przejść do ich edycji."
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/blocks"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/blocksTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bloki"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/blocksDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajdują się bloki przypisane do katalogu. Kliknij, aby przejść do ich edycji."
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/clients"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/clientsTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Zleceniodawcy"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/clientsDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajduje się lista zleceniodawców przypisanych do katalogu. Kliknij, aby przejść do ich edycji."
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+        </com.google.android.flexbox.FlexboxLayout>
+    </LinearLayout>
+</ScrollView>

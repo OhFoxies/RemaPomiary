@@ -31,4 +31,7 @@ public interface CatalogDao {
 
     @Delete
     void delete(Catalog catalog);
+
+    @Query("SELECT * FROM catalogs WHERE id=:id")
+    Catalog getCatalogById(int id);
 }

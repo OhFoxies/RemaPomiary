@@ -1,6 +1,7 @@
 package com.rejner.remapomiary.ui.activities;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
@@ -149,7 +150,12 @@ public class MainActivity extends AppCompatActivity {
                 Button deleteButton = catalogView.findViewById(R.id.catalogDelete);
                 Button editButton = catalogView.findViewById(R.id.catalogEdit);
 
-
+                catalogView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        openCatalog(catalog);
+                    }
+                });
                 deleteButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -180,7 +186,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public void openCatalog(Catalog catalog) {
+        Intent intent = new Intent(MainActivity.this, CatalogActivity.class);
+        intent.putExtra("catalogId", catalog.id);
+        startActivity(intent);
 
+    }
 
     public void updateCatalog(Catalog catalog, View catalogView, Button editButton, Button deleteButton) {
         TextView title = catalogView.findViewById(R.id.catalogTitle);

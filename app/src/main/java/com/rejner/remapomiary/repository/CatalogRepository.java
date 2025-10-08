@@ -61,4 +61,10 @@ public class CatalogRepository {
     }
 
 
+    public void getCatalogById(int id, Consumer<Catalog> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            Catalog catalog = dao.getCatalogById(id);
+            callback.accept(catalog);
+        });
+    }
 }

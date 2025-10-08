@@ -44,6 +44,10 @@ public class CatalogViewModel extends AndroidViewModel {
         repository.getCatalogByName(title, callback::onResult);
     }
 
+    public void getCatalogById(int id, CatalogCallback callback) {
+        repository.getCatalogById(id, callback::onResult);
+    }
+
     public void insert(Catalog catalog) {
         repository.insert(catalog);
     }
