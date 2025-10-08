@@ -17,21 +17,28 @@ public class ClientRepository {
         dao = db.clientDao();
     }
 
-    public void delete(Client client) {
-        AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(client));
-    }
-
-    public void insert(Client client, Consumer<Long> callback) {
+    public void delete(Client client, Runnable onFinished) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
-            long insertId = dao.insert(client);
-            callback.accept(insertId);
+            dao.delete(client);
+            if (onFinished != null) {
+                onFinished.run();
+            }
         });
     }
 
-    public void getClientByName(String second_name, String first_name, Consumer<Client> callback) {
+    public void insert(Client client, Runnable onFinished) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
-            Client client = dao.getClientByName(second_name, first_name);
-            callback.accept(client);
+            dao.insert(client);
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
+    }
+
+    public void getClientsInCatalog(int id, Consumer<List<Client>> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            List<Client> clients = dao.getClientsInCatalog(id);
+            callback.accept(clients);
         });
     }
 

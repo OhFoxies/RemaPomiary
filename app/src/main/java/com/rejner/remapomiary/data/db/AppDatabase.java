@@ -18,7 +18,7 @@ import com.rejner.remapomiary.data.entities.Client;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Catalog.class, Block.class, Client.class}, version = 2)
+@Database(entities = {Catalog.class, Block.class, Client.class}, version = 3)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;

@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton("Tak", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                catalogViewModel.repository.delete(catalog);
+                catalogViewModel.repository.delete(catalog, MainActivity.this::updateCatalogsView);
                 Toast.makeText(MainActivity.this, "Katalog oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
                 updateCatalogsView();
             }
@@ -291,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 if (catalog == null) {
                     Catalog newCatalog = new Catalog(catalogTitle.getText().toString(), catalogCity.getText().toString(), catalogStreet.getText().toString(), catalogPostalCode.getText().toString(), new Date(), new Date());
-                    catalogViewModel.insert(newCatalog);
+                    catalogViewModel.insert(newCatalog, MainActivity.this::updateCatalogsView);
                     for (EditText input : catalogEditTexts) {
                         input.setText("");
                         input.clearFocus();

@@ -11,8 +11,8 @@ import java.util.List;
 
 @Dao
 public interface ClientDao {
-    @Query("SELECT * FROM clients WHERE second_name = :second_name AND first_name = :first_name")
-    Client getClientByName(String second_name, String first_name);
+    @Query("SELECT * FROM clients WHERE catalogId = :catalogId")
+    List<Client> getClientsInCatalog(int catalogId);
 
     @Query("SELECT * FROM clients")
     List<Client> getAllClients();

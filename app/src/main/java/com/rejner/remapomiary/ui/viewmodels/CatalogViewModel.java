@@ -48,11 +48,11 @@ public class CatalogViewModel extends AndroidViewModel {
         repository.getCatalogById(id, callback::onResult);
     }
 
-    public void insert(Catalog catalog) {
-        repository.insert(catalog);
+    public void insert(Catalog catalog, Runnable runnable) {
+        repository.insert(catalog, runnable);
     }
 
-    public void delete(Catalog catalog) {
-        repository.delete(catalog);
+    public void delete(Catalog catalog, Runnable runnable) {
+        repository.delete(catalog, runnable);
     }
 }

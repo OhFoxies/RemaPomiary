@@ -20,12 +20,22 @@ public class CatalogRepository {
         dao = db.catalogDao();
     }
 
-    public void delete(Catalog catalog) {
-        AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(catalog));
+    public void delete(Catalog catalog, Runnable onFinished) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            dao.delete(catalog);
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
     }
 
-    public void insert(Catalog catalog) {
-        AppDatabase.databaseWriteExecutor.execute(() -> dao.insert(catalog));
+    public void insert(Catalog catalog, Runnable onFinished) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            dao.insert(catalog);
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
     }
 
 

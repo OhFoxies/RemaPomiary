@@ -12,6 +12,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RemaPomiary">
         <activity
+            android:name=".ui.activities.ClientsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.BlocksActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.activities.CatalogActivity"
             android:exported="false" />
         <activity
