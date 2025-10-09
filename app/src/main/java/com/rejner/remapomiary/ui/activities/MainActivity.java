@@ -40,12 +40,23 @@ public class MainActivity extends AppCompatActivity {
     private CatalogViewModel catalogViewModel;
     private boolean sortByCreation = false;
 
+    private EditText catalogTitle;
+    private EditText catalogCity;
+    private EditText catalogStreet;
+    private EditText catalogPostalCode;
+    private List<EditText> inputs;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         List<String> sortOptions = Arrays.asList("Data utworzenia", "Data edycji");
         catalogViewModel = new ViewModelProvider(this).get(CatalogViewModel.class);
+        catalogTitle = findViewById(R.id.inputCatalogTitle);
+        catalogCity = findViewById(R.id.inputCatalogCity);
+        catalogStreet = findViewById(R.id.inputCatalogStreet);
+        catalogPostalCode = findViewById(R.id.inputCatalogPostalCode);
+        inputs = new ArrayList<>(Arrays.asList(catalogTitle, catalogCity, catalogStreet, catalogPostalCode));
 
         arrayAdapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_spinner_item, sortOptions);
         Spinner spinner = findViewById(R.id.sortBySpinner);
@@ -80,6 +91,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.catalogCancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {clearInput();
+            }
+        });
+
         updateCatalogsView();
     }
 
@@ -92,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 catalogViewModel.repository.delete(catalog, MainActivity.this::updateCatalogsView);
                 Toast.makeText(MainActivity.this, "Katalog oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
-                updateCatalogsView();
             }
         });
 
@@ -194,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void updateCatalog(Catalog catalog, View catalogView, Button editButton, Button deleteButton) {
+        catalogView.setOnClickListener(null);
         TextView title = catalogView.findViewById(R.id.catalogTitle);
         TextView street = catalogView.findViewById(R.id.catalogStreet);
         TextView city = catalogView.findViewById(R.id.catalogCity);
@@ -272,16 +289,18 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     }
-
+    private void clearInput() {
+        for (EditText input : inputs) {
+            input.setText("");
+            input.clearFocus();
+        }
+    }
     private void createCatalog() {
-        EditText catalogTitle = findViewById(R.id.inputCatalogTitle);
-        EditText catalogCity = findViewById(R.id.inputCatalogCity);
-        EditText catalogStreet = findViewById(R.id.inputCatalogStreet);
-        EditText catalogPostalCode = findViewById(R.id.inputCatalogPostalCode);
 
-        List<EditText> catalogEditTexts = new ArrayList<>(Arrays.asList(catalogTitle, catalogCity, catalogStreet, catalogPostalCode));
-        for (EditText input : catalogEditTexts) {
+
+        for (EditText input : inputs) {
             if (input.getText().toString().isEmpty()) {
+                input.setError("Wymagane pole");
                 Toast.makeText(MainActivity.this, input.getHint().toString() + " nie jest podany/e", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -292,11 +311,8 @@ public class MainActivity extends AppCompatActivity {
                 if (catalog == null) {
                     Catalog newCatalog = new Catalog(catalogTitle.getText().toString(), catalogCity.getText().toString(), catalogStreet.getText().toString(), catalogPostalCode.getText().toString(), new Date(), new Date());
                     catalogViewModel.insert(newCatalog, MainActivity.this::updateCatalogsView);
-                    for (EditText input : catalogEditTexts) {
-                        input.setText("");
-                        input.clearFocus();
-                    }
-                    updateCatalogsView();
+                    clearInput();
+
                 } else {
                     Toast.makeText(MainActivity.this, "Katalog z tym tytułem już istnieje!", Toast.LENGTH_SHORT).show();
                 }

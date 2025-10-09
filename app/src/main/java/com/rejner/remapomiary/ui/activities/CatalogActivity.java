@@ -35,7 +35,7 @@ public class CatalogActivity extends AppCompatActivity {
 
         catalogViewModel.getCatalogById(catalogId, catalog1 -> {
             catalog = catalog1;
-            initializeElements();
+            runOnUiThread(this::initializeElements);
         });
 
     }
@@ -48,8 +48,8 @@ public class CatalogActivity extends AppCompatActivity {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(CatalogActivity.this, MainActivity.class);
-                startActivity(intent);
+                finish();
+
             }
         });
 
@@ -74,7 +74,9 @@ public class CatalogActivity extends AppCompatActivity {
         clients.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                Intent intent = new Intent(CatalogActivity.this, ClientsActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
             }
         });
 

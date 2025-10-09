@@ -1,130 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="350dp"
     android:layout_height="wrap_content"
     android:background="@drawable/round_corners"
     android:orientation="vertical"
-    android:layout_width="350dp"
 
     android:padding="15dp"
     android:layout_marginBottom="15dp"
-    android:id="@+id/measurementMain">
+    android:id="@+id/clientMain">
 
 
     <TextView
-        android:id="@+id/catalogTitle"
+        android:id="@+id/clientTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="5dp"
-        android:text="Tytuł katalogu"
+        android:text="Zleceniodawca - "
         android:textSize="24sp" />
 
 
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="5dp">
-
-        <TextView
-            android:id="@+id/catalogCreationDateTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📅 Data utworzenia:"
-            android:textSize="18sp"
-
-            android:layout_marginBottom="3dp"/>
-        <TextView
-            android:id="@+id/catalogCreationDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
-            android:textSize="18sp"
-
-            android:text="2024-15-06" />
-
-
-    </LinearLayout>
-
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="5dp">
-
-        <TextView
-            android:id="@+id/catalogLastEditedTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="✏️ Ostatnia edycja:"
-            android:textSize="18sp"
-
-            android:layout_marginBottom="3dp"/>
-
-        <TextView
-            android:id="@+id/catalogLastEdited"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
-            android:textSize="18sp"
-
-            android:text="2024-15-06 15:00:11" />
-
-    </LinearLayout>
-
-
-    <LinearLayout
-        android:id="@+id/itemMeasurementData"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="5dp">
+        android:padding="5dp"
+        android:id="@+id/clientNameContainer"
+
+        >
 
         <TextView
-            android:id="@+id/catalogAdressTitle"
-            android:layout_width="match_parent"
+            android:id="@+id/clientNameTitle"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="❓ Nazwa:"
             android:textSize="18sp"
-            android:text="📍 Lokalizacja:"
+
             android:layout_marginBottom="3dp"/>
-
         <TextView
-            android:id="@+id/catalogCity"
-            android:layout_width="match_parent"
+            android:id="@+id/clientName"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
             android:textSize="18sp"
 
-            android:layout_marginStart="25dp"
-            android:text="TU LOKALIZACJA " />
+            android:text="nazwa klienta długa moze byc bardzo " />
+
+
+    </LinearLayout>
+
+
+    <TextView
+        android:id="@+id/clientAddressTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:text="📍 Lokalizacja:"
+        android:layout_marginBottom="3dp"/>
+
+    <LinearLayout
+        android:id="@+id/itemClientData"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+
         <TextView
-            android:id="@+id/catalogStreet"
+            android:id="@+id/clientCity"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
-
             android:layout_marginStart="25dp"
-            android:text="TU LOKALIZACJA " />
+
+            android:text="TU LOKALIZACJA"
+            android:textSize="18sp" />
+
         <TextView
-            android:id="@+id/catalogPostalCode"
+            android:id="@+id/clientStreet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
-
             android:layout_marginStart="25dp"
-            android:text="TU LOKALIZACJA " />
+
+            android:text="TU LOKALIZACJA"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/clientPostalCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+
+            android:text="TU LOKALIZACJA "
+            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
-        android:id="@+id/itemMeasurementControls"
+        android:id="@+id/itemClientControls"
         android:orientation="horizontal"
         android:gravity="center_horizontal">
 
         <Button
-            android:id="@+id/catalogDelete"
+            android:id="@+id/clientDelete"
             android:layout_width="match_parent"
             android:layout_weight="1"
             android:layout_height="wrap_content"
@@ -133,9 +111,10 @@
             android:text="🗑️ Usuń" />
 
         <Button
-            android:id="@+id/catalogEdit"
+            android:id="@+id/clientEdit"
             android:layout_width="match_parent"
             android:layout_weight="1"
+
             android:layout_height="wrap_content"
             android:backgroundTint="#3FAB1F"
             android:text="✏️ Edytuj" />

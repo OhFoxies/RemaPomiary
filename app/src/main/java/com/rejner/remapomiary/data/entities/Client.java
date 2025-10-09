@@ -36,10 +36,11 @@ public class Client {
     public String name;
 
 
-    public Client(String street, String city, String postal_code, String name) {
+    public Client(String street, String city, String postal_code, String name, int catalogId) {
         this.street = street;
         this.city = city;
         this.postal_code = postal_code;
         this.name = name;
+        this.catalogId = catalogId;
     }
 }

@@ -2,6 +2,8 @@ package com.rejner.remapomiary.repository;
 
 import android.content.Context;
 
+import androidx.lifecycle.LiveData;
+
 import com.rejner.remapomiary.data.dao.ClientDao;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.Client;
@@ -17,31 +19,27 @@ public class ClientRepository {
         dao = db.clientDao();
     }
 
-    public void delete(Client client, Runnable onFinished) {
+    public void delete(Client client) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             dao.delete(client);
-            if (onFinished != null) {
-                onFinished.run();
-            }
         });
     }
 
-    public void insert(Client client, Runnable onFinished) {
+    public void insert(Client client) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             dao.insert(client);
-            if (onFinished != null) {
-                onFinished.run();
-            }
         });
     }
 
-    public void getClientsInCatalog(int id, Consumer<List<Client>> callback) {
+    public LiveData<List<Client>> getClientsInCatalog(int id) {
+        return dao.getClientsInCatalog(id);
+    }
+
+    public void update(String street, String city, String postalCode, String name, int catalogId) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
-            List<Client> clients = dao.getClientsInCatalog(id);
-            callback.accept(clients);
+            dao.update(street, city, postalCode, name, catalogId);
         });
     }
-
     public void getAllClients(Consumer<List<Client>> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             List<Client> clients = dao.getAllClients();

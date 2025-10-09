@@ -4,6 +4,7 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
 
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Client;
@@ -24,19 +25,22 @@ public class ClientViewModel extends AndroidViewModel {
         void onResult(List<Client> clients);
     }
 
-    public void getClientsInCatalog(int id, ClientViewModel.clientsCallback callback) {
-        repository.getClientsInCatalog(id, callback::onResult);
+    public LiveData<List<Client>> getClientsInCatalog(int id) {
+        return repository.getClientsInCatalog(id);
     }
 
     public void getAllClients(ClientViewModel.clientsCallback callback) {
         repository.getAllClients(callback::onResult);
     }
 
-    public void insert(Client client, Runnable runnable) {
-        repository.insert(client, runnable);
+    public void insert(Client client) {
+        repository.insert(client);
     }
 
-    public void delete(Client client, Runnable runnable) {
-        repository.delete(client, runnable);
+    public void delete(Client client) {
+        repository.delete(client);
+    }
+    public void update(String street, String city, String postalCode, String name, int catalogId) {
+        repository.update(street, city, postalCode, name, catalogId);
     }
 }
