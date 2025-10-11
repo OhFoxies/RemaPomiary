@@ -67,7 +67,9 @@ public class CatalogActivity extends AppCompatActivity {
         blocks.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                Intent intent = new Intent(CatalogActivity.this, BlocksActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
             }
         });
 

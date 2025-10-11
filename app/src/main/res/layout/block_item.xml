@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="wrap_content"
+    android:background="@drawable/round_corners"
+    android:orientation="vertical"
+    android:layout_width="350dp"
+
+    android:padding="15dp"
+    android:layout_marginBottom="15dp"
+    android:id="@+id/blockMain">
+
+
+    <TextView
+        android:id="@+id/blockTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="Blok 11/a"
+        android:textSize="24sp" />
+
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/blockCreationDateTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📅 Data utworzenia:"
+            android:textSize="18sp"
+
+            android:layout_marginBottom="3dp"/>
+        <TextView
+            android:id="@+id/blockCreationDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
+
+            android:text="2024-15-06" />
+
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/blockLastEditedTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✏️ Ostatnia edycja:"
+            android:textSize="18sp"
+
+            android:layout_marginBottom="3dp"/>
+
+        <TextView
+            android:id="@+id/blockLastEdited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
+
+            android:text="2024-15-06 15:00:11" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/itemMeasurementData"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/blockAddressTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:text="📍 Lokalizacja:"
+            android:layout_marginBottom="3dp"/>
+
+        <TextView
+            android:id="@+id/blockCity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+        <TextView
+            android:id="@+id/blockStreet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+        <TextView
+            android:id="@+id/blockNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+        <TextView
+            android:id="@+id/blockPostalCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:layout_marginStart="25dp"
+            android:text="TU LOKALIZACJA " />
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="5dp">
+
+        <TextView
+            android:id="@+id/blockClientTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🧍 Zleceniodawca"
+            android:textSize="18sp"
+
+            android:layout_marginBottom="3dp"/>
+
+        <TextView
+            android:id="@+id/blockClientName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
+
+            android:text="Name" />
+        <TextView
+            android:id="@+id/blockClientAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:textSize="18sp"
+
+            android:text="Address" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:id="@+id/itemBlockControls"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal">
+
+        <Button
+            android:id="@+id/blockDelete"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="15dp"
+            android:backgroundTint="#f23022"
+            android:text="🗑️ Usuń" />
+
+        <Button
+            android:id="@+id/blockEdit"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#3FAB1F"
+            android:text="✏️ Edytuj" />
+    </LinearLayout>
+
+
+</LinearLayout>

@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".ui.activities.BlockActivity">
+
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#DDDDDD"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/backButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀ Powrót"
+                android:gravity="center_vertical"
+                android:textSize="18sp"
+                android:layout_marginEnd="16dp" />
+
+            <TextView
+                android:id="@+id/blockAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="Blok - "
+                android:gravity="center_vertical"
+
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/options"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="8dp"
+            app:flexDirection="row"
+            app:flexWrap="wrap"
+            app:justifyContent="center"
+            app:alignItems="stretch">
+
+
+            <LinearLayout
+                android:id="@+id/flats"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/flatsTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mieszkania"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/flatsDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajdują się mieszkania utworzone w tym bloku"
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/commonSpace"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/CommonSpaceTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Część wspólna"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/commonSpaceDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajdują się pomiary części wspólnej - korytarze, piwnica, garaże"
+                    android:textSize="16sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/lps"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="30%"
+                app:layout_flexGrow="1"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <TextView
+                    android:id="@+id/lpsTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Odgromy"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/lpsDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tutaj znajdują się pomiary odgromów"
+                    android:textSize="16sp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/blockInfo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                app:layout_flexBasisPercent="100%"
+                app:layout_flexGrow="1"
+                android:gravity="center"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="200dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:id="@+id/blockInfoTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingBottom="8dp"
+                        android:text="Informacje o bloku"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/blockInfoDesc2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📍 Lokalizacja: "
+                        android:textSize="20sp" />
+                    <TextView
+                        android:id="@+id/blockInfoCity"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="30dp"
+                        android:layout_height="wrap_content"
+                        android:text="Miasto"
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoStreet"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="30dp"
+
+                        android:layout_height="wrap_content"
+                        android:text="Ulica"
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoNumber"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="30dp"
+
+                        android:layout_height="wrap_content"
+                        android:text="Numer"
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoDesc3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🧍 Zleceniodawca:"
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoClientName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nazwa"
+                        android:layout_marginStart="30dp"
+
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoClientAdress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Adres"
+                        android:layout_marginStart="30dp"
+
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/blockInfoDesc4"
+                        android:layout_marginTop="15dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Aby edytować te dane wróć do listy bloków."
+
+                        android:textSize="18sp" />
+                </LinearLayout>
+                </LinearLayout>
+
+
+
+        </com.google.android.flexbox.FlexboxLayout>
+    </LinearLayout>
+</ScrollView>

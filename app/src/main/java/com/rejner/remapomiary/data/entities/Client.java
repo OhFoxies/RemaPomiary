@@ -43,4 +43,9 @@ public class Client {
         this.name = name;
         this.catalogId = catalogId;
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }
