@@ -23,8 +23,8 @@ public interface BlockDao {
     @Query("SELECT * FROM blocks WHERE id = :id")
     BlockFullData getBlockById(int id);
 
-    @Query("UPDATE blocks SET street = :street, city = :city, postal_code = :postal_code, number = :number, edition_date = :edition_date, clientId = :clientId")
-    void update(String street, String city, String postal_code, String number, Date edition_date, int clientId);
+    @Query("UPDATE blocks SET street = :street, city = :city, postal_code = :postal_code, number = :number, edition_date = :edition_date, clientId = :clientId WHERE id=:blockId")
+    void update(String street, String city, String postal_code, String number, Date edition_date, int clientId, int blockId);
     @Insert
     void insert(Block block);
 

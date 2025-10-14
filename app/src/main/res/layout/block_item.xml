@@ -75,7 +75,7 @@
 
 
     <LinearLayout
-        android:id="@+id/itemMeasurementData"
+        android:id="@+id/itemBlockData"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -122,10 +122,11 @@
 
     </LinearLayout>
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="5dp">
+        android:padding="5dp"
+        android:id="@+id/blockItemClient">
 
         <TextView
             android:id="@+id/blockClientTitle"

@@ -35,7 +35,7 @@ public class BlockRepository {
     }
 
     public void update(Block block) {
-        AppDatabase.databaseWriteExecutor.execute(() -> dao.update(block.street, block.city, block.postal_code, block.number, block.edition_date, block.clientId));
+        AppDatabase.databaseWriteExecutor.execute(() -> dao.update(block.street, block.city, block.postal_code, block.number, block.edition_date, block.clientId, block.id));
 
     }
     public void getBlockById(int blockId, Consumer<BlockFullData> callback) {

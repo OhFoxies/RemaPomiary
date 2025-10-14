@@ -41,6 +41,9 @@ public class BlockViewModel extends AndroidViewModel
     public void insert(Block block) {
         repository.insert(block);
     }
+    public void update(Block block) {
+        repository.update(block);
+    }
 
     public void delete(Block block) {
         repository.delete(block);

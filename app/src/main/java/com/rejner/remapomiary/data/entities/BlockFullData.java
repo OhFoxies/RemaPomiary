@@ -23,8 +23,6 @@ public class BlockFullData {
     public Client getClient() {
         if (client == null) {
             Client defaultClient = new Client("-","-","-","Zleceniodawca został usunięty", -1);
-
-            // ustaw pozostałe pola jeśli potrzebne
             return defaultClient;
         }
         return client;
