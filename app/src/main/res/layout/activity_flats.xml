@@ -3,20 +3,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".ui.activities.FlatsActivity">
 
     <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        tools:context=".ui.activities.BlocksActivity">
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
             android:background="#DDDDDD"
+            android:layout_marginBottom="20dp"
+
             android:gravity="center_horizontal"
             android:orientation="horizontal"
             android:padding="8dp">
@@ -25,22 +27,21 @@
                 android:id="@+id/backButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:gravity="center_vertical"
                 android:text="◀ Powrót"
-                android:textSize="18sp" />
+                android:gravity="center_vertical"
+                android:textSize="18sp"
+                android:layout_marginEnd="16dp" />
 
             <TextView
-                android:id="@+id/blocksTitle"
+                android:id="@+id/flatsTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
+                android:text="Mieszkania w bloku - "
                 android:gravity="center_vertical"
-                android:text="Bloki dla katalogu - "
 
                 android:textSize="24sp"
                 android:textStyle="bold" />
         </LinearLayout>
-
         <LinearLayout
             android:layout_width="500sp"
             android:layout_height="wrap_content"
@@ -57,7 +58,7 @@
                 android:layout_marginBottom="10dp"
                 android:gravity="center"
                 android:padding="6sp"
-                android:text="Dodaj nowy blok"
+                android:text="Dodaj nowe mieszkanie"
                 android:textSize="24sp" />
 
 
@@ -66,7 +67,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="15dp"
-                android:text="📍Adres bloku: "
+                android:text="📍Informacje: "
                 android:textSize="20sp" />
 
             <TextView
@@ -74,99 +75,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:text="Miasto: "
+                android:text="Numer mieszkania: "
                 android:textSize="18sp" />
 
             <EditText
-                android:id="@+id/inputBlockCity"
+                android:id="@+id/inputFlatNumber"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
                 android:layout_marginBottom="15dp"
                 android:autofillHints="postalLocality"
                 android:ems="10"
-                android:hint="Miasto"
-
-                android:inputType="text" />
-
-            <TextView
-                android:id="@+id/textView5"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-
-                android:text="Ulica:"
-
-                android:textSize="18sp" />
-
-            <EditText
-                android:id="@+id/inputBlockStreet"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginBottom="15dp"
-                android:autofillHints="streetAddress"
-
-
-                android:ems="10"
-                android:hint="Ulica"
+                android:hint="Numer"
                 android:inputType="text" />
 
 
-            <TextView
-                android:id="@+id/textView6"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:text="Kod pocztowy: "
-                android:textSize="18sp"
-                android:inputType="number"
-                android:maxLines="1"
-                android:maxLength="6"/>
-
-            <EditText
-                android:id="@+id/inputBlockPostalCode"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginBottom="15dp"
-                android:autofillHints="postalCode"
-                android:ems="10"
-                android:hint="Kod pocztowy"
-
-                android:inputType="text" />
-
-            <TextView
-                android:id="@+id/textView7"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:text="Numer bloku: "
-
-                android:textSize="18sp" />
-
-            <EditText
-                android:id="@+id/inputBlockNumber"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginBottom="15dp"
-                android:ems="10"
-                android:padding="6sp"
-
-                android:hint="Numer bloku"
-                android:inputType="text" />
 
             <TextView
                 android:id="@+id/textView8"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:text="Zleceniodawca: "
+                android:text="Szablon mieszkania: "
                 android:textSize="18sp" />
 
             <Spinner
-                android:id="@+id/spinner"
+                android:id="@+id/templatesSpinner"
                 android:layout_marginStart="20dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
@@ -181,7 +115,7 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/blockCancel"
+                    android:id="@+id/flatCancel"
                     style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -192,7 +126,7 @@
                     android:textColor="@color/white" />
 
                 <Button
-                    android:id="@+id/blockAdd"
+                    android:id="@+id/flatAdd"
                     style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -206,8 +140,6 @@
 
 
         </LinearLayout>
-
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -223,7 +155,7 @@
                 android:layout_marginBottom="20dp"
                 android:gravity="center"
                 android:padding="6sp"
-                android:text="Utworzone bloki"
+                android:text="Utworzone mieszkania"
                 android:textSize="34sp" />
 
             <LinearLayout
@@ -253,23 +185,21 @@
             </LinearLayout>
 
             <TextView
-                android:id="@+id/noBlocks"
+                android:id="@+id/noFlats"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="15dp"
                 android:layout_marginBottom="20dp"
-                android:text="Brak bloków."
+                android:text="Brak mieszkań"
                 android:textSize="24sp" />
 
 
         </LinearLayout>
-
-
         <com.google.android.flexbox.FlexboxLayout
-            android:id="@+id/blocks"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
+            android:id="@+id/clients"
             app:alignItems="center"
             app:flexDirection="row"
             app:flexWrap="wrap"
@@ -277,7 +207,6 @@
 
 
         </com.google.android.flexbox.FlexboxLayout>
-
 
     </LinearLayout>
 </ScrollView>

@@ -55,4 +55,8 @@ public class CatalogViewModel extends AndroidViewModel {
     public void delete(Catalog catalog, Runnable runnable) {
         repository.delete(catalog, runnable);
     }
+
+    public void updateEdition(int catalogId) {
+        repository.updateEdition(catalogId);
+    }
 }

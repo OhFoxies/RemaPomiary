@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -24,6 +25,8 @@ import com.google.android.flexbox.FlexboxLayout;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Client;
+import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
+import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.ClientViewModel;
 
@@ -43,7 +46,7 @@ public class ClientsActivity extends AppCompatActivity {
     private EditText clientCity;
     private EditText clientStreet;
     private EditText clientPostalCode;
-
+    private CatalogViewModel catalogViewModel;
     private List<EditText> inputs;
 
     @Override
@@ -55,10 +58,12 @@ public class ClientsActivity extends AppCompatActivity {
         clientCity = findViewById(R.id.inputClientCity);
         clientStreet = findViewById(R.id.inputClientStreet);
         clientPostalCode = findViewById(R.id.inputClientPostalCode);
+        clientPostalCode.addTextChangedListener(new PostalCodeTextWatcher(clientPostalCode));
+
         inputs = new ArrayList<>(Arrays.asList(clientName, clientCity, clientStreet, clientPostalCode));
 
         catalogId = getIntent().getIntExtra("catalogId", 0);
-        CatalogViewModel catalogViewModel = new ViewModelProvider(this).get(CatalogViewModel.class);
+        catalogViewModel = new ViewModelProvider(this).get(CatalogViewModel.class);
 
         catalogViewModel.getCatalogById(catalogId, catalog1 -> {
             catalog = catalog1;
@@ -154,6 +159,7 @@ public class ClientsActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 clientViewModel.delete(client);
+                catalogViewModel.updateEdition(catalogId);
                 Toast.makeText(ClientsActivity.this, "Zleceniodawca został usunięty! ", Toast.LENGTH_SHORT).show();
             }
         });
@@ -197,6 +203,12 @@ public class ClientsActivity extends AppCompatActivity {
             LinearLayout linearLayout =  clientView.findViewById(R.id.itemClientData);
             editText.setLayoutParams(params);
             editText.setTextSize(TypedValue.COMPLEX_UNIT_SP,20);
+            if (element == postalCode) {
+                editText.addTextChangedListener(new PostalCodeTextWatcher(editText));
+                editText.setMaxLines(1);
+                editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+                editText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+            }
             int index = linearLayout.indexOfChild(element);
             linearLayout.removeView(element);
             linearLayout.addView(editText, index);
@@ -219,6 +231,7 @@ public class ClientsActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 clientViewModel.update(client.street, client.city, client.postal_code, client.name, catalog.id);
+//                blockViewModel.update();
 
             }
         });
@@ -236,6 +249,8 @@ public class ClientsActivity extends AppCompatActivity {
                         list.add(value);
                     }
                 }
+                catalogViewModel.updateEdition(catalogId);
+
                 clientViewModel.update(list.get(1), list.get(0), list.get(2), titleEditText.getText().toString(), catalog.id);
             }
         });
@@ -258,6 +273,7 @@ public class ClientsActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             Client newClient = new Client(clientStreet.getText().toString(), clientCity.getText().toString(), clientPostalCode.getText().toString(), clientName.getText().toString(), catalogId);
             clientViewModel.insert(newClient);
+            catalogViewModel.updateEdition(catalogId);
             clearInput();
         });
     }

@@ -3,6 +3,7 @@ package com.rejner.remapomiary.ui.activities;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -22,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.flexbox.FlexboxLayout;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Catalog;
+import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 
 
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         catalogCity = findViewById(R.id.inputCatalogCity);
         catalogStreet = findViewById(R.id.inputCatalogStreet);
         catalogPostalCode = findViewById(R.id.inputCatalogPostalCode);
+        catalogPostalCode.addTextChangedListener(new PostalCodeTextWatcher(catalogPostalCode));
         inputs = new ArrayList<>(Arrays.asList(catalogTitle, catalogCity, catalogStreet, catalogPostalCode));
 
         arrayAdapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_spinner_item, sortOptions);
@@ -230,6 +233,15 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout linearLayout =  catalogView.findViewById(R.id.itemMeasurementData);
             editText.setLayoutParams(params);
             editText.setTextSize(TypedValue.COMPLEX_UNIT_SP,20);
+
+
+            if (element == postalCode) {
+                editText.addTextChangedListener(new PostalCodeTextWatcher(editText));
+                editText.setMaxLines(1);
+                editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+                editText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+            }
+
             int index = linearLayout.indexOfChild(element);
             linearLayout.removeView(element);
             linearLayout.addView(editText, index);

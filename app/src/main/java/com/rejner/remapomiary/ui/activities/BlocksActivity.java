@@ -2,7 +2,9 @@ package com.rejner.remapomiary.ui.activities;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.opengl.Visibility;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.AdapterView;
@@ -25,9 +27,12 @@ import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Client;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.ClientViewModel;
+
+import org.w3c.dom.Text;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -63,6 +68,7 @@ public class BlocksActivity extends AppCompatActivity {
         number = findViewById(R.id.inputBlockNumber);
         postal_code = findViewById(R.id.inputBlockPostalCode);
         spinnerCreation = findViewById(R.id.spinner);
+        postal_code.addTextChangedListener(new PostalCodeTextWatcher(postal_code));
 
         inputs = Arrays.asList(city, street, postal_code, number);
         catalogId = getIntent().getIntExtra("catalogId", 0);
@@ -86,12 +92,7 @@ public class BlocksActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 boolean before = sortByCreation;
-                if (sortOptions.get(position).equals("Data edycji")) {
-                    sortByCreation = true;
-
-                } else {
-                    sortByCreation = false;
-                }
+                sortByCreation = sortOptions.get(position).equals("Data edycji");
                 if (sortByCreation != before) {
                     LiveDataUtil.observeOnce(blockViewModel.getBlocksWithFullData(catalogId), BlocksActivity.this, blocks -> {
                         updateBlocks(blocks);
@@ -183,12 +184,23 @@ public class BlocksActivity extends AppCompatActivity {
         }
         Block newBlock = new Block(catalogId, street.getText().toString(), city.getText().toString(), number.getText().toString(), postal_code.getText().toString(), selectedClient.id, new Date(), new Date());
         blockViewModel.insert(newBlock);
+        catalogViewModel.updateEdition(catalogId);
         resetBlockInput();
 
 
     }
 
     private void updateBlocks(List<BlockFullData> blocks) {
+
+        TextView noBlocks = findViewById(R.id.noBlocks);
+
+        if (blocks.isEmpty()) {
+            noBlocks.setVisibility(View.VISIBLE);
+            return;
+        } else {
+            noBlocks.setVisibility(View.GONE);
+        }
+
         if (!sortByCreation) {
             blocks.sort(Comparator.comparing((BlockFullData b) -> b.block.edition_date).reversed());
 
@@ -265,6 +277,8 @@ public class BlocksActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 blockViewModel.repository.delete(block.block);
                 Toast.makeText(BlocksActivity.this, "Blok oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
+                catalogViewModel.updateEdition(catalogId);
+
             }
         });
 
@@ -312,6 +326,12 @@ public class BlocksActivity extends AppCompatActivity {
             editText.setLayoutParams(params);
             editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
             LinearLayout linearLayout = blockView.findViewById(R.id.itemBlockData);
+            if (textView == postalCode) {
+                editText.addTextChangedListener(new PostalCodeTextWatcher(editText));
+                editText.setMaxLines(1);
+                editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+                editText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(6)});
+            }
             int index = linearLayout.indexOfChild(textView);
             linearLayout.removeView(textView);
             linearLayout.addView(editText, index);
@@ -328,40 +348,30 @@ public class BlocksActivity extends AppCompatActivity {
         editButton.setText("✅ Zapisz");
         deleteButton.setText("❌ Anuluj");
 
-        deleteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                LiveDataUtil.observeOnce(blockViewModel.getBlocksWithFullData(catalogId), BlocksActivity.this, blocks -> {
-                    updateBlocks(blocks);
-                });
+        deleteButton.setOnClickListener(v -> LiveDataUtil.observeOnce(blockViewModel.getBlocksWithFullData(catalogId), BlocksActivity.this, this::updateBlocks));
+
+        editButton.setOnClickListener(v -> {
+            ArrayList<String> list = new ArrayList<>();
+            LinearLayout linearLayout = blockView.findViewById(R.id.itemBlockData);
+            for (int i = 0; i < linearLayout.getChildCount(); i++) {
+                View child = linearLayout.getChildAt(i);
+                if (child instanceof EditText) {
+                    EditText editText = (EditText) child;
+                    String value = editText.getText().toString();
+                    list.add(value);
+                }
+            }
+            Client selectedClient = (Client) spinner.getSelectedItem();
+            if (selectedClient.name.equals("Brak zleceniodawców")) {
+                Toast.makeText(BlocksActivity.this, "Nie wybrano zleceniodawcy!", Toast.LENGTH_SHORT).show();
+                return;
+
             }
 
-        });
-
-        editButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ArrayList<String> list = new ArrayList<>();
-                LinearLayout linearLayout = blockView.findViewById(R.id.itemBlockData);
-                for (int i = 0; i < linearLayout.getChildCount(); i++) {
-                    View child = linearLayout.getChildAt(i);
-                    if (child instanceof EditText) {
-                        EditText editText = (EditText) child;
-                        String value = editText.getText().toString();
-                        list.add(value);
-                    }
-                }
-                Client selectedClient = (Client) spinner.getSelectedItem();
-                if (selectedClient.name.equals("Brak zleceniodawców")) {
-                    Toast.makeText(BlocksActivity.this, "Nie wybrano zleceniodawcy!", Toast.LENGTH_SHORT).show();
-                    return;
-
-                }
-
-                Block newBlock = new Block(catalogId, list.get(1), list.get(0), list.get(2), list.get(3), selectedClient.id, block.block.creation_date, new Date());
-                newBlock.id = block.block.id;
-                blockViewModel.update(newBlock);
-            }
+            Block newBlock = new Block(catalogId, list.get(1), list.get(0), list.get(2), list.get(3), selectedClient.id, block.block.creation_date, new Date());
+            newBlock.id = block.block.id;
+            catalogViewModel.updateEdition(catalogId);
+            blockViewModel.update(newBlock);
         });
 
     }

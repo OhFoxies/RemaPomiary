@@ -11,6 +11,7 @@ import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
 
+import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -49,4 +50,11 @@ public class BlockRepository {
     }
 
 
+    public void updateEditionTime(int blockId) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            AppDatabase.databaseWriteExecutor.execute(() -> {
+                dao.updateEditionTime(blockId, new Date());
+            });
+        });
+    }
 }

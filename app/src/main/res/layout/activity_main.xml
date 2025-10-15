@@ -128,7 +128,9 @@
                 android:ems="10"
                 android:autofillHints="postalCode"
                 android:hint="Kod pocztowy"
-                android:inputType="text" />
+                android:inputType="number"
+                android:maxLines="1"
+                android:maxLength="6"/>
 
             <LinearLayout
                 style="?android:attr/buttonBarStyle"

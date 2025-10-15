@@ -77,4 +77,11 @@ public class CatalogRepository {
             callback.accept(catalog);
         });
     }
+
+    public void updateEdition(int catalogId) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+             dao.updateEdition(catalogId, new Date());
+
+        });
+    }
 }

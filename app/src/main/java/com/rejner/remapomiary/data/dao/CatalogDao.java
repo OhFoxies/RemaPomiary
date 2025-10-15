@@ -34,4 +34,7 @@ public interface CatalogDao {
 
     @Query("SELECT * FROM catalogs WHERE id=:id")
     Catalog getCatalogById(int id);
+
+    @Query("UPDATE catalogs SET edition_time = :time WHERE id = :catalogId")
+    void updateEdition(int catalogId, Date time);
 }

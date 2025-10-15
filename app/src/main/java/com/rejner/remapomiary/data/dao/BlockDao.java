@@ -31,4 +31,6 @@ public interface BlockDao {
     @Delete
     void delete(Block block);
 
+    @Query("UPDATE blocks SET edition_date = :time WHERE id = :blockId")
+    void updateEditionTime(int blockId, Date time);
 }

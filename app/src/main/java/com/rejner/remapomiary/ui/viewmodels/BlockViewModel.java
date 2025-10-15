@@ -34,6 +34,10 @@ public class BlockViewModel extends AndroidViewModel
         repository.getBlockById(blockId, callback::onResult);
     }
 
+
+    public void updateEdition(int blockId) {
+        repository.updateEditionTime(blockId);
+    }
     public LiveData<List<BlockFullData>> getBlocksWithFullData(int catalogId) {
         return repository.getBlocksWithFullData(catalogId);
     }
