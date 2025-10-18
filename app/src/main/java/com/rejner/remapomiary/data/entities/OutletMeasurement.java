@@ -5,38 +5,56 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "outletMeasurement",
-foreignKeys = @ForeignKey(entity = RoomInFlat.class,
-parentColumns = "id",
-childColumns = "roomId",
-onDelete = ForeignKey.CASCADE))
+@Entity(
+        tableName = "outletMeasurement",
+        foreignKeys = @ForeignKey(
+                entity = RoomInFlat.class,
+                parentColumns = "id",
+                childColumns = "roomId",
+                onDelete = ForeignKey.CASCADE
+        )
+)
 public class OutletMeasurement {
+
     @PrimaryKey(autoGenerate = true)
     public int id;
 
-    @ColumnInfo(name = "roomId")
+    // Powiązanie z pokojem
+    @ColumnInfo(name = "roomId", index = true)
     public int roomId;
 
+    // Numer gniazdka lub 0 dla innych urządzeń
+    @ColumnInfo(name = "number")
+    public int number;
 
-//    gniazdko - x, lodowka, kuchenka
-    @ColumnInfo(name = "name")
-    public String name;
+    // Urządzenie: gniazdko, indukcja, pralka, inne
+    @ColumnInfo(name = "appliance")
+    public String appliance;
 
-//    B, C, D, Gg
-    @ColumnInfo(name = "type")
-    public String type;
+    // Nazwa wyłącznika
+    @ColumnInfo(name = "switchName")
+    public String switchName;
 
-//    Bezpiecznik producent/model
-    @ColumnInfo(name = "breaker")
-    public String breaker;
+    // Typ zabezpieczenia (B, C, D, Gg)
+    @ColumnInfo(name = "breakerType")
+    public String breakerType;
 
-    @ColumnInfo(name = "notes")
-    public String notes;
-//Ile Amper
-    @ColumnInfo(name = "value")
-    public int value;
-// Pomiar w Omach
-    @ColumnInfo(name = "measurement")
-    public double measurement;
+    // Wartość zabezpieczenia w Amperach
+    @ColumnInfo(name = "amps")
+    public Double amps;
 
+    // Pomiar w omach
+    @ColumnInfo(name = "ohms")
+    public Double ohms;
+
+    // Uwagi (brak bolca, urwane, inne)
+    @ColumnInfo(name = "note")
+    public String note;
+
+    public OutletMeasurement() {}
+
+    public OutletMeasurement(int roomId, String appliance) {
+        this.roomId = roomId;
+        this.appliance = appliance;
+    }
 }

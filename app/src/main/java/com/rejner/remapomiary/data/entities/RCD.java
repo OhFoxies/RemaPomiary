@@ -29,9 +29,12 @@ public class RCD {
     @ColumnInfo(name="notes")
     public String notes;
 
+    @ColumnInfo(name = "isGood", defaultValue = "1")
+    public int isGood = 1;
+
     @ColumnInfo(name = "time1")
-    public double time1;
+    public int time1;
 
     @ColumnInfo(name = "time2")
-    public double time2;
+    public int time2;
 }

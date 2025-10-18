@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".ui.activities.RCDActivity">
+
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#DDDDDD"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/backButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:gravity="center_vertical"
+                android:text="◀ Powrót"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/rcdTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:text="Mieszkanie  roznicowka"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="20dp">
+
+            <Button
+                android:id="@+id/notesButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Uwagi"
+
+
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/boardButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Rozdzielnia"
+
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/RCDButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Różnicówka"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/roomsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+
+                android:paddingBottom="15dp"
+                android:text="Pętla zwarcia"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rcdWrapper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Kontener listy pokoi - wypełniany dynamicznie -->
+
+
+            <!-- Formularz - zawsze widoczny pod listą -->
+            <LinearLayout
+                android:id="@+id/formContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/formTitle"
+                    android:layout_width="match_parent"
+                    android:gravity="center_horizontal"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="8dp"
+                    android:text="Różnicówka - test"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+                <Button
+                    android:id="@+id/noRCD"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:paddingTop="8dp"
+                    android:layout_marginBottom="20dp"
+                    android:paddingBottom="8dp"
+                    android:text="Brak różnicówki"
+                    android:textSize="18sp"
+                    />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:id="@+id/rcdInfo"
+                    >
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:id="@+id/headers"
+                        android:background="@color/white"
+                        android:gravity="center_horizontal"
+                        android:padding="8dp"
+                        >
+                        <TextView
+                            android:id="@+id/textView9"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_weight="2"
+                            android:textSize="18sp"
+                            android:text="Producent"
+                            android:layout_marginEnd="30dp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/textView10"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:text="Typ"
+                            android:textStyle="bold"
+                            android:textSize="18sp"
+                            android:layout_marginEnd="30dp"/>
+                        <TextView
+                            android:id="@+id/textView11"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_weight="2"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:text="Czas [ms]"
+                            android:layout_marginEnd="30dp"/>
+                        <TextView
+                            android:id="@+id/textView12"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_weight="2"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:layout_height="wrap_content"
+                            android:text="Prąd [mA]" />
+
+                    </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@color/white"
+                        android:gravity="center_vertical"
+                        android:id="@+id/data"
+
+                        android:padding="8dp"
+                        android:layout_marginBottom="20dp"
+                        >
+                        <EditText
+                            android:id="@+id/manufacturerEditText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:hint="Producent"
+                            android:maxLines="1"
+                            android:paddingLeft="16dp"
+                            android:paddingBottom="12dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="12dp"
+                            android:layout_weight="2"
+                            android:layout_marginEnd="30dp"
+
+                            android:background="@drawable/input"
+                            android:inputType="text"
+                            android:imeOptions="actionDone"/>
+                        <Button
+                            android:id="@+id/saveManufacturerButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✔"
+                            android:visibility="gone"
+                            style="?android:attr/buttonStyleSmall"
+                            android:minWidth="48dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="20dp"/>
+
+                        <Spinner
+                            android:id="@+id/typeSpinner"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="30dp"/>
+
+                        <EditText
+                            android:id="@+id/time1EditText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:hint="Czas"
+                            android:paddingLeft="16dp"
+                            android:layout_weight="2"
+                            android:paddingBottom="12dp"
+                            android:paddingEnd="16dp"
+                            android:layout_marginEnd="30dp"
+                            android:paddingTop="12dp"
+                            android:background="@drawable/input"
+                            android:inputType="number"
+                            android:imeOptions="actionDone"/>
+                        <Button
+                            android:id="@+id/saveTime1Button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✔"
+                            android:visibility="gone"
+                            style="?android:attr/buttonStyleSmall"
+                            android:minWidth="48dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="20dp"/>
+
+                        <EditText
+                            android:id="@+id/time2EditText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:hint="Prąd"
+                            android:paddingLeft="16dp"
+                            android:layout_weight="2"
+                            android:paddingBottom="12dp"
+                            android:paddingEnd="16dp"
+                            android:paddingTop="12dp"
+                            android:background="@drawable/input"
+                            android:inputType="number"
+                            android:imeOptions="actionDone"/>
+                        <Button
+                            android:id="@+id/saveTime2Button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✔"
+                            style="?android:attr/buttonStyleSmall"
+                            android:minWidth="48dp"
+                            android:visibility="gone"
+                            android:layout_marginStart="4dp"/>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/brokenRCD"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:textSize="34sp"
+                        android:textColor="#F44336"
+                        android:gravity="center_horizontal"
+                        android:layout_marginBottom="20dp"
+                        android:text="Różnicówka w tym mieszkaniu jest niesprawna!" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/RCDBroken"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:text="ZMIEŃ NA: RÓŻNICÓWKA NIESPRAWNA"
+                        style="@style/Widget.MaterialComponents.Button"
+
+                        android:backgroundTint="#F44336"
+                        android:textSize="18sp" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:id="@+id/notes"
+                        android:background="@color/white"
+                        android:gravity="center_vertical"
+                        android:padding="8dp"
+                        android:layout_marginTop="20dp"
+                        >
+
+                        <TextView
+                            android:id="@+id/notesTitle"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="8dp"
+                            android:text="Uwagi do różnicówki"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                        <EditText
+                            android:id="@+id/notedEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Wpisz uwagi..."
+                            android:paddingLeft="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingEnd="20dp"
+                            android:paddingTop="16dp"
+                            android:layout_weight="2"
+                            android:background="@drawable/input"
+                            android:inputType="text" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/notesSave"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_gravity="end"
+                            android:text="✔ Zapisz"
+                            style="@style/Widget.MaterialComponents.Button"
+
+                            android:backgroundTint="#ff0099cc"
+                            android:textSize="16sp" />
+
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

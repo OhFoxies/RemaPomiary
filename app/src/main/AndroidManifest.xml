@@ -12,7 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RemaPomiary">
         <activity
-            android:name=".ui.activities.FlatActivity"
+            android:name=".ui.activities.RoomActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.NotesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.RCDActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activities.BoardActivity"
             android:exported="false" />
         <activity
             android:name=".ui.activities.ClientsActivity"

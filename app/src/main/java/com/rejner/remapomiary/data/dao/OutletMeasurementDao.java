@@ -16,7 +16,7 @@ import java.util.List;
 public interface OutletMeasurementDao {
 
     @Insert
-    void insert(OutletMeasurement measurement);
+    long insert(OutletMeasurement measurement);
 
     @Update
     void update(OutletMeasurement measurement);

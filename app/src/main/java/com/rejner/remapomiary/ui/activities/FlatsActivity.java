@@ -1,12 +1,13 @@
 package com.rejner.remapomiary.ui.activities;
 
-import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -118,11 +119,15 @@ public class FlatsActivity extends AppCompatActivity {
 
             Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
             inputFlatNumber.setText("");
+            hideKeyboard();
             inputFlatNumber.clearFocus();
+
         });
 
         flatCancelButton.setOnClickListener(v -> {
             inputFlatNumber.setText("");
+            hideKeyboard();
+
             inputFlatNumber.clearFocus();
 
         });
@@ -139,7 +144,14 @@ public class FlatsActivity extends AppCompatActivity {
             updateFlatsDisplay();
         });
     }
-
+    public void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        View view = getCurrentFocus();
+        if (view == null) {
+            view = new View(this);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
     private void setupSortSpinner() {
         String[] sortOptions = {"Numer mieszkania", "Data utworzenia", "Data edycji", "Status"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortOptions);
@@ -280,7 +292,8 @@ public class FlatsActivity extends AppCompatActivity {
                     Toast.makeText(this, "Mieszkanie o tym numerze już istnieje!", Toast.LENGTH_SHORT).show();
                     return;
                 }
-
+                hideKeyboard();
+                titleEdit.clearFocus();
                 flat.number = newNumber;
                 flat.edition_date = new Date();
                 flatViewModel.update(flat);
@@ -300,6 +313,8 @@ public class FlatsActivity extends AppCompatActivity {
             boolean isEditing = titleEdit.getVisibility() == View.VISIBLE;
 
             if (isEditing) {
+                hideKeyboard();
+                titleEdit.clearFocus();
                 titleEdit.setVisibility(View.GONE);
                 title.setVisibility(View.VISIBLE);
                 editButton.setText("✏️ Edytuj");
@@ -324,7 +339,7 @@ public class FlatsActivity extends AppCompatActivity {
             if (isEditing) {
                 return;
             }
-            Intent intent = new Intent(FlatsActivity.this, FlatActivity.class);
+            Intent intent = new Intent(FlatsActivity.this, BoardActivity.class);
             intent.putExtra("flatId", flat.id);
             startActivity(intent);
         });

@@ -27,14 +27,24 @@ public class Flat {
     public String number;
 
     @ColumnInfo(name = "hasRCD", defaultValue = "1")
-    public int hasRCD;
+    public int hasRCD = 1;
 
 //    0 dopuszczone, 1 - dopuszczone po usunieciu, 2 - niedopuszczone
     @ColumnInfo(name = "grade", defaultValue = "0")
-    public int grade;
+    public int grade = 0;
 
-    @ColumnInfo(name = "notes")
-    public String notes;
+    @ColumnInfo(name = "notes", defaultValue = "")
+    public String notes ="";
+
+    @ColumnInfo(name = "circuitNotes", defaultValue = "")
+    public String circuitNotes = "";
+
+    @ColumnInfo(name = "RCDNotes", defaultValue = "")
+    public String RCDNotes = "";
+//    TN-S, TN-C
+    @ColumnInfo(name = "type", defaultValue = "TN-S")
+    public String type = "TN-S";
+
 
     @ColumnInfo(name = "creation_date")
     public Date creation_date;

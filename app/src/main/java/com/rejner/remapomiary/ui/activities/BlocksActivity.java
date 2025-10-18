@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.ui.activities;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.opengl.Visibility;
@@ -7,6 +8,7 @@ import android.os.Bundle;
 import android.text.InputFilter;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -107,7 +109,14 @@ public class BlocksActivity extends AppCompatActivity {
         });
 
     }
-
+    public void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        View view = getCurrentFocus();
+        if (view == null) {
+            view = new View(this);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
     private void updateView(List<BlockFullData> blocks) {
         updateBlocks(blocks);
     }
@@ -119,6 +128,7 @@ public class BlocksActivity extends AppCompatActivity {
         street.setText(catalog.street);
         postal_code.setText(catalog.postal_code);
         number.setText("");
+        hideKeyboard();
 
         for (EditText editText : inputs) {
             editText.clearFocus();
@@ -263,7 +273,7 @@ public class BlocksActivity extends AppCompatActivity {
     }
 
     private void openBlock(BlockFullData block) {
-        Intent intent = new Intent(BlocksActivity.this, BlockActivity.class);
+        Intent intent = new Intent(BlocksActivity.this, FlatsActivity.class);
         intent.putExtra("blockId", block.block.id);
         startActivity(intent);
     }
@@ -276,9 +286,8 @@ public class BlocksActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 blockViewModel.repository.delete(block.block);
-                Toast.makeText(BlocksActivity.this, "Blok oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
                 catalogViewModel.updateEdition(catalogId);
-
+                Toast.makeText(BlocksActivity.this, "Blok oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -370,8 +379,8 @@ public class BlocksActivity extends AppCompatActivity {
 
             Block newBlock = new Block(catalogId, list.get(1), list.get(0), list.get(2), list.get(3), selectedClient.id, block.block.creation_date, new Date());
             newBlock.id = block.block.id;
-            catalogViewModel.updateEdition(catalogId);
             blockViewModel.update(newBlock);
+            catalogViewModel.updateEdition(catalogId);
         });
 
     }

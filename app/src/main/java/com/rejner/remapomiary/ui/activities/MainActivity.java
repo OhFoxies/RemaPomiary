@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.ui.activities;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,6 +8,7 @@ import android.text.InputFilter;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -204,6 +206,14 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    public void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        View view = getCurrentFocus();
+        if (view == null) {
+            view = new View(this);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
 
     public void openCatalog(Catalog catalog) {
         Intent intent = new Intent(MainActivity.this, CatalogActivity.class);
@@ -302,6 +312,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     private void clearInput() {
+        hideKeyboard();
         for (EditText input : inputs) {
             input.setText("");
             input.clearFocus();
