@@ -40,8 +40,8 @@ public class OutletMeasurement {
     public String breakerType;
 
     // Wartość zabezpieczenia w Amperach
-    @ColumnInfo(name = "amps")
-    public Double amps;
+    @ColumnInfo(name = "amps", defaultValue = "16.0")
+    public Double amps = 16.0;
 
     // Pomiar w omach
     @ColumnInfo(name = "ohms")

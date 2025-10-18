@@ -39,8 +39,8 @@ public class Flat {
     @ColumnInfo(name = "circuitNotes", defaultValue = "")
     public String circuitNotes = "";
 
-    @ColumnInfo(name = "RCDNotes", defaultValue = "")
-    public String RCDNotes = "";
+    @ColumnInfo(name = "gradeByUser", defaultValue = "0")
+    public int gradeByUser = 0;
 //    TN-S, TN-C
     @ColumnInfo(name = "type", defaultValue = "TN-S")
     public String type = "TN-S";

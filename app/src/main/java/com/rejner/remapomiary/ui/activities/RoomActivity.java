@@ -326,6 +326,7 @@ public class RoomActivity extends AppCompatActivity {
                     measurementsContainer.addView(empty);
                 }
             }
+            isInitializing = false;
         });
     }
 
@@ -391,7 +392,7 @@ public class RoomActivity extends AppCompatActivity {
         newOm.roomId = roomId;
         newOm.appliance = applianceOptions[0];
         newOm.switchName = "";
-        newOm.breakerType = breakerTypes[0];
+        newOm.breakerType = null;
         newOm.amps = null;
         newOm.ohms = 0.0;
         newOm.note = noteOptions[0];
@@ -404,6 +405,8 @@ public class RoomActivity extends AppCompatActivity {
         }
         if (lastDefaultAmps != null && (newOm.amps == null || newOm.amps <= 0)) {
             newOm.amps = lastDefaultAmps;
+        } else {
+            newOm.amps = 16.0;
         }
         outletViewModel.insert(newOm, lastId -> {
             newlyAddedMeasurementId = lastId;
@@ -640,7 +643,7 @@ public class RoomActivity extends AppCompatActivity {
             }
             return false;
         });
-        noteSpinner.post(() -> applianceSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+        applianceSpinner.post(() -> applianceSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 if (isInitializing) return;
@@ -648,6 +651,7 @@ public class RoomActivity extends AppCompatActivity {
                 if ("Inne".equals(selected)) {
                     applianceSpinner.setVisibility(View.GONE);
                     customApplianceEdit.setVisibility(View.VISIBLE);
+                    customApplianceSaveBtn.setVisibility(View.VISIBLE);
                     customApplianceClearBtn.setVisibility(View.VISIBLE);
                     customApplianceEdit.requestFocus();
                     showKeyboard(customApplianceEdit);
@@ -658,19 +662,6 @@ public class RoomActivity extends AppCompatActivity {
                         customApplianceClearBtn.setVisibility(View.GONE);
                     }
                     applianceSpinner.setVisibility(View.VISIBLE);
-                    if ((om.switchName == null || om.switchName.trim().isEmpty()) && lastDefaultSwitchName != null) {
-                        om.switchName = lastDefaultSwitchName;
-                        switchEdit.setText(om.switchName);
-                    }
-                    if ((om.breakerType == null || om.breakerType.trim().isEmpty()) && lastDefaultBreakerType != null) {
-                        om.breakerType = lastDefaultBreakerType;
-                        for (int i = 0; i < breakerTypes.length; i++) if (breakerTypes[i].equalsIgnoreCase(lastDefaultBreakerType)) { breakerSpinner.setSelection(i, false); break; }
-                    }
-                    if ((om.amps == null || om.amps <= 0) && lastDefaultAmps != null) {
-                        om.amps = lastDefaultAmps;
-                        String aStr = String.valueOf(om.amps.longValue());
-                        for (int i = 0; i < ampsOptions.length; i++) if (ampsOptions[i].equals(aStr)) { ampsSpinner.setSelection(i, false); break; }
-                    }
                     if (om.appliance == null || !om.appliance.equals(selected)) {
                         om.appliance = selected;
                         outletViewModel.update(om, null);

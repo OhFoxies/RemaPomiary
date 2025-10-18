@@ -55,11 +55,17 @@ public class FlatRepository {
     public LiveData<List<FlatFullData>> getFlatsFullDataByBlockId(int blockId) {
         return dao.getFlatsFullDataByBlockId(blockId);
     }
-
+    public boolean shouldSetGradeToOneSync(int flatId) {
+        return dao.shouldSetGradeToOneSync(flatId); // DAO zwraca boolean
+    }
     public void getFlatByIdSync(int flatId, Consumer<FlatFullData> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
              FlatFullData flat = dao.getFlatFullDataSync(flatId);
              callback.accept(flat);
         });
+    }
+
+    public LiveData<Boolean> shouldSetGradeToOne(int flatId) {
+        return dao.shouldSetGradeToOne(flatId);
     }
 }

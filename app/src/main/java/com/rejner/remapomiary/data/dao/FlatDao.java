@@ -47,4 +47,41 @@ public interface FlatDao {
     @Transaction
     @Query("SELECT * FROM flat WHERE id = :flatId")
     FlatFullData getFlatFullDataSync(int flatId);
+
+    @Query("SELECT EXISTS (" +
+            "SELECT 1 FROM outletMeasurement " +
+            "INNER JOIN room ON outletMeasurement.roomId = room.id " +
+            "WHERE room.flatId = :flatId " +
+            "AND outletMeasurement.note IS NOT NULL " +
+            "AND outletMeasurement.note != 'brak uwag' " +
+            "UNION ALL " +
+            "SELECT 1 FROM rcd " +
+            "WHERE rcd.flatId = :flatId " +
+            "AND rcd.notes IS NOT NULL " +
+            "AND rcd.notes != '' " +
+            "UNION ALL " +
+            "SELECT 1 FROM flat " +
+            "WHERE flat.id = :flatId " +
+            "AND flat.circuitNotes IS NOT NULL " +
+            "AND flat.circuitNotes != ''" +
+            ")")
+    LiveData<Boolean> shouldSetGradeToOne(int flatId);
+    @Query("SELECT EXISTS (" +
+            "SELECT 1 FROM outletMeasurement " +
+            "INNER JOIN room ON outletMeasurement.roomId = room.id " +
+            "WHERE room.flatId = :flatId " +
+            "AND outletMeasurement.note IS NOT NULL " +
+            "AND outletMeasurement.note != 'brak uwag' " +
+            "UNION ALL " +
+            "SELECT 1 FROM rcd " +
+            "WHERE rcd.flatId = :flatId " +
+            "AND rcd.notes IS NOT NULL " +
+            "AND rcd.notes != '' " +
+            "UNION ALL " +
+            "SELECT 1 FROM flat " +
+            "WHERE flat.id = :flatId " +
+            "AND flat.circuitNotes IS NOT NULL " +
+            "AND flat.circuitNotes != ''" +
+            ")")
+    boolean shouldSetGradeToOneSync(int flatId);
 }

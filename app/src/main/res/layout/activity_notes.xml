@@ -1,10 +1,339 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     tools:context=".ui.activities.NotesActivity">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#DDDDDD"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/backButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:gravity="center_vertical"
+                android:text="◀ Powrót"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/rcdTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:text="Mieszkanie podsumowanie"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:padding="20dp">
+
+            <Button
+                android:id="@+id/notesButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Podsumowanie"
+
+
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/boardButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Rozdzielnia"
+
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/RCDButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="40dp"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:text="Różnicówka"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/roomsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:paddingTop="15dp"
+
+                android:paddingBottom="15dp"
+                android:text="Pętla zwarcia"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rcdWrapper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+
+            <LinearLayout
+                android:id="@+id/formContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/round_corners"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/formTitle"
+                    android:layout_width="match_parent"
+                    android:gravity="center_horizontal"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="8dp"
+                    android:text="Podsumowanie"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:id="@+id/rcdInfo"
+                    >
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@color/white"
+                        android:gravity="center_vertical"
+                        android:id="@+id/data"
+                        android:padding="8dp"
+                        android:layout_marginBottom="20dp"
+                        >
+                        <TextView
+                            android:id="@+id/gradeTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+
+                            android:text="Orzeczenie"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <RadioGroup
+                            android:id="@+id/radioGroup_instalacja"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="@android:color/transparent">
+
+                            <RadioButton
+                                android:id="@+id/radio_dopuszczona"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Instalacja dopuszczona do użytku"
+                                android:textSize="20sp"
+                                android:textColor="@android:color/black"
+                                android:padding="12dp"
+                                android:layout_marginBottom="8dp" />
+
+                            <RadioButton
+                                android:id="@+id/radio_dopuszczona_usterki"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Instalacja dopuszczona do użytku po usunięciu usterek"
+                                android:textSize="20sp"
+                                android:textColor="@android:color/black"
+                                android:padding="12dp"
+                                android:layout_marginBottom="8dp" />
+
+                            <RadioButton
+                                android:id="@+id/radio_niedopuszczona"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Instalacja niedopuszczona do użytku"
+                                android:textSize="20sp"
+                                android:textColor="@android:color/black"
+                                android:padding="12dp"
+                                />
+                        </RadioGroup>
+                        <TextView
+                            android:id="@+id/blockTitle"
+                            android:layout_marginTop="20dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Włączenie automatycznej aktualizacji orzeczenia oznacza, że system będzie samodzielenie wybierać końcowe orzeczenie. Jeśli bedziesz chciał je zmienić to musić wyłączyć automatyczną aktualizacje. Niezależnie od tego czy aktualizacja jest włączona czy nie, to finalne orzecznie może się różnić w zależności od wyniku protokołu"
+                            android:textSize="18sp"
+/>
+
+                        <TextView
+                            android:id="@+id/currentMode"
+                            android:layout_marginTop="10dp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="8dp"
+                            android:text="Automatyczna aktualizacja włączona!"
+                            android:textStyle="bold"
+                            android:textSize="18sp"
+                            />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/blockGrade"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Wyłącz automatyczną aktualizacje"
+                            style="@style/Widget.MaterialComponents.Button"
+
+                            android:backgroundTint="#F44336"
+                            android:textSize="16sp" />
+
+                    </LinearLayout>
+
+
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:id="@+id/notes"
+                        android:background="@color/white"
+                        android:gravity="center_vertical"
+                        android:padding="8dp"
+                        android:layout_marginTop="20dp"
+                        >
+
+                        <TextView
+                            android:id="@+id/notesTitle"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="8dp"
+                            android:text="Uwagi do mieszkania"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                        <EditText
+                            android:id="@+id/notedEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Wpisz uwagi..."
+                            android:paddingLeft="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingEnd="20dp"
+                            android:paddingTop="16dp"
+                            android:inputType="textMultiLine"
+                            android:singleLine="false"
+                            android:imeOptions="actionNone"
+                            android:layout_weight="2"
+                            android:background="@drawable/input"
+                           />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/notesSave"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_gravity="end"
+                            android:text="✔ Zapisz"
+                            style="@style/Widget.MaterialComponents.Button"
+
+                            android:backgroundTint="#ff0099cc"
+                            android:textSize="16sp" />
+
+                    </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:id="@+id/other"
+                        android:background="@color/white"
+                        android:gravity="center_vertical"
+                        android:padding="8dp"
+                        android:layout_marginTop="20dp"
+                        >
+
+                        <TextView
+                            android:id="@+id/otherTitle"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="8dp"
+                            android:layout_marginBottom="10dp"
+                            android:text="Inne"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/otherTitle2"
+                            android:layout_width="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="10dp"
+
+                            android:paddingBottom="8dp"
+                            android:text="Czy chcesz zapisać te mieszkanie jako szablon?"
+                            android:textSize="18sp" />
+                        <EditText
+                            android:id="@+id/templateName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:hint="Podaj nazwe szablonu..."
+                            android:paddingLeft="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingEnd="20dp"
+                            android:paddingTop="16dp"
+                            android:layout_marginBottom="10dp"
+
+                            android:layout_weight="2"
+                            android:background="@drawable/input"
+                            android:inputType="text" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/templateSave"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="✔ Zapisz jako szablon"
+                            style="@style/Widget.MaterialComponents.Button"
+
+                            android:backgroundTint="#ff0099cc"
+                            android:textSize="16sp" />
+
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
