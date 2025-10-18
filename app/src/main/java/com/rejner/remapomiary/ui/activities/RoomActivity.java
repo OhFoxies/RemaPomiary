@@ -90,6 +90,8 @@ public class RoomActivity extends AppCompatActivity {
         Button notesButton = findViewById(R.id.notesButton);
         Button RCDButton = findViewById(R.id.RCDButton);
         Button boardButton = findViewById(R.id.boardButton);
+        TextView titleView = findViewById(R.id.flatTitle);
+        titleView.setText("Mieszkanie numer - " + flat.number + " pętla zwarcia");
 
         boardButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -134,9 +136,7 @@ public class RoomActivity extends AppCompatActivity {
 
     private void setupUi() {
         Button backButton = findViewById(R.id.backButton);
-        TextView titleView = findViewById(R.id.flatTitle);
         backButton.setOnClickListener(v -> finish());
-        titleView.setText("Mieszkanie numer - " + (flat != null ? flat.number : "") + " pętla zwarcia");
         roomsContainer = findViewById(R.id.roomsContainer);
         roomSpinner = findViewById(R.id.roomSpinner);
         customRoomEditText = findViewById(R.id.customRoomEditText);

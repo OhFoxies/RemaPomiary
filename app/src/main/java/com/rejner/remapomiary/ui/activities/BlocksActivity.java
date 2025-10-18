@@ -159,7 +159,9 @@ public class BlocksActivity extends AppCompatActivity {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                finish();
+                Intent intent = new Intent(BlocksActivity.this, CatalogActivity.class);
+                intent.putExtra("catalogId", catalog.id);
+                startActivity(intent);
             }
         });
 
@@ -273,7 +275,7 @@ public class BlocksActivity extends AppCompatActivity {
     }
 
     private void openBlock(BlockFullData block) {
-        Intent intent = new Intent(BlocksActivity.this, FlatsActivity.class);
+        Intent intent = new Intent(BlocksActivity.this, BlockActivity.class);
         intent.putExtra("blockId", block.block.id);
         startActivity(intent);
     }

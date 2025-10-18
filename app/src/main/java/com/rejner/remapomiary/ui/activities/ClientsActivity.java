@@ -93,7 +93,9 @@ public class ClientsActivity extends AppCompatActivity {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                Intent intent = new Intent(ClientsActivity.this, CatalogActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
 
             }
         });

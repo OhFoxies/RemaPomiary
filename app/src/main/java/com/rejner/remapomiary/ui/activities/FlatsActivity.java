@@ -135,7 +135,9 @@ public class FlatsActivity extends AppCompatActivity {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                Intent intent = new Intent(FlatsActivity.this, BlockActivity.class);
+                intent.putExtra("blockId", block.block.id);
+                startActivity(intent);
 
             }
         });

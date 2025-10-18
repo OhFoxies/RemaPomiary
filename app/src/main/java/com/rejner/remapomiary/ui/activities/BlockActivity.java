@@ -54,8 +54,9 @@ public class BlockActivity extends AppCompatActivity {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
-
+                Intent intent = new Intent(BlockActivity.this, BlocksActivity.class);
+                intent.putExtra("catalogId", block.catalog.id);
+                startActivity(intent);
             }
         });
 
