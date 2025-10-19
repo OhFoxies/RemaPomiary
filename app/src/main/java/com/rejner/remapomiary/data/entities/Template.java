@@ -21,4 +21,9 @@ public class Template {
 
     @ColumnInfo(name = "creationdate")
     public Date creationDate;
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

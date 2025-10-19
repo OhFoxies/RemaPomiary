@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,10 +24,21 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.flexbox.FlexboxLayout;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.BlockFullData;
+import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.OutletMeasurement;
+import com.rejner.remapomiary.data.entities.RCD;
+import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.entities.Template;
+import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
+import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
+import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
+import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
+import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
+import com.rejner.remapomiary.ui.viewmodels.TemplateViewModel;
 
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -44,11 +56,18 @@ public class FlatsActivity extends AppCompatActivity {
     private FlexboxLayout flatsContainer;
     private TextView noFlatsText;
     private BlockViewModel blockViewModel;
+    private CircuitViewModel circuitViewModel;
+    private RCDViewModel rcdViewModel;
+    private OutletMeasurementViewModel outletMeasurementViewModel;
+    private RoomViewModel roomViewModel;
+
     private int blockId;
     private List<Flat> currentFlats;
     private final SimpleDateFormat creationDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private CatalogViewModel catalogViewModel;
     private BlockFullData block;
+    private List<Template> templatesList;
+    private TemplateViewModel templateViewModel;
     private final SimpleDateFormat editDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
     @Override
@@ -57,6 +76,7 @@ public class FlatsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_flats);
         blockId = getIntent().getIntExtra("blockId", -1);
         catalogViewModel = new ViewModelProvider(FlatsActivity.this).get(CatalogViewModel.class);
+        templateViewModel = new ViewModelProvider(FlatsActivity.this).get(TemplateViewModel.class);
 
         if (blockId == -1) {
             Toast.makeText(this, "Błąd: nie przekazano ID bloku!", Toast.LENGTH_SHORT).show();
@@ -69,9 +89,15 @@ public class FlatsActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 TextView textView = findViewById(R.id.flatsTitle);
                 textView.setText("Mieszkania w bloku - " + block.block.street + "/" + block.block.number);
+                setupTemplatesSpinner();
             });
         });
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        circuitViewModel = new ViewModelProvider(this).get(CircuitViewModel.class);
+        rcdViewModel = new ViewModelProvider(this).get(RCDViewModel.class);
+        roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
+        outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
+
 
         inputFlatNumber = findViewById(R.id.inputFlatNumber);
         templatesSpinner = findViewById(R.id.templatesSpinner);
@@ -84,43 +110,7 @@ public class FlatsActivity extends AppCompatActivity {
         setupSortSpinner();
 
         flatAddButton.setOnClickListener(v -> {
-            String flatNumber = inputFlatNumber.getText().toString().trim();
-
-            if (flatNumber.isEmpty()) {
-                Toast.makeText(this, "Podaj numer mieszkania!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            boolean exists = false;
-            if (currentFlats != null) {
-                for (Flat f : currentFlats) {
-                    if (f.number.equalsIgnoreCase(flatNumber)) {
-                        exists = true;
-                        break;
-                    }
-                }
-            }
-
-            if (exists) {
-                Toast.makeText(this, "Mieszkanie o tym numerze już istnieje!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Date now = new Date();
-            Flat newFlat = new Flat();
-            newFlat.number = flatNumber;
-            newFlat.creation_date = now;
-            newFlat.edition_date = now;
-            newFlat.status = "Pomiar niewykonany ❌";
-            newFlat.blockId = blockId;
-
-            flatViewModel.insert(newFlat);
-            catalogViewModel.updateEdition(block.block.catalogId);
-            blockViewModel.updateEdition(blockId);
-
-            Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
-            inputFlatNumber.setText("");
-            hideKeyboard();
-            inputFlatNumber.clearFocus();
+          createFlat();
 
         });
 
@@ -153,6 +143,134 @@ public class FlatsActivity extends AppCompatActivity {
             view = new View(this);
         }
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+    private void createFlat() {
+        String flatNumber = inputFlatNumber.getText().toString().trim();
+
+        if (flatNumber.isEmpty()) {
+            Toast.makeText(this, "Podaj numer mieszkania!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean exists = false;
+        if (currentFlats != null) {
+            for (Flat f : currentFlats) {
+                if (f.number.equalsIgnoreCase(flatNumber)) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (exists) {
+            Toast.makeText(this, "Mieszkanie o tym numerze już istnieje!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Template selectedTemplate = (Template) templatesSpinner.getSelectedItem();
+        if (selectedTemplate.name.equals("Brak szablonu")) {
+            Date now = new Date();
+            Flat newFlat = new Flat();
+            newFlat.number = flatNumber;
+            newFlat.creation_date = now;
+            newFlat.edition_date = now;
+            newFlat.status = "Pomiar niewykonany ❌";
+            newFlat.blockId = blockId;
+
+            flatViewModel.insert(newFlat);
+            catalogViewModel.updateEdition(block.block.catalogId);
+            blockViewModel.updateEdition(blockId);
+
+            Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
+            inputFlatNumber.setText("");
+            hideKeyboard();
+            inputFlatNumber.clearFocus();
+        } else {
+            LiveDataUtil.observeOnce(flatViewModel.getFlatById(selectedTemplate.flatId), this, flat -> {
+                Date now = new Date();
+                Flat newFlat = new Flat();
+                newFlat.hasRCD = flat.hasRCD;
+                newFlat.type = flat.type;
+                newFlat.blockId = blockId;
+                newFlat.number = flatNumber;
+                newFlat.status = "Pomiar niewykonany ❌";
+                newFlat.creation_date = now;
+                newFlat.edition_date = now;
+                flatViewModel.insertWithId(newFlat, id -> {
+                    FlatsActivity.this.runOnUiThread(() -> {
+                        LiveDataUtil.observeOnce(circuitViewModel.getCircuitsForFlat(selectedTemplate.flatId), FlatsActivity.this, circuits -> {
+                            for (Circuit c : circuits) {
+                                Circuit newCircuit = new Circuit();
+                                newCircuit.flatId = Math.toIntExact(id);
+                                newCircuit.name = c.name;
+                                newCircuit.type = c.type;
+                                circuitViewModel.insert(newCircuit);
+                            }
+                        });
+
+                        if (newFlat.hasRCD == 1) {
+                            LiveDataUtil.observeOnce(rcdViewModel.getRcdsForFlat(selectedTemplate.flatId), FlatsActivity.this, rcds -> {
+                                for (RCD r : rcds) {
+                                    RCD newRcd = new RCD();
+                                    newRcd.name = r.name;
+                                    newRcd.flatId = Math.toIntExact(id);
+                                    newRcd.type = r.type;
+                                    rcdViewModel.insert(newRcd);
+                                }
+                            });
+                        }
+                        LiveDataUtil.observeOnce(roomViewModel.getRoomsForFlat(selectedTemplate.flatId), FlatsActivity.this, roomInFlats -> {
+                            for (RoomInFlat r : roomInFlats) {
+                                RoomInFlat room = new RoomInFlat();
+                                room.name = r.name;
+                                room.flatId = Math.toIntExact(id);
+                                roomViewModel.insertWithId(room, roomId -> {
+                                    FlatsActivity.this.runOnUiThread(() -> {
+                                        LiveDataUtil.observeOnce(outletMeasurementViewModel.getMeasurementsForRoom(r.id), FlatsActivity.this, outletMeasurements -> {
+                                            for (OutletMeasurement o : outletMeasurements) {
+                                                OutletMeasurement newOutlet = new OutletMeasurement();
+                                                newOutlet.amps = o.amps;
+
+                                                newOutlet.appliance = o.appliance;
+
+                                                newOutlet.breakerType = o.breakerType;
+
+                                                newOutlet.switchName = o.switchName;
+                                                newOutlet.roomId = Math.toIntExact(roomId);
+                                                outletMeasurementViewModel.insert(newOutlet, x -> {
+                                                });
+                                            }
+                                        });
+                                    });
+                                });
+                            }
+
+                            // UI updates (Toast, hideKeyboard, clearFocus) must be on the main thread:
+                            Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
+                            inputFlatNumber.setText("");
+                            hideKeyboard();
+                            inputFlatNumber.clearFocus();
+                        });
+
+                    });
+                });
+            });
+        }
+
+    }
+    private void setupTemplatesSpinner() {
+        LiveDataUtil.observeOnce(templateViewModel.getTemplatesInCatalog(block.catalog.id), this, templates -> {
+            runOnUiThread(() -> {
+                templatesList = templates;
+                ArrayAdapter<Template> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, templatesList);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+                Template template = new Template();
+                template.name = "Brak szablonu";
+                template.id = -1;
+                templatesList.add(template);
+                templatesSpinner.setAdapter(adapter);
+            });
+        });
     }
     private void setupSortSpinner() {
         String[] sortOptions = {"Numer mieszkania", "Data utworzenia", "Data edycji", "Status"};
