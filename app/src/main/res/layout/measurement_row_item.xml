@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
+    android:padding="12dp"
+    android:background="@drawable/circuit_row_background"
+    android:gravity="center_vertical"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <LinearLayout
+        android:id="@+id/applianceContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginEnd="8dp">
+
+        <Spinner
+            android:id="@+id/applianceSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:visibility="visible"/>
+
+        <LinearLayout
+            android:id="@+id/customApplianceContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <EditText
+                android:id="@+id/customApplianceEdit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Inne urządzenie..."
+                android:singleLine="true"
+                android:imeOptions="actionDone"
+                android:background="@drawable/input"
+                android:padding="12dp" />
+
+            <Button
+                android:id="@+id/customApplianceSaveBtn"
+                android:text="✔"
+                android:minWidth="0dp"
+                android:layout_gravity="center_horizontal"
+
+                android:minHeight="0dp"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/customApplianceClearBtn"
+                android:text="X"
+                android:minWidth="0dp"
+                android:layout_gravity="center_horizontal"
+
+                android:minHeight="0dp"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/switchContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/switchEdit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="wyłącznik"
+            android:singleLine="true"
+            android:imeOptions="actionDone"
+            android:background="@drawable/input"
+            android:padding="12dp" />
+
+        <Button
+            android:id="@+id/switchSaveBtn"
+            android:text="✔"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:layout_gravity="center_horizontal"
+
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <Spinner
+        android:id="@+id/breakerSpinner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
+
+    <Spinner
+        android:id="@+id/ampsSpinner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:id="@+id/ohmsContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/ohmsEdit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Ω"
+            android:inputType="numberDecimal"
+            android:imeOptions="actionDone"
+            android:background="@drawable/input"
+            android:padding="12dp" />
+
+        <Button
+            android:id="@+id/ohmsSaveBtn"
+            android:text="✔"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <Spinner
+        android:id="@+id/noteSpinner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        tools:visibility="visible"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"/>
+
+    <LinearLayout
+        android:id="@+id/customNoteContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        tools:visibility="visible"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp">
+
+        <EditText
+            android:id="@+id/customNoteEdit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Inne..."
+            android:singleLine="true"
+            android:imeOptions="actionDone"
+            android:background="@drawable/input"
+            android:padding="12dp" />
+
+        <Button
+            android:id="@+id/customNoteSaveBtn"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:text="✔"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/customNoteClearBtn"
+            android:text="X"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/deleteBtn"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:text="🗑️"
+        android:textSize="18sp"
+        android:textColor="@android:color/white"
+        android:backgroundTint="@android:color/holo_red_dark"
+        android:minWidth="0dp"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_gravity="center_horizontal"
+
+        android:minHeight="0dp"
+        />
+
+</LinearLayout>

@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.RemaPomiary">
         <activity
+            android:name=".ui.activities.TemplatesActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.activities.RoomActivity"
             android:exported="false" />
         <activity

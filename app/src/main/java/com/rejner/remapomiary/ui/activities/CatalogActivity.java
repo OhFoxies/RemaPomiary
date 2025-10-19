@@ -63,7 +63,9 @@ public class CatalogActivity extends AppCompatActivity {
         templates.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                Intent intent = new Intent(CatalogActivity.this, TemplatesActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
             }
         });
 

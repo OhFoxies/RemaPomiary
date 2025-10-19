@@ -25,6 +25,13 @@ public class RoomViewModel extends AndroidViewModel {
         void onResult(RoomFullData roomData);
     }
 
+    public interface idCallBack {
+        void onResult(Long id);
+    }
+
+    public void insertWithId(RoomInFlat room, idCallBack callBack) {
+        repository.insertWithId(room, callBack::onResult);
+    }
     // Zwraca listę pokoi w danym mieszkaniu
     public LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId) {
         return repository.getRoomsForFlat(flatId);

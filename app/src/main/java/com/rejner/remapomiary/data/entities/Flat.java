@@ -55,4 +55,7 @@ public class Flat {
     @ColumnInfo(name = "status")
     public String status;
 
+    @ColumnInfo(name = "istemplate", defaultValue = "0")
+    public int isTemplate = 0;
+
 }

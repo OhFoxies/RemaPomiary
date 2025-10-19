@@ -40,6 +40,12 @@ public class RoomRepository {
     public LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId) {
         return dao.getRoomsForFlat(flatId);
     }
+    public void insertWithId(RoomInFlat room, Consumer<Long> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            long id = dao.insertWithId(room);
+            callback.accept(id);
+        });
+    }
 
     // Pobieranie pełnych danych pokoju
     public LiveData<RoomFullData> getRoomFullData(int roomId) {

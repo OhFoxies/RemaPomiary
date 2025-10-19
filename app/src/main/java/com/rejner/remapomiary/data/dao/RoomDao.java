@@ -20,6 +20,9 @@ public interface RoomDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(RoomInFlat room);
 
+    @Insert
+    long insertWithId(RoomInFlat room);
+
     @Update
     void update(RoomInFlat room);
 

@@ -1,27 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/room_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
     tools:context=".ui.activities.RoomActivity">
 
     <LinearLayout
-        android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingBottom="24dp">
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#DDDDDD"
-            android:gravity="center_horizontal"
             android:orientation="horizontal"
-            android:padding="8dp">
-
+            android:padding="8dp"
+            android:background="#DDDDDD"
+            android:gravity="center_horizontal">
             <Button
                 android:id="@+id/backButton"
                 android:layout_width="wrap_content"
@@ -30,13 +28,12 @@
                 android:gravity="center_vertical"
                 android:text="◀ Powrót"
                 android:textSize="18sp" />
-
             <TextView
                 android:id="@+id/flatTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
-                android:text="Pokoje - mieszkanie"
+                android:text="Mieszkanie petla zwracia - "
                 android:textSize="24sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -47,10 +44,9 @@
             android:gravity="center_horizontal"
             android:orientation="horizontal"
             android:padding="20dp">
-
             <Button
                 android:id="@+id/notesButton"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="40dp"
                 android:layout_weight="1"
@@ -58,13 +54,10 @@
                 android:paddingTop="15dp"
                 android:paddingBottom="15dp"
                 android:text="Podsumowanie"
-
-
                 android:textSize="18sp" />
-
             <Button
                 android:id="@+id/boardButton"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="40dp"
                 android:layout_weight="1"
@@ -72,12 +65,10 @@
                 android:paddingTop="15dp"
                 android:paddingBottom="15dp"
                 android:text="Rozdzielnia"
-
                 android:textSize="18sp" />
-
             <Button
                 android:id="@+id/RCDButton"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="40dp"
                 android:layout_weight="1"
@@ -86,83 +77,64 @@
                 android:paddingBottom="15dp"
                 android:text="Różnicówka"
                 android:textSize="18sp" />
-
             <Button
                 android:id="@+id/roomsButton"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
                 android:paddingTop="15dp"
-
                 android:paddingBottom="15dp"
                 android:text="Pętla zwarcia"
                 android:textSize="18sp" />
-
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/roomsWrapper"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/roomRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:nestedScrollingEnabled="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/room_card_item" />
 
-            <!-- Kontener listy pokoi - wypełniany dynamicznie -->
-            <LinearLayout
-                android:id="@+id/roomsContainer"
-                android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:background="#F6F3F3"
+            android:gravity="center_horizontal">
+
+            <Spinner
+                android:id="@+id/roomSpinner"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:layout_marginEnd="20dp"
+                android:layout_weight="1"
+                android:layout_marginBottom="10dp"
+                />
 
-            <!-- Formularz - zawsze widoczny pod listą -->
-            <LinearLayout
-                android:id="@+id/formContainer"
-                android:layout_width="match_parent"
+            <EditText
+                android:id="@+id/customRoomEditText"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:background="@drawable/round_corners"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_weight="1"
+                android:inputType="text"
+                android:hint="Wpisz nazwę pokoju"
+                android:visibility="visible"
+                android:imeOptions="actionDone"
+                android:maxLines="1"
+                android:layout_marginEnd="20dp"
+                android:layout_marginBottom="10dp"/>
 
-                <TextView
-                    android:id="@+id/formTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingBottom="8dp"
-                    android:text="Dodaj pokój"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <Spinner
-                        android:id="@+id/roomSpinner"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
-
-                    <EditText
-                        android:id="@+id/customRoomEditText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="Wpisz nazwę..."
-                        android:inputType="text"
-                        android:visibility="gone" />
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/addRoomButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="➕ Dodaj" />
-
-            </LinearLayout>
-
+            <Button
+                android:id="@+id/addRoomButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/Widget.MaterialComponents.Button"
+                android:text="Dodaj pokój" />
         </LinearLayout>
 
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

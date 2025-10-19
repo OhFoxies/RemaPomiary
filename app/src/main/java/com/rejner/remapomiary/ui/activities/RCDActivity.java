@@ -54,6 +54,7 @@ public class RCDActivity extends AppCompatActivity {
     private Button saveManufacturerButton;
     private Button saveTime1Button;
     private Button saveTime2Button;
+    private int catalogId;
 
     private boolean isInitializing = true;
 
@@ -63,6 +64,7 @@ public class RCDActivity extends AppCompatActivity {
         setContentView(R.layout.activity_rcd);
 
         flatId = getIntent().getIntExtra("flatId", -1);
+        catalogId = getIntent().getIntExtra("catalogId", -1);
         if (flatId == -1) {
             Toast.makeText(this, "Brak ID mieszkania", Toast.LENGTH_SHORT).show();
             finish();
@@ -116,6 +118,13 @@ public class RCDActivity extends AppCompatActivity {
         saveManufacturerButton = findViewById(R.id.saveManufacturerButton);
         saveTime1Button = findViewById(R.id.saveTime1Button);
         saveTime2Button = findViewById(R.id.saveTime2Button);
+        if (catalogId != -1) {
+            time1EditText.setEnabled(false);
+            time2EditText.setEnabled(false);
+            notedEditText.setEnabled(false);
+            notesSaveButton.setEnabled(false);
+            rcdBrokenButton.setEnabled(false);
+        }
     }
     private void setupUIElements() {
         Button backButton = findViewById(R.id.backButton);
@@ -124,11 +133,17 @@ public class RCDActivity extends AppCompatActivity {
         Button boardButton = findViewById(R.id.boardButton);
         TextView titleView = findViewById(R.id.rcdTitle);
         titleView.setText("Mieszkanie numer - " + (flat != null ? flat.number : "") + " różnicówka");
-
+        if (catalogId != -1) {
+            notesButton.setVisibility(View.GONE);
+        }
         boardButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(RCDActivity.this, BoardActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -138,6 +153,10 @@ public class RCDActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(RCDActivity.this, NotesActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -149,6 +168,10 @@ public class RCDActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (flat == null) return;
                 Intent intent = new Intent(RCDActivity.this, RoomActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -159,9 +182,15 @@ public class RCDActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (flat == null) return;
-                Intent intent = new Intent(RCDActivity.this, FlatsActivity.class);
-                intent.putExtra("blockId", flat.blockId);
-                startActivity(intent);
+                if (catalogId != -1) {
+                    Intent intent = new Intent(RCDActivity.this, TemplatesActivity.class);
+                    intent.putExtra("catalogId", catalogId);
+                    startActivity(intent);
+                } else {
+                    Intent intent = new Intent(RCDActivity.this, FlatsActivity.class);
+                    intent.putExtra("blockId", flat.blockId);
+                    startActivity(intent);
+                }
             }
         });
 

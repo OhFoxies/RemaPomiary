@@ -16,6 +16,7 @@ import com.rejner.remapomiary.data.dao.FlatDao;
 import com.rejner.remapomiary.data.dao.OutletMeasurementDao;
 import com.rejner.remapomiary.data.dao.RCDDao;
 import com.rejner.remapomiary.data.dao.RoomDao;
+import com.rejner.remapomiary.data.dao.TemplateDao;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Circuit;
@@ -24,11 +25,12 @@ import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.entities.Template;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Catalog.class, Block.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class}, version = 11)
+@Database(entities = {Catalog.class, Block.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class}, version = 13)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -43,6 +45,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract CircuitDao circuitDao();
     public abstract OutletMeasurementDao outletMeasurementDao();
     public abstract RoomDao roomDao();
+    public abstract TemplateDao templateDao();
 
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {

@@ -32,6 +32,12 @@ public class FlatRepository {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(flat));
     }
 
+    public void insertWithId(Flat flat, Consumer<Long> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            long id = dao.insertWithId(flat);
+            callback.accept(id);
+        });
+    }
     public LiveData<Flat> getFlatById(int flatId) {
         return dao.getFlatById(flatId);
     }
@@ -65,6 +71,10 @@ public class FlatRepository {
         });
     }
 
+
+    public LiveData<List<FlatFullData>> getTemplatesForCatalog(int catalogId) {
+        return dao.getTemplatesForCatalog(catalogId);
+    }
     public LiveData<Boolean> shouldSetGradeToOne(int flatId) {
         return dao.shouldSetGradeToOne(flatId);
     }

@@ -24,7 +24,9 @@ public class FlatViewModel extends AndroidViewModel {
     public interface FlatCallback {
         void onResult(FlatFullData flat);
     }
-
+    public interface IdCallBack {
+        void onResult(Long x);
+    }
     public interface BooleanCallBack {
         void onResult(Boolean x);
     }
@@ -96,6 +98,14 @@ public class FlatViewModel extends AndroidViewModel {
         return flatMediator;
     }
 
+    public void insertWithId(Flat flat, IdCallBack callBack) {
+        repository.insertWithId(flat, callBack::onResult);
+
+
+    }
+    public LiveData<List<FlatFullData>> getTemplatesForCatalog(int catalogId) {
+        return repository.getTemplatesForCatalog(catalogId);
+    }
     public void toggleGradeBlock(int flatId) {
         repository.getFlatByIdSync(flatId, flatFullData -> {
             if (flatFullData != null) {

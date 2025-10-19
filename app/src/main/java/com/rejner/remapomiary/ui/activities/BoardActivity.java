@@ -91,6 +91,7 @@ public class BoardActivity extends AppCompatActivity {
     private android.graphics.drawable.Drawable rowBackgroundDrawable;
     private android.graphics.drawable.Drawable inputDrawable;
     private InputMethodManager imm;
+    private int catalogId;
     // -------------------------------------------
 
     @Override
@@ -98,6 +99,7 @@ public class BoardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_board);
         flatId = getIntent().getIntExtra("flatId", -1);
+        catalogId = getIntent().getIntExtra("catalogId", -1);
 
         // CACHE: dp i wartości paddingów/marginów/zasobów
         dp = getResources().getDisplayMetrics().density;
@@ -238,13 +240,18 @@ public class BoardActivity extends AppCompatActivity {
         Button notesButton = findViewById(R.id.notesButton);
         Button RCDButton = findViewById(R.id.RCDButton);
         Button roomsButton = findViewById(R.id.roomsButton);
-        Button boardButton = findViewById(R.id.boardButton);
-
+        if (catalogId != -1) {
+            notesButton.setVisibility(View.GONE);
+        }
 
         notesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(BoardActivity.this, NotesActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -255,6 +262,10 @@ public class BoardActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(BoardActivity.this, RCDActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -265,6 +276,10 @@ public class BoardActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (flat == null) return;
                 Intent intent = new Intent(BoardActivity.this, RoomActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
@@ -275,9 +290,16 @@ public class BoardActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (flat == null) return;
-                Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
-                intent.putExtra("blockId", flat.blockId);
-                startActivity(intent);
+                if (catalogId != -1) {
+                    Intent intent = new Intent(BoardActivity.this, TemplatesActivity.class);
+                    intent.putExtra("catalogId", catalogId);
+                    startActivity(intent);
+                } else {
+                    Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
+                    intent.putExtra("blockId", flat.blockId);
+                    startActivity(intent);
+                }
+
             }
         });
 
@@ -546,6 +568,10 @@ public class BoardActivity extends AppCompatActivity {
 
         // 🔹 Pole tekstowe
         circuitNotesEditText = new EditText(this);
+        if (catalogId != -1) {
+            circuitNotesEditText.setEnabled(false);
+
+        }
         circuitNotesEditText.setHint("Wpisz uwagi...");
         circuitNotesEditText.setMinLines(5);
         circuitNotesEditText.setMaxLines(10);
@@ -568,6 +594,10 @@ public class BoardActivity extends AppCompatActivity {
         // 🔹 Przycisk Zapisz
         saveNotesButton = new Button(this);
         saveNotesButton.setText("✔ Zapisz");
+        if (catalogId != -1) {
+            saveNotesButton.setEnabled(false);
+
+        }
         saveNotesButton.setTextSize(16f);
         saveNotesButton.setVisibility(View.GONE);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
@@ -650,6 +680,7 @@ public class BoardActivity extends AppCompatActivity {
         installationRadioGroup.setGravity(Gravity.CENTER);
 
         tnSRadio = new RadioButton(this);
+
         tnSRadio.setText("TN-S");
         tnSRadio.setId(View.generateViewId());
         tnSRadio.setTextSize(20f);

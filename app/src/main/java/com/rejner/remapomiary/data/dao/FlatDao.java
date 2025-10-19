@@ -21,6 +21,9 @@ public interface FlatDao {
     @Insert
     void insert(Flat flat);
 
+    @Insert
+    long insertWithId(Flat flat);
+
     @Update
     void update(Flat flat);
 
@@ -30,9 +33,9 @@ public interface FlatDao {
     @Query("SELECT * FROM flat WHERE id = :flatId")
     LiveData<Flat> getFlatById(int flatId);
 
-    @Query("SELECT * FROM flat ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE istemplate = 0 ORDER BY creation_date ASC")
     LiveData<List<Flat>> getAllFlats();
-    @Query("SELECT * FROM flat WHERE blockId = :blockId ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
     LiveData<List<Flat>> getFlatsByBlockId(int blockId);
 
     @Transaction
@@ -40,10 +43,17 @@ public interface FlatDao {
     LiveData<FlatFullData> getFlatFullData(int flatId);
 
     @Transaction
-    @Query("SELECT * FROM flat ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE istemplate = 0 ORDER BY creation_date ASC")
     LiveData<List<FlatFullData>> getAllFlatsFullData();
-    @Query("SELECT * FROM flat WHERE blockId = :blockId ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
     LiveData<List<FlatFullData>> getFlatsFullDataByBlockId(int blockId);
+
+    @Transaction
+    @Query("SELECT * FROM flat " +
+            "INNER JOIN blocks ON flat.blockId = blocks.id " +
+            "INNER JOIN catalogs ON blocks.catalogId = catalogs.id " +
+            "WHERE flat.istemplate = 1 AND catalogs.id = :catalogId")
+    LiveData<List<FlatFullData>> getTemplatesForCatalog(int catalogId);
     @Transaction
     @Query("SELECT * FROM flat WHERE id = :flatId")
     FlatFullData getFlatFullDataSync(int flatId);
