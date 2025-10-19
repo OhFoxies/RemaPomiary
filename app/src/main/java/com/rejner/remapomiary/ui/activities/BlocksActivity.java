@@ -3,6 +3,7 @@ package com.rejner.remapomiary.ui.activities;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.opengl.Visibility;
 import android.os.Bundle;
 import android.text.InputFilter;
@@ -29,6 +30,7 @@ import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Client;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.generator.ProtocolGenerator;
 import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
@@ -43,6 +45,8 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class BlocksActivity extends AppCompatActivity {
 
@@ -109,6 +113,7 @@ public class BlocksActivity extends AppCompatActivity {
         });
 
     }
+
     public void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         View view = getCurrentFocus();
@@ -117,6 +122,7 @@ public class BlocksActivity extends AppCompatActivity {
         }
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
+
     private void updateView(List<BlockFullData> blocks) {
         updateBlocks(blocks);
     }
@@ -250,6 +256,10 @@ public class BlocksActivity extends AppCompatActivity {
 
             Button deleteButton = blockView.findViewById(R.id.blockDelete);
             Button editButton = blockView.findViewById(R.id.blockEdit);
+            Button createPro = blockView.findViewById(R.id.createProtocols);
+            createPro.setOnClickListener(v -> {
+                createProtocols(block.block.id, catalogId);
+            });
 
             blockView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -272,6 +282,53 @@ public class BlocksActivity extends AppCompatActivity {
             });
             flexboxLayout.addView(blockView);
         }
+    }
+
+    private void createProtocols(int blockId, int catalogId) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(BlocksActivity.this);
+        builder.setTitle("Potwierdzenie");
+        builder.setMessage("Czy na pewno chcesz rozpocząć tworzenie protokołów? To troche zajmie...");
+        builder.setPositiveButton("Tak", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+
+                executor.execute(() -> {
+                    ProtocolGenerator generator = new ProtocolGenerator(BlocksActivity.this);
+
+
+                    String nazwaPliku = "protokol_blok_" + blockId + ".pdf";
+                    Uri plikPdfUri = generator.generate(nazwaPliku, blockId);
+
+                    runOnUiThread(() -> {
+                        if (plikPdfUri != null) {
+
+                            Toast.makeText(BlocksActivity.this, "Protokół został pomyślnie wygenerowany!", Toast.LENGTH_LONG).show();
+
+
+
+                        } else {
+
+                            Toast.makeText(BlocksActivity.this, "Wystąpił błąd podczas generowania protokołu.", Toast.LENGTH_LONG).show();
+                        }
+                    });
+
+
+
+                });
+            }
+        });
+
+        builder.setNegativeButton("Nie", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
     }
 
     private void openBlock(BlockFullData block) {

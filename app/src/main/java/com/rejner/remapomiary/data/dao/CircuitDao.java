@@ -26,4 +26,8 @@ public interface CircuitDao {
 
     @Query("SELECT * FROM circuit WHERE flatId = :flatId")
     LiveData<List<Circuit>> getCircuitsForFlat(int flatId);
+
+    @Query("SELECT * FROM circuit WHERE flatId = :flatId")
+    List<Circuit> getCircuitsForFlatSync(int flatId);
+
 }

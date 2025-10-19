@@ -71,7 +71,12 @@ public class FlatRepository {
         });
     }
 
-
+    public void getFlatsSync(int blockId, Consumer<List<FlatFullData>> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            List<FlatFullData> flat = dao.getFlatsSync(blockId);
+            callback.accept(flat);
+        });
+    }
     public LiveData<List<FlatFullData>> getTemplatesForCatalog(int catalogId) {
         return dao.getTemplatesForCatalog(catalogId);
     }

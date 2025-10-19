@@ -181,6 +181,13 @@
             android:backgroundTint="#3FAB1F"
             android:text="✏️ Edytuj" />
     </LinearLayout>
+    <Button
+        android:id="@+id/createProtocols"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#03A9F4"
+        android:text="Utwórz protokoły" />
 
 
 </LinearLayout>

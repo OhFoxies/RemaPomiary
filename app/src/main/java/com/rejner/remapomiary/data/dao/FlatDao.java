@@ -94,4 +94,6 @@ public interface FlatDao {
             "AND flat.circuitNotes != ''" +
             ")")
     boolean shouldSetGradeToOneSync(int flatId);
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
+    List<FlatFullData> getFlatsSync(int blockId);
 }
