@@ -217,7 +217,7 @@ public class ProtocolGenerator {
                         values.set(7, ">2");
                         break;
                     case "3f":
-                        for (int i = 2; i <= 10; i++) values.set(i, ">2");
+                        for (int i = 2; i <= 11; i++) values.set(i, ">2");
                         break;
                 }
             }
@@ -382,16 +382,19 @@ public class ProtocolGenerator {
 
         Paragraph desc2 = new Paragraph("Wynik z pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormal);
         desc2.setAlignment(Element.ALIGN_LEFT);
-        desc2.setSpacingAfter(25f);
+
         if (hasRCD == 1) {
             Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
             desc3.setAlignment(Element.ALIGN_LEFT);
-            desc2.setSpacingAfter(0);
             desc3.setSpacingAfter(25f);
             document.add(desc3);
 
+        } else {
+            desc2.setSpacingAfter(25f);
+
         }
         document.add(desc2);
+
 
     }
 
