@@ -49,7 +49,7 @@ public class BoardActivity extends AppCompatActivity {
             "Indukcja",
             "Gniazdka pokoje",
             "Pralka",
-            "Piekarnia",
+            "Piekarnik",
             "Lodówka",
             "Zmywarka",
             "Podgrzewacz",
@@ -213,7 +213,7 @@ public class BoardActivity extends AppCompatActivity {
             if (flatId == -1) return;
             Circuit newCircuit = new Circuit();
             newCircuit.flatId = flatId;
-            newCircuit.name = "";
+            newCircuit.name = "Gniazdka łazienka";
             newCircuit.type = "L1";
             circuitViewModel.insert(newCircuit);
 
