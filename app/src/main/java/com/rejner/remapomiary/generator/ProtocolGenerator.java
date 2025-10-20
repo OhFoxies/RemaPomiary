@@ -387,13 +387,15 @@ public class ProtocolGenerator {
             Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
             desc3.setAlignment(Element.ALIGN_LEFT);
             desc3.setSpacingAfter(25f);
+            document.add(desc2);
             document.add(desc3);
 
         } else {
             desc2.setSpacingAfter(25f);
+            document.add(desc2);
+
 
         }
-        document.add(desc2);
 
 
     }
