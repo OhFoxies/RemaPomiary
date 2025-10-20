@@ -14,6 +14,7 @@ public class ProFonts {
     public static Font small;
     public static Font medium;
     public static Font fontNormalBold;
+    public static Font large;
 
     static {
         try {
@@ -27,6 +28,7 @@ public class ProFonts {
             fontNormalBold = new Font(bfBold, 12, Font.BOLD);
             medium = new Font(bfBold, 10);
             small = new Font(bfRegular, 6);
+            large = new Font(bfBold, 50);
 
         } catch (Exception e) {
             e.printStackTrace();

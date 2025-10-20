@@ -71,10 +71,14 @@ public class ProtocolGenerator {
             }
 
             document.open();
+//            document.add();
 
             List<FlatFullData> flats = db.flatDao().getFlatsSync(blockId);
-
+            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
+            Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
+            document.add(p);
             for (FlatFullData flat : flats) {
+                document.newPage();
                 addHeader();
                 addTitleSection(protocolNumber, flat.flat.type, flat.flat.hasRCD);
                 BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
@@ -87,11 +91,12 @@ public class ProtocolGenerator {
 
                 Paragraph title1 = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji " + flat.flat.type, ProFonts.fontNormal);
                 title1.setAlignment(Element.ALIGN_LEFT);
-                title1.setSpacingAfter(2f);
+                title1.setSpacingAfter(5f);
                 document.add(title1);
                 PdfPTable table = createMeasurementTable(ProFonts.medium, ProFonts.medium, flat.flat);
                 document.add(table);
-
+                PdfPTable table2 = createRCDTable(flat);
+                document.add(table2);
                 addFooter("Strona 1/2");
             }
 
@@ -104,7 +109,32 @@ public class ProtocolGenerator {
             closeDocument();
         }
     }
+    public PdfPTable createRCDTable(Flat flat) {
+        PdfPTable table = new PdfPTable(11);
 
+        String[] headers = {"lp.", "Badany punkt", "Wyłącznik RCD", "Typ", "IΔn [mA]", "la [mA]", "ta [ms]", "t rcd [ms]", "Ub [V]", "UI [V]", "Ocena"};
+        for (String header : headers) {
+            if (header.contains("[")) {
+                int start = header.indexOf("[");
+                int end = header.indexOf("]");
+                String main = header.substring(0, start -1);
+                String sub = header.substring(start, end);
+                Chunk mainChunk = new Chunk(main, ProFonts.medium);
+                Chunk subChunk = new Chunk(sub, ProFonts.medium);
+                Phrase phrase = new Phrase();
+                phrase.add(mainChunk);
+                phrase.add(subChunk);
+                PdfPCell cell = new PdfPCell(phrase);
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                cell.setPaddingBottom(5f);
+                cell.setPaddingTop(5f);
+                table.addCell(cell);
+            }
+        }
+        return table;
+
+    }
     public PdfPTable createMeasurementTable(Font fontHeader, Font fontCell, Flat flat) throws DocumentException {
         PdfPTable table;
         String[] headers;
@@ -209,12 +239,20 @@ public class ProtocolGenerator {
                 switch (c.type) {
                     case "L1":
                         values.set(5, ">2");
+                        values.set(8, ">2");
+                        values.set(11, ">2");
                         break;
                     case "L2":
                         values.set(6, ">2");
+                        values.set(9, ">2");
+                        values.set(11, ">2");
+
                         break;
                     case "L3":
                         values.set(7, ">2");
+                        values.set(10, ">2");
+                        values.set(11, ">2");
+
                         break;
                     case "3f":
                         for (int i = 2; i <= 11; i++) values.set(i, ">2");
