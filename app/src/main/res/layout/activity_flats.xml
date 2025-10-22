@@ -87,7 +87,7 @@
                 android:autofillHints="postalLocality"
                 android:ems="10"
                 android:hint="Numer"
-                android:inputType="text" />
+                android:inputType="number" />
 
 
 

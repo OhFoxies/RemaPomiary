@@ -62,7 +62,12 @@ public class MainActivity extends AppCompatActivity {
         catalogPostalCode = findViewById(R.id.inputCatalogPostalCode);
         catalogPostalCode.addTextChangedListener(new PostalCodeTextWatcher(catalogPostalCode));
         inputs = new ArrayList<>(Arrays.asList(catalogTitle, catalogCity, catalogStreet, catalogPostalCode));
+        TextView textView = findViewById(R.id.textView);
+        textView.setOnClickListener(v-> {
+            Intent intent = new Intent(MainActivity.this, AdvancedView.class);
+            startActivity(intent);
 
+        });
         arrayAdapter = new ArrayAdapter(MainActivity.this, android.R.layout.simple_spinner_item, sortOptions);
         Spinner spinner = findViewById(R.id.sortBySpinner);
         arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);

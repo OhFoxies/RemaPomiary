@@ -12,7 +12,7 @@ import java.util.Date;
 import java.util.List;
 
 @Dao
-public interface CatalogDao {
+public interface  CatalogDao {
     @Insert
     long insert(Catalog catalog);
 

@@ -39,6 +39,15 @@
 
                 android:textSize="24sp"
                 android:textStyle="bold" />
+            <Button
+                android:id="@+id/backSave"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✅  Oznacz jako wykonane"
+                android:backgroundTint="#3E902A"
+                android:gravity="center_vertical"
+                android:textSize="18sp"
+                android:layout_marginStart="16dp" />
         </LinearLayout>
 
         <LinearLayout

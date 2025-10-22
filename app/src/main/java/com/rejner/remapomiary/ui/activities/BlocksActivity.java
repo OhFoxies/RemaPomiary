@@ -3,8 +3,10 @@ package com.rejner.remapomiary.ui.activities;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.opengl.Visibility;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputFilter;
 import android.util.TypedValue;
@@ -19,9 +21,15 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.google.android.flexbox.FlexboxLayout;
 import com.rejner.remapomiary.R;
@@ -32,6 +40,7 @@ import com.rejner.remapomiary.data.entities.Client;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.generator.ProtocolGenerator;
 import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
+import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.ClientViewModel;
@@ -62,6 +71,7 @@ public class BlocksActivity extends AppCompatActivity {
     private EditText postal_code;
     private EditText number;
     private List<EditText> inputs;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
 
     private Spinner spinnerCreation;
 
@@ -285,50 +295,55 @@ public class BlocksActivity extends AppCompatActivity {
     }
 
     private void createProtocols(int blockId, int catalogId) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(BlocksActivity.this);
-        builder.setTitle("Potwierdzenie");
-        builder.setMessage("Czy na pewno chcesz rozpocząć tworzenie protokołów? To troche zajmie...");
-        builder.setPositiveButton("Tak", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                ExecutorService executor = Executors.newSingleThreadExecutor();
+        new AlertDialog.Builder(this)
+                .setTitle("Potwierdzenie")
+                .setMessage("Czy na pewno chcesz rozpocząć tworzenie protokołów? To trochę potrwa...")
+                .setPositiveButton("Tak", (dialog, which) -> {
 
-                executor.execute(() -> {
-                    ProtocolGenerator generator = new ProtocolGenerator(BlocksActivity.this);
-
-
-                    String nazwaPliku = "protokol_blok_" + blockId + ".pdf";
-                    Uri plikPdfUri = generator.generate(nazwaPliku, blockId);
-
-                    runOnUiThread(() -> {
-                        if (plikPdfUri != null) {
-
-                            Toast.makeText(BlocksActivity.this, "Protokół został pomyślnie wygenerowany!", Toast.LENGTH_LONG).show();
-
-
-
-                        } else {
-
-                            Toast.makeText(BlocksActivity.this, "Wystąpił błąd podczas generowania protokołu.", Toast.LENGTH_LONG).show();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                                != PackageManager.PERMISSION_GRANTED) {
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                    REQUEST_NOTIFICATION_PERMISSION);
+                            return;
                         }
-                    });
+                    }
+
+                    startProtocolWorker(blockId, catalogId);
+
+                })
+                .setNegativeButton("Nie", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void startProtocolWorker(int blockId, int catalogId) {
+        Data inputData = new Data.Builder()
+                .putInt("blockId", blockId)
+                .putInt("catalogId", catalogId)
+                .build();
+
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ProtocolWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(getApplicationContext()).enqueue(request);
+
+        Toast.makeText(this, "🔄 Generowanie protokołów rozpoczęte w tle.", Toast.LENGTH_LONG).show();
+    }
 
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-                });
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "✅ Uprawnienie do powiadomień przyznane. Rozpocznij generowanie jeszcze raz.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "❌ Brak uprawnienia do powiadomień", Toast.LENGTH_SHORT).show();
             }
-        });
-
-        builder.setNegativeButton("Nie", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-
-        AlertDialog dialog = builder.create();
-        dialog.show();
-
+        }
     }
 
     private void openBlock(BlockFullData block) {

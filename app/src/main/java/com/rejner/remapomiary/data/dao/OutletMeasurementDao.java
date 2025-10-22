@@ -27,4 +27,7 @@ public interface OutletMeasurementDao {
     @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId")
     LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId);
 
+    @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId")
+    List<OutletMeasurement> getMeasurementsForRoomSync(int roomId);
+
 }

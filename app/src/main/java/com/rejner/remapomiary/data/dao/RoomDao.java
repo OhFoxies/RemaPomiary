@@ -32,6 +32,10 @@ public interface RoomDao {
     @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY name ASC")
     LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId);
 
+    @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY name ASC")
+    List<RoomInFlat> getRoomsForFlatSync(int flatId);
+
+
     @Transaction
     @Query("SELECT * FROM room WHERE id = :roomId")
     LiveData<RoomFullData> getRoomFullData(int roomId);

@@ -279,6 +279,16 @@ public class NotesActivity extends AppCompatActivity {
         Button boardButton = findViewById(R.id.boardButton);
         TextView titleView = findViewById(R.id.rcdTitle);
         titleView.setText("Mieszkanie numer - " + currentFlat.number + " podsumowanie");
+        Button backSave = findViewById(R.id.backSave);
+
+        backSave.setOnClickListener(v -> {
+            currentFlat.status = "Pomiar gotowy ✅";
+            currentFlat.edition_date = new Date();
+            flatViewModel.update(currentFlat);
+            Intent intent = new Intent(NotesActivity.this, FlatsActivity.class);
+            intent.putExtra("blockId", currentFlat.blockId);
+            startActivity(intent);
+        });
 
         boardButton.setOnClickListener(new View.OnClickListener() {
             @Override

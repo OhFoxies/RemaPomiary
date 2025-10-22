@@ -32,6 +32,8 @@ import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
 
 import org.w3c.dom.Text;
 
+import java.util.Date;
+
 public class RCDActivity extends AppCompatActivity {
 
     private int flatId;
@@ -133,6 +135,17 @@ public class RCDActivity extends AppCompatActivity {
         Button boardButton = findViewById(R.id.boardButton);
         TextView titleView = findViewById(R.id.rcdTitle);
         titleView.setText("Mieszkanie numer - " + (flat != null ? flat.number : "") + " różnicówka");
+        Button backSave = findViewById(R.id.backSave);
+
+        backSave.setOnClickListener(v -> {
+            flat.status = "Pomiar gotowy ✅";
+            flat.edition_date = new Date();
+            flatViewModel.update(flat);
+            Intent intent = new Intent(RCDActivity.this, FlatsActivity.class);
+            intent.putExtra("blockId", flat.blockId);
+            startActivity(intent);
+        });
+
         if (catalogId != -1) {
             notesButton.setVisibility(View.GONE);
         }

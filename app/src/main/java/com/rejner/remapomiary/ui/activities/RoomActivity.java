@@ -9,6 +9,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 
 import androidx.annotation.Nullable;
@@ -24,12 +25,14 @@ import com.rejner.remapomiary.adapters.RoomAdapter;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.ActivityRoomBinding;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -57,6 +60,7 @@ public class RoomActivity extends AppCompatActivity {
     private Double lastDefaultAmps = null;
     private int catalogId;
     private long newlyAddedMeasurementId = -1;
+    private FlatViewModel flatViewModel;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -69,11 +73,12 @@ public class RoomActivity extends AppCompatActivity {
         catalogId = getIntent().getIntExtra("catalogId", -1);
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
-        FlatViewModel flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
 
-        flatViewModel.getFlatByIdSync(flatId, flat1 -> {
-            flat = flat1.flat;
+        LiveDataUtil.observeOnce(flatViewModel.getFlatById(flatId), this, flat1 -> {
+            flat = flat1;
             runOnUiThread(this::setupUIElements);
+
         });
 
         setupAddRoomUi();
@@ -88,6 +93,17 @@ public class RoomActivity extends AppCompatActivity {
         if (catalogId != -1) {
             binding.notesButton.setVisibility(View.GONE);
         }
+
+        binding.backSave.setOnClickListener(v -> {
+            flat.status = "Pomiar gotowy ✅";
+            flat.edition_date = new Date();
+            flatViewModel.update(flat);
+            Intent intent = new Intent(RoomActivity.this, FlatsActivity.class);
+            intent.putExtra("blockId", flat.blockId);
+            startActivity(intent);
+        });
+
+
         binding.boardButton.setOnClickListener(v -> {
             Intent intent = new Intent(RoomActivity.this, BoardActivity.class);
             if (catalogId != -1) {

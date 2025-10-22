@@ -29,6 +29,7 @@ import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -240,6 +241,17 @@ public class BoardActivity extends AppCompatActivity {
         Button notesButton = findViewById(R.id.notesButton);
         Button RCDButton = findViewById(R.id.RCDButton);
         Button roomsButton = findViewById(R.id.roomsButton);
+        Button backSave = findViewById(R.id.backSave);
+
+        backSave.setOnClickListener(v -> {
+            flat.status = "Pomiar gotowy ✅";
+            flat.edition_date = new Date();
+            flatViewModel.update(flat);
+            Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
+            intent.putExtra("blockId", flat.blockId);
+            startActivity(intent);
+        });
+
         if (catalogId != -1) {
             notesButton.setVisibility(View.GONE);
         }

@@ -5,7 +5,10 @@ plugins {
 android {
     namespace 'com.rejner.remapomiary'
     compileSdk 36
-
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
     defaultConfig {
         applicationId "com.rejner.remapomiary"
         minSdk 33
@@ -15,13 +18,15 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
     buildFeatures {
         viewBinding true
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            shrinkResources true
         }
     }
     compileOptions {
@@ -33,6 +38,8 @@ android {
 dependencies {
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.itextpdf:itextg:5.5.10'
+    implementation "androidx.work:work-runtime:2.9.0"
+
     implementation libs.appcompat
     implementation libs.material
     implementation libs.activity

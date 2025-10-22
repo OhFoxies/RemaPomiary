@@ -176,7 +176,12 @@ public class FlatsActivity extends AppCompatActivity {
             newFlat.status = "Pomiar niewykonany ❌";
             newFlat.blockId = blockId;
 
-            flatViewModel.insert(newFlat);
+            flatViewModel.insertWithId(newFlat, id -> {
+                RCD newRcd = new RCD();
+                newRcd.flatId = Math.toIntExact(id);
+                newRcd.type = "A";
+                rcdViewModel.insert(newRcd);
+            });
             catalogViewModel.updateEdition(block.block.catalogId);
             blockViewModel.updateEdition(blockId);
 
@@ -217,6 +222,10 @@ public class FlatsActivity extends AppCompatActivity {
                                     rcdViewModel.insert(newRcd);
                                 }
                             });
+                        } else {
+                            RCD newRcd = new RCD();
+                            newRcd.flatId = Math.toIntExact(id);
+                            rcdViewModel.insert(newRcd);
                         }
                         LiveDataUtil.observeOnce(roomViewModel.getRoomsForFlat(selectedTemplate.flatId), FlatsActivity.this, roomInFlats -> {
                             for (RoomInFlat r : roomInFlats) {
@@ -273,7 +282,7 @@ public class FlatsActivity extends AppCompatActivity {
         });
     }
     private void setupSortSpinner() {
-        String[] sortOptions = {"Numer mieszkania", "Data utworzenia", "Data edycji", "Status"};
+        String[] sortOptions = {"Numer mieszkania", "Data utworzenia", "Data edycji", "Status", "Uwagi na początku"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortOptions);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sortBySpinner.setAdapter(adapter);
@@ -293,18 +302,29 @@ public class FlatsActivity extends AppCompatActivity {
         if (currentFlats == null) return;
 
         flatsContainer.removeAllViews();
-
-        if (currentFlats.isEmpty()) {
-            noFlatsText.setVisibility(View.VISIBLE);
-            return;
+        int readyCount = 0;
+        for (Flat f : currentFlats) {
+            if (f.status != null && f.status.toLowerCase().contains("gotowy")) {
+                readyCount++;
+            }
         }
+        if (currentFlats.isEmpty()) {
+            noFlatsText.setText("Brak mieszkań");
+            return;
+        } else {
+            noFlatsText.setText("Znaleziono " + currentFlats.size() + " mieszkań (gotowe: " +readyCount + "/" + currentFlats.size() +")");
 
-        noFlatsText.setVisibility(View.GONE);
-
+        }
         String selectedSort = (String) sortBySpinner.getSelectedItem();
-
         if (selectedSort.equals("Numer mieszkania")) {
-            Collections.sort(currentFlats, Comparator.comparing(f -> f.number.toLowerCase(Locale.ROOT)));
+            Collections.sort(currentFlats, Comparator.comparingInt(f -> {
+                try {
+                    String cleanedNumber = f.number.replaceAll("\\s+", "");
+                    return Integer.parseInt(cleanedNumber);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }));
         } else if (selectedSort.equals("Data utworzenia")) {
             Collections.sort(currentFlats, (f1, f2) -> f2.creation_date.compareTo(f1.creation_date));
         } else if (selectedSort.equals("Data edycji")) {
@@ -314,7 +334,27 @@ public class FlatsActivity extends AppCompatActivity {
             Collections.sort(currentFlats, (f1, f2) -> {
                 boolean done1 = f1.status.contains("gotowy");
                 boolean done2 = f2.status.contains("gotowy");
-                return Boolean.compare(done2, done1); // true = 1, false = 0, więc "gotowy" na górze
+                return Boolean.compare(done1, done2); // true = 1, false = 0, więc "gotowy" na górze
+            });
+        } else if(selectedSort.equals("Uwagi na początku")) {
+            Collections.sort(currentFlats, (f1, f2) -> {
+                // 1️⃣ Priorytet: notes lub circuitNotes niepuste
+                boolean f1HasNotes = (f1.notes != null && !f1.notes.trim().isEmpty()) ||
+                        (f1.circuitNotes != null && !f1.circuitNotes.trim().isEmpty());
+                boolean f2HasNotes = (f2.notes != null && !f2.notes.trim().isEmpty()) ||
+                        (f2.circuitNotes != null && !f2.circuitNotes.trim().isEmpty());
+
+                if (f1HasNotes && !f2HasNotes) return -1; // f1 przed f2
+                if (!f1HasNotes && f2HasNotes) return 1;  // f2 przed f1
+
+                // 2️⃣ Sortowanie po numerze mieszkania
+                try {
+                    int num1 = Integer.parseInt(f1.number.replaceAll("\\s+", ""));
+                    int num2 = Integer.parseInt(f2.number.replaceAll("\\s+", ""));
+                    return Integer.compare(num1, num2);
+                } catch (NumberFormatException e) {
+                    return f1.number.compareToIgnoreCase(f2.number); // fallback dla np. "10A"
+                }
             });
         }
 
@@ -331,6 +371,7 @@ public class FlatsActivity extends AppCompatActivity {
         TextView creationDate = itemView.findViewById(R.id.flatCreationDate);
         TextView editDate = itemView.findViewById(R.id.flatLastEdited);
         TextView status = itemView.findViewById(R.id.blockLastEdited);
+        TextView notes = itemView.findViewById(R.id.flatNotesDesc);
         Button markButton = itemView.findViewById(R.id.flatMark);
         Button deleteButton = itemView.findViewById(R.id.blockDelete);
         Button editButton = itemView.findViewById(R.id.blockEdit);
@@ -342,7 +383,17 @@ public class FlatsActivity extends AppCompatActivity {
         status.setText(flat.status);
         EditText titleEdit = new EditText(this);
 
+        if ((flat.notes != null && !flat.notes.isEmpty()) || (flat.circuitNotes != null && !flat.circuitNotes.isEmpty())) {
+            String finalString = "";
+            if (!flat.notes.isEmpty()) {
+                finalString += "Notaki:\n" + flat.notes + "\n";
+            }
+            if (!flat.circuitNotes.isEmpty()) {
+                finalString += "Notatki rozdzielnia:\n" + flat.circuitNotes;
 
+            }
+            notes.setText(finalString);
+        }
         titleEdit.setText(flat.number);
         titleEdit.setTextSize(24);
         titleEdit.setVisibility(View.GONE);

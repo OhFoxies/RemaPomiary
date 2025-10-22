@@ -8,6 +8,7 @@ public class ProFonts {
 
     public static BaseFont bfRegular;
     public static BaseFont bfBold;
+    public static BaseFont bflogo;
 
     public static Font fontBold14;
     public static Font fontNormal;
@@ -15,6 +16,8 @@ public class ProFonts {
     public static Font medium;
     public static Font fontNormalBold;
     public static Font large;
+    public static Font logoNormal;
+    public static Font logo;
 
     static {
         try {
@@ -22,11 +25,15 @@ public class ProFonts {
                     BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
             bfBold = BaseFont.createFont("assets/fonts/Roboto-Bold.ttf",
                     BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            bflogo = BaseFont.createFont("assets/fonts/TT0610M_.TTF",
+                    BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
 
-            fontBold14 = new Font(bfBold, 14, Font.BOLD);
-            fontNormal = new Font(bfRegular, 12);
-            fontNormalBold = new Font(bfBold, 12, Font.BOLD);
-            medium = new Font(bfBold, 10);
+            logo = new Font(bflogo, 30, Font.ITALIC);
+            logoNormal = new Font(bfRegular, 30);
+            fontBold14 = new Font(bfBold, 12, Font.BOLD);
+            fontNormal = new Font(bfRegular, 10);
+            fontNormalBold = new Font(bfBold, 10, Font.BOLD);
+            medium = new Font(bfBold, 8);
             small = new Font(bfRegular, 6);
             large = new Font(bfBold, 50);
 

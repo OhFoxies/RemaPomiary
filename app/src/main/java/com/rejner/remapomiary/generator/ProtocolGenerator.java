@@ -4,41 +4,42 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 
-import androidx.room.Insert;
-
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
-import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.ColumnText;
 import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
-import com.rejner.remapomiary.data.dao.CircuitDao;
 import com.rejner.remapomiary.data.db.AppDatabase;
+import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Circuit;
-import com.rejner.remapomiary.data.entities.Client;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.FlatFullData;
+import com.rejner.remapomiary.data.entities.ProtocolNumber;
 import com.rejner.remapomiary.generator.constants.ProFonts;
+import com.rejner.remapomiary.generator.helpers.CellGenerator;
+import com.rejner.remapomiary.generator.helpers.FlatPageNumberEvent;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -52,7 +53,21 @@ public class ProtocolGenerator {
     private Document document;
     private PdfWriter writer;
     private OutputStream outputStream;
+    private float titleSpacing = 8f;
+    private float titleSpacingA = 2f;
+    private float indentation = 15f;
+    private ArrayList<String> grade0Flats = new ArrayList<>();
+    private ArrayList<String> grade1Flats = new ArrayList<>();
+    private ArrayList<String> grade2Flats = new ArrayList<>();
+    private int totalFlats = 0;
+    private int generatedFlats = 0;
+    private ArrayList<String> skippedFlats = new ArrayList<>();
     AppDatabase db;
+    int omGrade = 0;
+    int rcdIsGood = 1;
+    ArrayList<String> rcdMistakes = new ArrayList<>();
+    ArrayList<String> omMistakes = new ArrayList<>();
+
 
     public ProtocolGenerator(Context context) {
         this.context = context;
@@ -62,43 +77,172 @@ public class ProtocolGenerator {
 
     public Uri generate(String fileName, int blockId) {
         try {
-            String protocolNumber = "PROT/" + blockId + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
-
-
             Uri fileUri = createPdfFileInDownloads(fileName);
             if (fileUri == null) {
                 throw new IOException("Nie udało się utworzyć URI dla pliku PDF.");
             }
-
+            FlatPageNumberEvent pageEvent = new FlatPageNumberEvent(ProFonts.fontNormal);
+            writer.setPageEvent(pageEvent);
             document.open();
-//            document.add();
 
             List<FlatFullData> flats = db.flatDao().getFlatsSync(blockId);
+
             BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
             Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
-            document.add(p);
+            p.setAlignment(Element.ALIGN_CENTER);
+            float pageHeight = document.getPageSize().getHeight();
+            float textHeight = p.getLeading(); // wysokość wiersza tekstu
+            float yPosition = (pageHeight / 2) - (textHeight / 2);
+
+            PdfContentByte canvas = writer.getDirectContent();
+            ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
+                    new Phrase("BLOK " + blockFullData1.block.number, ProFonts.large),
+                    document.getPageSize().getWidth() / 2,  // środek w poziomie
+                    yPosition,                              // środek w pionie
+                    0);
+
+            Collections.sort(flats, Comparator.comparingInt(f -> {
+                try {
+                    String cleanedNumber = f.flat.number.replaceAll("\\s+", "");
+                    return Integer.parseInt(cleanedNumber);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }));
+
+            List<ProtocolNumber> protocolNumber = db.protocolNumberDao().getAllProtocols();
+            if (protocolNumber.isEmpty()) {
+                ProtocolNumber newProtocolNumber = new ProtocolNumber();
+                newProtocolNumber.number = 1;
+                newProtocolNumber.creationDate = new Date();
+                db.protocolNumberDao().insert(newProtocolNumber);
+                protocolNumber.add(newProtocolNumber);
+            }
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(protocolNumber.get(0).creationDate);
+
+            int creationYear = cal.get(Calendar.YEAR);
+
+            int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+            if (creationYear != currentYear) {
+                protocolNumber.get(0).number = 1;
+                protocolNumber.get(0).creationDate = new Date();
+                db.protocolNumberDao().update(protocolNumber.get(0));
+            }
+            totalFlats = flats.size();
+
+            int currentProtocolNumber = db.protocolNumberDao().getCurrentNumber();
             for (FlatFullData flat : flats) {
+                if (flat.flat.status.contains("niewykonany")) {
+                    skippedFlats.add("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
+                    continue;
+                }
+                String endNotes = "";
                 document.newPage();
+                pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
+
                 addHeader();
-                addTitleSection(protocolNumber, flat.flat.type, flat.flat.hasRCD);
+                String protocolNumberTitle = "Protokół nr w/" + currentProtocolNumber + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
+
+                addTitleSection(protocolNumberTitle, flat.flat.type, flat.flat.hasRCD);
                 BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
 
                 String clientData = blockFullData.client.name + "\n" +
                         "ul. " + blockFullData.client.street + ", " + blockFullData.client.postal_code + " " + blockFullData.client.city;
-                String objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
+                String objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
                 addDetailsTable(clientData, objectData);
                 addData(flat.flat.type, flat.flat.creation_date);
 
-                Paragraph title1 = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji " + flat.flat.type, ProFonts.fontNormal);
-                title1.setAlignment(Element.ALIGN_LEFT);
-                title1.setSpacingAfter(5f);
-                document.add(title1);
-                PdfPTable table = createMeasurementTable(ProFonts.medium, ProFonts.medium, flat.flat);
-                document.add(table);
-                PdfPTable table2 = createRCDTable(flat);
-                document.add(table2);
-                addFooter("Strona 1/2");
+
+                List<Circuit> circuits3f = db.circuitDao().getCircuitsForFlatSync3f(flat.flat.id);
+                if (!circuits3f.isEmpty()) {
+                    Paragraph circuitsFor3fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 3f " + flat.flat.type, ProFonts.fontNormalBold);
+                    circuitsFor3fTitle.setAlignment(Element.ALIGN_LEFT);
+                    circuitsFor3fTitle.setSpacingAfter(5f);
+                    document.add(circuitsFor3fTitle);
+
+                    TableFor3f tableFor3fGenerator = new TableFor3f();
+
+                    PdfPTable table = tableFor3fGenerator.createMeasurementTableFor3f(circuits3f, flat.flat);
+                    document.add(table);
+                    table.setSpacingAfter(15f);
+                }
+
+                List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
+                if (!circuits.isEmpty()) {
+                    Paragraph circuitsFor1fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 1f " + flat.flat.type, ProFonts.fontNormalBold);
+                    circuitsFor1fTitle.setAlignment(Element.ALIGN_LEFT);
+                    circuitsFor1fTitle.setSpacingAfter(5f);
+                    document.add(circuitsFor1fTitle);
+
+                    TableFor1f tableFor1fGenerator = new TableFor1f(db);
+
+                    PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1f(circuits, flat.flat);
+                    document.add(tableFor1f);
+                    tableFor1f.setSpacingAfter(15f);
+                }
+
+
+                if (flat.flat.hasRCD == 1) {
+                    Paragraph RCDTitle = new Paragraph("Wyniki z badania wyłączników różnicowoprądowych ", ProFonts.fontNormalBold);
+                    RCDTitle.setAlignment(Element.ALIGN_LEFT);
+                    RCDTitle.setSpacingAfter(5f);
+                    document.add(RCDTitle);
+
+                    RCDTable rcdTableGenerator = new RCDTable(db);
+
+                    PdfPTable rcdTable = rcdTableGenerator.createRCDTable(flat.flat);
+                    document.add(rcdTable);
+                    rcdTable.setSpacingAfter(15f);
+                    rcdIsGood = rcdTableGenerator.getRcdIsGood();
+                    if (!rcdTableGenerator.getMistakes().isEmpty()) {
+                        rcdMistakes.addAll(rcdTableGenerator.getMistakes());
+                    }
+                    if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
+                        endNotes += rcdTableGenerator.getRcdNotes() + "\n";
+                    }
+                }
+
+                if (!circuits.isEmpty()) {
+                    Paragraph omTableTitle = new Paragraph("Wynik pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormalBold);
+                    omTableTitle.setAlignment(Element.ALIGN_LEFT);
+                    omTableTitle.setSpacingAfter(5f);
+                    document.add(omTableTitle);
+
+                    OmTable omTableGenerator = new OmTable(db);
+
+                    PdfPTable omTable = omTableGenerator.createOmTable(flat.flat);
+                    document.add(omTable);
+                    omTable.setSpacingAfter(15f);
+                    omGrade = omTableGenerator.getGrade();
+                    if (!omTableGenerator.getMistakes().isEmpty()) {
+                        omMistakes.addAll(omTableGenerator.getMistakes());
+                    }
+                }
+                if (!flat.flat.notes.isEmpty()) {
+                    endNotes += flat.flat.circuitNotes;
+                }
+                int next = 7;
+                if (!endNotes.isEmpty()) {
+                    createNotes(endNotes);
+                    next = 8;
+                }
+                generatedFlats++;
+                createGrade(next, flat.flat);
+                next ++;
+                currentProtocolNumber++;
+                createEndSummary(next, flat.flat);
+                db.protocolNumberDao().incrementNum();
+
             }
+
+            document.newPage();
+            pageEvent.finishDocument();
+            writer.setPageEvent(null);
+            addSummary(blockFullData1.block);
+            document.close();
+
 
             return fileUri;
 
@@ -109,202 +253,264 @@ public class ProtocolGenerator {
             closeDocument();
         }
     }
-    public PdfPTable createRCDTable(Flat flat) {
-        PdfPTable table = new PdfPTable(11);
+    public void createEndSummary(int next, Flat flat)  throws DocumentException {
 
-        String[] headers = {"lp.", "Badany punkt", "Wyłącznik RCD", "Typ", "IΔn [mA]", "la [mA]", "ta [ms]", "t rcd [ms]", "Ub [V]", "UI [V]", "Ocena"};
-        for (String header : headers) {
-            if (header.contains("[")) {
-                int start = header.indexOf("[");
-                int end = header.indexOf("]");
-                String main = header.substring(0, start -1);
-                String sub = header.substring(start, end);
-                Chunk mainChunk = new Chunk(main, ProFonts.medium);
-                Chunk subChunk = new Chunk(sub, ProFonts.medium);
-                Phrase phrase = new Phrase();
-                phrase.add(mainChunk);
-                phrase.add(subChunk);
-                PdfPCell cell = new PdfPCell(phrase);
-                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-                cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                cell.setPaddingBottom(5f);
-                cell.setPaddingTop(5f);
-                table.addCell(cell);
-            }
-        }
-        return table;
+        Paragraph nextTitle = new Paragraph(next + ". Data następnego badania", ProFonts.fontNormalBold);
+        nextTitle.setSpacingBefore(titleSpacing);
+        nextTitle.setSpacingAfter(titleSpacingA);
+        nextTitle.setAlignment(Element.ALIGN_LEFT);
+        Date now = new Date();
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(now);
+        cal.add(Calendar.YEAR, 5);
+        Date datePlus5Years = cal.getTime();
+        Paragraph nextDesc = new Paragraph("Nie później niż: " + formatMonthAndYear(datePlus5Years), ProFonts.fontNormal);
+        nextDesc.setAlignment(Element.ALIGN_LEFT);
+        nextDesc.setIndentationLeft(indentation);
+        next ++;
+        document.add(nextTitle);
+        document.add(nextDesc);
+
+
+
+        Paragraph whoDidTitle = new Paragraph(next + ". Wykonawcy pomiarów:", ProFonts.fontNormalBold);
+        whoDidTitle.setSpacingBefore(titleSpacing);
+        whoDidTitle.setSpacingAfter(titleSpacingA);
+        whoDidTitle.setAlignment(Element.ALIGN_LEFT);
+        document.add(whoDidTitle);
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1f, 1f});
+
+        Paragraph p1 = new Paragraph();
+        p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+        p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
+        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
+        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+
+        PdfPCell cell1 = new PdfPCell(p1);
+        cell1.setPaddingLeft(15f);
+        cell1.setBorder(PdfPCell.NO_BORDER); // brak obramowania
+        cell1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell1.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+        Paragraph p2 = new Paragraph();
+        p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+        p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
+        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
+        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
+
+        PdfPCell cell2 = new PdfPCell(p2);
+        cell2.setBorder(PdfPCell.NO_BORDER);
+        cell2.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell2.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+        table.addCell(cell1);
+        table.addCell(cell2);
+
+        document.add(table);
+
 
     }
-    public PdfPTable createMeasurementTable(Font fontHeader, Font fontCell, Flat flat) throws DocumentException {
-        PdfPTable table;
-        String[] headers;
+    private void createNotes(String endNotes) throws DocumentException {
 
-        boolean isTNC = flat.type.equals("TN-C");
 
-        if (isTNC) {
-            table = new PdfPTable(10);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[]{2f, 6f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 4f});
-            headers = new String[]{
-                    "Lp.", "Nazwa obwodu",
-                    "R(L1-L2)", "R(L2-L3)", "R(L3-L1)",
-                    "R(L1-N)", "R(L2-N)", "R(L3-N)",
-                    "R(W)", "Ocena pomiaru"
-            };
+        Paragraph notesTitle = new Paragraph("7. Uwagi i wnioski", ProFonts.fontNormalBold);
+        notesTitle.setSpacingBefore(titleSpacing);
+        notesTitle.setSpacingAfter(titleSpacingA);
+        notesTitle.setAlignment(Element.ALIGN_LEFT);
+
+        Paragraph notes = new Paragraph(endNotes, ProFonts.fontNormal);
+        notes.setAlignment(Element.ALIGN_LEFT);
+        notes.setIndentationLeft(indentation);
+
+        document.add(notesTitle);
+        document.add(notes);
+    }
+
+    private void createGrade(int next, Flat flat) throws DocumentException {
+
+
+        Paragraph gradeTitle = new Paragraph(next + ". Orzeczenie", ProFonts.fontNormalBold);
+        gradeTitle.setSpacingBefore(titleSpacing);
+        gradeTitle.setSpacingAfter(titleSpacingA);
+        gradeTitle.setAlignment(Element.ALIGN_LEFT);
+
+        String finalGrade;
+        boolean shouldSetGradeTo1 = db.flatDao().shouldSetGradeToOneSync(flat.id);
+
+        if (flat.gradeByUser == 1 && flat.grade == 2) {
+            omGrade = 2;
+        }
+
+        if ((shouldSetGradeTo1 && flat.gradeByUser == 0) || rcdIsGood == 0) {
+            finalGrade = "Instalacja dopuszczona do użytku po usunięciu usterek.";
         } else {
-            table = new PdfPTable(14);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[]{2f, 6f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 2f, 4f});
-            headers = new String[]{
-                    "Lp.", "Nazwa obwodu",
-                    "R(L1-L2)", "R(L2-L3)", "R(L3-L1)",
-                    "R(L1-PE)", "R(L2-PE)", "R(L3-PE)",
-                    "R(L1-N)", "R(L2-N)", "R(L3-N)",
-                    "R(N-PE)", "R(W)", "Ocena pomiaru"
-            };
+            finalGrade = "Instalacja dopuszczona do użytku.";
         }
 
-        // --- Nagłówki ---
-        for (String h : headers) {
-            Phrase phrase;
-            if (h.startsWith("R(")) {
-                int start = h.indexOf('(');
-                int end = h.indexOf(')');
-                String main = h.substring(0, start);
-                String sub = h.substring(start + 1, end);
-                Chunk mainChunk = new Chunk(main, ProFonts.medium);
-                Chunk subChunk = new Chunk(sub, ProFonts.small);
-                subChunk.setTextRise(-1f);
-                Chunk unit;
-                if (sub.equals("W")) {
-                    unit = new Chunk("\n[MΩ]", fontHeader);
-                } else {
-                    unit = new Chunk("\n[GΩ]", fontHeader);
-                }
-                phrase = new Phrase();
-                phrase.add(mainChunk);
-                phrase.add(subChunk);
-                phrase.add(unit);
-            } else {
-                phrase = new Phrase(h, fontHeader);
-            }
-
-            PdfPCell cell = new PdfPCell(phrase);
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-            cell.setPaddingBottom(5f);
-            cell.setPaddingTop(5f);
-            table.addCell(cell);
+        if (omGrade == 2) {
+            finalGrade = "Instalacja niedopuszczona do użytku.";
         }
 
-        // --- Dane ---
-        List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.id);
+        if (finalGrade.equals("Instalacja dopuszczona do użytku po usunięciu usterek.")) {
+            grade1Flats.add(flat.number);
+        }
+        if (finalGrade.equals("Instalacja dopuszczona do użytku.")) {
+            grade0Flats.add(flat.number);
+
+        }
+        if (finalGrade.equals("Instalacja niedopuszczona do użytku.")) {
+            grade2Flats.add(flat.number);
+
+        }
+        Paragraph gradeDesc = new Paragraph(finalGrade, ProFonts.fontNormal);
+        gradeDesc.setAlignment(Element.ALIGN_LEFT);
+        gradeDesc.setIndentationLeft(indentation);
+
+        document.add(gradeTitle);
+        document.add(gradeDesc);
+    }
+
+    private void addSummary(Block block) throws DocumentException {
+        document.newPage();
+        Paragraph title = new Paragraph("Podsumowanie", ProFonts.fontBold14);
+        title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingAfter(15f);
+        document.add(title);
+
+
+
+        Paragraph flatsNumtitle = new Paragraph("Informacje o mieszkaniach:", ProFonts.fontNormalBold);
+        flatsNumtitle.setAlignment(Element.ALIGN_LEFT);
+        flatsNumtitle.setSpacingAfter(titleSpacingA);
+        flatsNumtitle.setSpacingBefore(titleSpacing);
+        document.add(flatsNumtitle);
+
+        Paragraph flatsNumDesc = new Paragraph("Łącznie mieszkań: " + totalFlats, ProFonts.fontNormal);
+        flatsNumDesc.setAlignment(Element.ALIGN_LEFT);
+        flatsNumDesc.setIndentationLeft(indentation);
+        document.add(flatsNumDesc);
+
+
+        Paragraph flatsNumDesc2 = new Paragraph("Wygenerowano protokoły dla mieszkań: " + generatedFlats + " (" + generatedFlats + "/" + totalFlats + ")", ProFonts.fontNormal);
+        flatsNumDesc2.setAlignment(Element.ALIGN_LEFT);
+        flatsNumDesc2.setIndentationLeft(indentation);
+        document.add(flatsNumDesc2);
+
+
+        Paragraph flatsNumDesc3 = new Paragraph("Pominięte mieszkania (nikt nie otwarł): " + (totalFlats - generatedFlats), ProFonts.fontNormal);
+        flatsNumDesc3.setAlignment(Element.ALIGN_LEFT);
+        flatsNumDesc3.setIndentationLeft(indentation);
+        document.add(flatsNumDesc3);
+
         int index = 1;
-
-        for (Circuit c : circuits) {
-            List<String> values = new ArrayList<>();
-
-            if (isTNC) {
-                // dokładnie 10 kolumn
-                values.add(Integer.toString(index)); // 1
-                values.add(c.name); // 2
-                for (int i = 0; i < 6; i++) values.add("-"); // 3-9
-                values.add("1"); // 10
-                values.add("Pozytywna"); // 10
-            } else {
-                // dokładnie 14 kolumn
-                values.add(Integer.toString(index));
-                values.add(c.name);
-                for (int i = 0; i < 10; i++) values.add("-");
-                values.add("1");
-                values.add("Pozytywna");
-            }
-
-            if (isTNC) {
-                switch (c.type) {
-                    case "L1":
-                        values.set(5, ">2");
-                        break;
-                    case "L2":
-                        values.set(6, ">2");
-                        break;
-                    case "L3":
-                        values.set(7, ">2");
-                        break;
-                    case "3f":
-                        for (int i = 2; i <= 7; i++) values.set(i, ">2");
-                        break;
-                }
-            } else {
-                switch (c.type) {
-                    case "L1":
-                        values.set(5, ">2");
-                        values.set(8, ">2");
-                        values.set(11, ">2");
-                        break;
-                    case "L2":
-                        values.set(6, ">2");
-                        values.set(9, ">2");
-                        values.set(11, ">2");
-
-                        break;
-                    case "L3":
-                        values.set(7, ">2");
-                        values.set(10, ">2");
-                        values.set(11, ">2");
-
-                        break;
-                    case "3f":
-                        for (int i = 2; i <= 11; i++) values.set(i, ">2");
-                        break;
-                }
-            }
-            for (String v : values) {
-                table.addCell(createCell(v));
-            }
-
+        for (String s : skippedFlats) {
+            Paragraph skippedFlat = new Paragraph(index + ". " + s, ProFonts.fontNormal);
+            skippedFlat.setAlignment(Element.ALIGN_LEFT);
+            skippedFlat.setIndentationLeft(25f);
+            document.add(skippedFlat);
             index++;
         }
 
-        return table;
-    }
+        if (!rcdMistakes.isEmpty() || !omMistakes.isEmpty()) {
+            Paragraph genInfo = new Paragraph("Informacje o generowaniu:", ProFonts.fontNormalBold);
+            genInfo.setAlignment(Element.ALIGN_LEFT);
+            genInfo.setSpacingAfter(titleSpacingA);
+            genInfo.setSpacingBefore(titleSpacing);
+            document.add(genInfo);
+
+            if (!rcdMistakes.isEmpty()) {
+                Paragraph genInfoDesc = new Paragraph("Błędy różnicówek: ", ProFonts.fontNormal);
+                genInfoDesc.setAlignment(Element.ALIGN_LEFT);
+                genInfoDesc.setIndentationLeft(indentation);
+                document.add(genInfoDesc);
+                for (String mistake : rcdMistakes) {
+                    Paragraph mistakeDesc = new Paragraph("- " + mistake, ProFonts.fontNormal);
+                    mistakeDesc.setAlignment(Element.ALIGN_LEFT);
+                    mistakeDesc.setIndentationLeft(25f);
+                    document.add(mistakeDesc);
+                }
+            }
+
+            if (!omMistakes.isEmpty()) {
+                Paragraph genInfoDesc = new Paragraph("Błędy pętli zwarcia: ", ProFonts.fontNormal);
+                genInfoDesc.setAlignment(Element.ALIGN_LEFT);
+                genInfoDesc.setIndentationLeft(indentation);
+                document.add(genInfoDesc);
+                for (String mistake : omMistakes) {
+                    Paragraph mistakeDesc = new Paragraph("- " + mistake, ProFonts.fontNormal);
+                    mistakeDesc.setAlignment(Element.ALIGN_LEFT);
+                    mistakeDesc.setIndentationLeft(25f);
+                    document.add(mistakeDesc);
+                }
+            }
+
+        }
+
+        Paragraph statsTitle = new Paragraph("Statystyki pomiarów:", ProFonts.fontNormalBold);
+        statsTitle.setAlignment(Element.ALIGN_LEFT);
+        statsTitle.setSpacingAfter(titleSpacingA);
+        statsTitle.setSpacingBefore(titleSpacing);
+        document.add(statsTitle);
 
 
-    private PdfPCell createCell(String data) {
-        PdfPCell cell = new PdfPCell(new Phrase(data, ProFonts.medium));
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        cell.setPaddingBottom(5f);
-        cell.setPaddingTop(5f);
-        return cell;
-    }
+        Paragraph s1 = new Paragraph("Mieszkania z orzeczeniem `Instalacja niedopuszczona do użytku` (" + grade2Flats.size() + "):", ProFonts.fontNormal);
+        s1.setAlignment(Element.ALIGN_LEFT);
+        s1.setIndentationLeft(indentation);
+        document.add(s1);
+        index = 1;
+        for (String g2 : grade2Flats) {
+            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g2, ProFonts.fontNormal);
+            gradedFlat.setAlignment(Element.ALIGN_LEFT);
+            gradedFlat.setIndentationLeft(25f);
+            document.add(gradedFlat);
+            index++;
+        }
 
-    private void generateIsolation() {
+        Paragraph s3 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku` (" + grade0Flats.size() + "):", ProFonts.fontNormal);
+        s3.setAlignment(Element.ALIGN_LEFT);
+        s3.setIndentationLeft(indentation);
+        document.add(s3);
+
+        index = 1;
+        for (String g0 : grade0Flats) {
+            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g0, ProFonts.fontNormal);
+            gradedFlat.setAlignment(Element.ALIGN_LEFT);
+            gradedFlat.setIndentationLeft(25f);
+            document.add(gradedFlat);
+            index++;
+        }
+
+        Paragraph s5 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku po usunięciu usterek` (" + grade1Flats.size() + "):", ProFonts.fontNormal);
+        s5.setAlignment(Element.ALIGN_LEFT);
+        s5.setIndentationLeft(indentation);
+        document.add(s5);
+        index = 1;
+        for (String g1 : grade1Flats) {
+            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g1, ProFonts.fontNormal);
+            gradedFlat.setAlignment(Element.ALIGN_LEFT);
+            gradedFlat.setIndentationLeft(25f);
+            document.add(gradedFlat);
+            index++;
+        }
+
 
     }
 
     private void addData(String type, Date date) throws DocumentException {
-        float titleSpacing = 8f;
-        float titleSpacingA = 2f;
+
 
         Paragraph measurementsCon = new Paragraph("3. Warunki pomiarów", ProFonts.fontNormalBold);
         measurementsCon.setAlignment(Element.ALIGN_LEFT);
         measurementsCon.setSpacingAfter(titleSpacingA);
         measurementsCon.setSpacingBefore(titleSpacing);
-        float indentation = 15f;
 
-        Paragraph con1 = new Paragraph("Układ sieci: " + type, ProFonts.fontNormal);
+
+        Paragraph con1 = new Paragraph("układ sieci: " + type + ", napięcie względem ziemi Uo = 230 [V], " + "napięcie probiercze: 500 [V]", ProFonts.fontNormal);
         con1.setAlignment(Element.ALIGN_LEFT);
         con1.setIndentationLeft(indentation);
-
-
-        Paragraph con2 = new Paragraph("Napięcie względem ziemi Uo = 230 [V]", ProFonts.fontNormal);
-        con2.setAlignment(Element.ALIGN_LEFT);
-        con2.setIndentationLeft(indentation);
-
-        Paragraph con3 = new Paragraph("Napięcie probiercze: 500 [V]", ProFonts.fontNormal);
-        con3.setAlignment(Element.ALIGN_LEFT);
-        con3.setIndentationLeft(indentation);
 
         Paragraph meDate = new Paragraph("4. Data badania", ProFonts.fontNormalBold);
         meDate.setSpacingBefore(titleSpacing);
@@ -318,7 +524,7 @@ public class ProtocolGenerator {
         deviceTitle.setSpacingBefore(titleSpacing);
         deviceTitle.setSpacingAfter(titleSpacingA);
         deviceTitle.setAlignment(Element.ALIGN_LEFT);
-        Paragraph device = new Paragraph("1. Sonel MPI 540, Miernik instalacji elektrycznych, EK 0076", ProFonts.fontNormal);
+        Paragraph device = new Paragraph("1. Sonel MPI 540, Miernik instalacji elektrycznych, AH 5137", ProFonts.fontNormal);
         device.setAlignment(Element.ALIGN_LEFT);
         device.setIndentationLeft(indentation);
 
@@ -329,8 +535,6 @@ public class ProtocolGenerator {
 
         document.add(measurementsCon);
         document.add(con1);
-        document.add(con2);
-        document.add(con3);
         document.add(meDate);
         document.add(meDate1);
         document.add(deviceTitle);
@@ -344,17 +548,16 @@ public class ProtocolGenerator {
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
         values.put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf");
+        String currentYear = new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
 
-        String relativePath = Environment.DIRECTORY_DOWNLOADS + "/Protokoły";
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath);
-        }
+        String relativePath = Environment.DIRECTORY_DOWNLOADS + "/RemaPomiary/protokoły/" + currentYear;
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath);
 
         Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
         if (uri != null) {
             outputStream = resolver.openOutputStream(uri);
             if (outputStream != null) {
-                document = new Document();
+                document = new Document(PageSize.A4, 36, 36, 50, 50);
                 writer = PdfWriter.getInstance(document, outputStream);
             }
         }
@@ -380,15 +583,27 @@ public class ProtocolGenerator {
 
 
     private void addHeader() throws DocumentException {
-        Paragraph companyName = new Paragraph("PHU Rema", ProFonts.fontBold14);
+        Chunk phuChunk = new Chunk("PHU ", ProFonts.logoNormal);
+
+// Chunk dla REMA z inną czcionką
+        Chunk remaChunk = new Chunk("REMA", ProFonts.logo);
+
+// Tworzymy Paragraph i dodajemy oba Chunki
+        Paragraph companyName = new Paragraph();
+        companyName.add(phuChunk);
+        companyName.add(remaChunk);
+
+        companyName.setSpacingAfter(5f);
         companyName.setAlignment(Element.ALIGN_LEFT);
+
         document.add(companyName);
 
-        Paragraph companyDetails = new Paragraph("ul. Przykładowa 12, 00-123 Warszawa\n" +
-                "NIP: 123-456-78-90\n" +
-                "Tel: 123 456 789", ProFonts.fontNormal);
+        Paragraph companyDetails = new Paragraph ("Marek Rejner\n" + "ul. Wyzwolenia 10A/2, 41-907 Bytom\n" +
+                "NIP: 626-101-54-81\n" +
+                "Tel: 601-411-391",
+                ProFonts.fontNormal);
         companyDetails.setAlignment(Element.ALIGN_LEFT);
-        companyDetails.setSpacingAfter(10f);
+        companyDetails.setSpacingAfter(5f);
         document.add(companyDetails);
 
         LineSeparator line = new LineSeparator(1f, 100f, null, Element.ALIGN_CENTER, 0);
@@ -404,14 +619,14 @@ public class ProtocolGenerator {
 
 
     private void addTitleSection(String protocolNumber, String type, int hasRCD) throws DocumentException {
-        Paragraph title = new Paragraph("PROTOKÓŁ NR " + protocolNumber, ProFonts.fontBold14);
+        Paragraph title = new Paragraph(protocolNumber, ProFonts.fontBold14);
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
         Paragraph subtitle = new Paragraph("Z badań okresowych", ProFonts.fontNormal);
         subtitle.setAlignment(Element.ALIGN_CENTER);
-        subtitle.setSpacingBefore(10f);
-        subtitle.setSpacingAfter(20f);
+        subtitle.setSpacingBefore(5f);
+        subtitle.setSpacingAfter(15f);
         document.add(subtitle);
 
         Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
@@ -427,72 +642,26 @@ public class ProtocolGenerator {
             desc3.setSpacingAfter(25f);
             document.add(desc2);
             document.add(desc3);
-
         } else {
             desc2.setSpacingAfter(25f);
             document.add(desc2);
-
-
         }
-
-
     }
 
 
     private void addDetailsTable(String clientData, String objectData) throws DocumentException {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
-//        table.setSpacingAfter(20f);
         table.setWidths(new float[]{2f, 5f});
 
-        table.addCell(createLabelCell("1. Zleceniodawca"));
-        table.addCell(createValueCell(clientData));
+        table.addCell(CellGenerator.createValueCell("1. Zleceniodawca"));
+        table.addCell(CellGenerator.createValueCell(clientData));
 
-        table.addCell(createLabelCell("2. Obiekt"));
-        table.addCell(createValueCell(objectData));
+        table.addCell(CellGenerator.createValueCell("2. Obiekt"));
+        table.addCell(CellGenerator.createValueCell(objectData));
 
         document.add(table);
     }
-
-    private PdfPCell createLabelCell(String text) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, ProFonts.fontNormalBold));
-        cell.setBorder(Rectangle.NO_BORDER);
-        cell.setVerticalAlignment(Element.ALIGN_TOP);
-        cell.setPaddingBottom(12f);
-        return cell;
-    }
-
-    private PdfPCell createValueCell(String text) {
-        PdfPCell cell = new PdfPCell(new Phrase(text, ProFonts.fontNormalBold));
-        cell.setBorder(Rectangle.NO_BORDER);
-        cell.setVerticalAlignment(Element.ALIGN_TOP);
-        cell.setPaddingBottom(12f);
-        return cell;
-    }
-
-
-    private void addFooter(String footerText) {
-        PdfContentByte cb = writer.getDirectContent();
-        Rectangle pageSize = document.getPageSize();
-        float yLine = 40f;
-
-        // Rysowanie linii
-        cb.setLineWidth(1f);
-        cb.moveTo(document.left(), yLine);
-        cb.lineTo(pageSize.getRight() - document.rightMargin(), yLine);
-        cb.stroke();
-
-        // Wstawienie podanego tekstu
-        ColumnText.showTextAligned(
-                cb,
-                Element.ALIGN_RIGHT,
-                new Phrase(footerText, ProFonts.fontNormal), // Użycie podanego Stringa
-                pageSize.getRight() - document.rightMargin(),
-                yLine - 12,
-                0
-        );
-    }
-
 
     private void closeDocument() {
         if (document != null && document.isOpen()) {

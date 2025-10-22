@@ -26,4 +26,7 @@ public interface RCDDao {
 
     @Query("SELECT * FROM rcd WHERE flatId = :flatId ORDER BY name ASC")
     LiveData<List<RCD>> getRcdsForFlat(int flatId);
+
+    @Query("SELECT * FROM rcd WHERE flatId = :flatId")
+    List<RCD> getRcdsForFlatSync(int flatId);
 }
