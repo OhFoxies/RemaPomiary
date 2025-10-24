@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.generator;
 
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
@@ -51,7 +52,7 @@ public class OmTable {
                 String main = header.substring(0, start).trim();
                 String sub = header.substring(start, end + 1);
                 phrase.add(new Chunk(main + "\n", ProFonts.medium));
-                phrase.add(new Chunk(sub, ProFonts.medium));
+                phrase.add(new Chunk(sub, ProFonts.mediumNotBold));
             } else {
                 phrase.add(new Chunk(header, ProFonts.medium));
             }
@@ -61,6 +62,8 @@ public class OmTable {
             cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             cell.setPaddingTop(5f);
             cell.setPaddingBottom(5f);
+            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+
             table.addCell(cell);
         }
 

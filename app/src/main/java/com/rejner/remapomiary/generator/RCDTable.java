@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.generator;
 
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
@@ -43,11 +44,11 @@ public class RCDTable {
     }
 
     public PdfPTable createRCDTable(Flat flat) throws DocumentException {
-        PdfPTable table = new PdfPTable(9);
+        PdfPTable table = new PdfPTable(8);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{2f, 6f, 6f, 2f, 2f, 2f, 2f, 2f, 4f});
+        table.setWidths(new float[]{2f, 6f, 6f, 2f, 2f, 2f, 2f, 4f});
 
-        String[] headers = {"Lp.", "Badany punkt", "Wyłącznik RCD", "Typ", "IΔn [mA]", "la [mA]", "ta [ms]", "t rcd [ms]", "Ocena"};
+        String[] headers = {"Lp.", "Badany punkt", "Wyłącznik RCD", "Typ", "IΔn [mA]", "la [mA]", "t rcd [ms]", "Ocena"};
         for (String header : headers) {
             Phrase phrase = new Phrase();
             if (header.contains("[")) {
@@ -56,7 +57,7 @@ public class RCDTable {
                 String main = header.substring(0, start).trim();
                 String sub = header.substring(start, end + 1);
                 phrase.add(new Chunk(main + "\n", ProFonts.medium));
-                phrase.add(new Chunk(sub, ProFonts.medium));
+                phrase.add(new Chunk(sub, ProFonts.mediumNotBold));
             } else {
                 phrase.add(new Chunk(header, ProFonts.medium));
             }
@@ -66,6 +67,8 @@ public class RCDTable {
             cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             cell.setPaddingTop(5f);
             cell.setPaddingBottom(5f);
+            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+
             table.addCell(cell);
         }
 
@@ -109,7 +112,7 @@ public class RCDTable {
 
 //            Nazwa pokoju
             PdfPCell cell = new PdfPCell(new Phrase(room.name, ProFonts.fontNormalBold));
-            cell.setColspan(9);
+            cell.setColspan(8);
             cell.setHorizontalAlignment(Element.ALIGN_CENTER);
             cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             cell.setPaddingBottom(5f);
@@ -144,18 +147,21 @@ public class RCDTable {
                 if (rcd.isGood == 0) {
                     rcdIsGood = 0;
                     values.add("-"); //6
-                    values.add(String.valueOf(Constants.rcdTa)); //8
                     values.add("-"); //9
                     values.add("Negatywna"); //10
-                } else {
+                } else if (om.note.equals("nie podłączony bolec") || om.note.equals("zepsute")) {
+                    values.add("-"); //6
+                    values.add("-"); //9
+                    values.add(om.note); //10
+
+                }
+                else {
                     if (first && rcd.time2 != 0 && rcd.time1 != 0) {
                         values.add(Integer.toString(rcd.time2)); //6
-                        values.add(String.valueOf(Constants.rcdTa));
                         values.add(Integer.toString(rcd.time1)); //9
                         first = false;
                     } else {
                         values.add(Integer.toString(RandomNumber.randomInt(19, 25))); //6
-                        values.add(String.valueOf(Constants.rcdTa));
                         values.add(Integer.toString(RandomNumber.randomInt(19, 25))); //9
                     }
                     values.add("Pozytywna"); //10

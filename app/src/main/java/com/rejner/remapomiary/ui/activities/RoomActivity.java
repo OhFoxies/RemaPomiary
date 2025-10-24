@@ -51,7 +51,7 @@ public class RoomActivity extends AppCompatActivity {
     public final String[] roomNames = {"Pokój", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
     public final String[] applianceOptions = {"Gniazdko", "Lodówka", "Pralka", "Grzejnik", "Inne"};
     public final String[] breakerTypes = {"B", "C", "D", "Gg"};
-    public final String[] noteOptions = {"brak uwag", "nie podłączony bolec", "Urwane", "Inne"};
+    public final String[] noteOptions = {"brak uwag", "nie podłączony bolec", "Urwane", "zepsute", "Inne"};
     public final String[] ampsOptions = {"3", "6", "10", "16", "20", "25", "32", "40"};
 
     private final Map<Integer, List<OutletMeasurement>> roomMeasurementsMap = new HashMap<>();

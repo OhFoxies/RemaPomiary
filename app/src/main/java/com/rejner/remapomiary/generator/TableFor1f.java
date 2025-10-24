@@ -4,6 +4,7 @@ import static com.rejner.remapomiary.generator.helpers.CellGenerator.createCell;
 
 import androidx.annotation.NonNull;
 
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
@@ -55,6 +56,7 @@ public class TableFor1f {
         // --- Nagłówki ---
         for (String h : headers) {
             PdfPCell cell = TableHeaders.createHeader(h);
+
             table.addCell(cell);
         }
 

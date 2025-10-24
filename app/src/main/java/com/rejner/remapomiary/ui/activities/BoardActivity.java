@@ -46,6 +46,9 @@ public class BoardActivity extends AppCompatActivity {
     private Flat flat;
     private FlatViewModel flatViewModel;
     private final String[] circuitNames = {
+            "Gniazdka -",
+            "Oświetlenie -",
+            "Inny",
             "Gniazdka łazienka",
             "Indukcja",
             "Gniazdka pokoje",
@@ -55,9 +58,7 @@ public class BoardActivity extends AppCompatActivity {
             "Zmywarka",
             "Podgrzewacz",
             "Rolety",
-            "Oświetlenie",
-            "Gniazdka -",
-            "Inny"
+            "Oświetlenie"
     };
     private final String[] phases = {"L1", "L2", "L3", "3f"};
 
@@ -72,6 +73,9 @@ public class BoardActivity extends AppCompatActivity {
     private RadioGroup installationRadioGroup;
     private RadioButton tnSRadio;
     private RadioButton tnCRadio;
+
+
+
     private boolean firstLoad = true;
 
     private boolean isSettingInstallation = false;
@@ -121,8 +125,8 @@ public class BoardActivity extends AppCompatActivity {
         nameAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, circuitNames);
         nameAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
-        phaseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, phases);
-        phaseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//        phaseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, phases);
+//        phaseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         nameSet = new HashSet<>(Arrays.asList(circuitNames));
 
@@ -215,7 +219,7 @@ public class BoardActivity extends AppCompatActivity {
             Circuit newCircuit = new Circuit();
             newCircuit.flatId = flatId;
             newCircuit.name = "Gniazdka łazienka";
-            newCircuit.type = "L1";
+            newCircuit.type = "1f";
             circuitViewModel.insert(newCircuit);
 
             boardLayout.post(() -> {
@@ -391,6 +395,7 @@ public class BoardActivity extends AppCompatActivity {
         nameContainer.setGravity(Gravity.CENTER_VERTICAL);
         nameContainer.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f));
 
+//        TUTAJ
         Spinner nameSpinner = new Spinner(this);
         // używamy wcześniej przygotowanego adaptera
         nameSpinner.setAdapter(nameAdapter);
@@ -432,19 +437,99 @@ public class BoardActivity extends AppCompatActivity {
         nameContainer.addView(customName);
         nameContainer.addView(saveButton);
 
-        Spinner phaseSpinner = new Spinner(this);
-        phaseSpinner.setAdapter(phaseAdapter);
+//        Spinner phaseSpinner = new Spinner(this);
+//        phaseSpinner.setAdapter(phaseAdapter);
 
-        int phaseIndex = 0;
-        for (int i = 0; i < phases.length; i++) {
-            if (phases[i].equals(circuit.type)) {
-                phaseIndex = i;
-                break;
-            }
+//        int phaseIndex = 0;
+//        for (int i = 0; i < phases.length; i++) {
+//            if (phases[i].equals(circuit.type)) {
+//                phaseIndex = i;
+//                break;
+//            }
+//        }
+//        phaseSpinner.setSelection(phaseIndex, false);
+//        phaseSpinner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+//        phaseSpinner.setGravity(Gravity.CENTER);
+        RadioGroup phaseGroup;
+        RadioButton f3;
+        RadioButton f1;
+
+        phaseGroup = new RadioGroup(this);
+        // 1. Ustawienie orientacji poziomej
+        phaseGroup.setOrientation(LinearLayout.HORIZONTAL);
+
+        // 2. Ustawienie parametrów layoutu dla RadioGroup
+        LinearLayout.LayoutParams phaseParams = new LinearLayout.LayoutParams(
+                0, // 0dp szerokości przy użyciu wagi
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f // waga 1f
+        );
+
+        // === ZMIANA 1: WIĘKSZY MARGINES Z LEWEJ ===
+        // Ustawiamy margines 16dp po lewej stronie całej grupy
+        int leftMarginPx = (int) (16 * getResources().getDisplayMetrics().density); // 16dp
+        phaseParams.setMargins(leftMarginPx, 0, 0, 0);
+        // === KONIEC ZMIANY 1 ===
+
+        phaseGroup.setLayoutParams(phaseParams);
+        phaseGroup.setGravity(Gravity.CENTER_VERTICAL);
+
+
+        f1 = new RadioButton(this);
+
+        f1.setText("1f");
+        f1.setId(View.generateViewId());
+        // 3. Zwiększenie czcionki
+        f1.setTextSize(18f);
+
+        // 4. Ustawienie wagi, aby przyciski równo się rozłożyły
+        LinearLayout.LayoutParams radioParams = new LinearLayout.LayoutParams(
+                0, // 0dp szerokości
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f // waga 1
+        );
+        f1.setLayoutParams(radioParams);
+
+        // === ZMIANA 2: TEKST PRZYKLEJONY DO KÓŁKA ===
+        // Zmiana z Gravity.CENTER na START | CENTER_VERTICAL
+        // Wyrównuje do lewej (tekst przy kółku) i centruje w pionie
+        f1.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        // === KONIEC ZMIANY 2 ===
+
+
+        f3 = new RadioButton(this);
+        f3.setText("3f");
+        f3.setId(View.generateViewId());
+        // 3. Zwiększenie czcionki
+        f3.setTextSize(18f);
+
+        // 4. Użycie tych samych parametrów wagi co dla f1
+        f3.setLayoutParams(radioParams);
+
+        // === ZMIANA 2: TEKST PRZYKLEJONY DO KÓŁKA ===
+        f3.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        // === KONIEC ZMIANY 2 ===
+
+
+        phaseGroup.addView(f1);
+        phaseGroup.addView(f3);
+        if (circuit.type.equals("1f") || circuit.type.equals("L1") || circuit.type.equals("L2") || circuit.type.equals("L3")) {
+            phaseGroup.check(f1.getId());
+
+        } else {
+            phaseGroup.check(f3.getId());
+
         }
-        phaseSpinner.setSelection(phaseIndex, false);
-        phaseSpinner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        phaseSpinner.setGravity(Gravity.CENTER);
+
+        phaseGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (isInitializing) return;
+            String newType = (checkedId == f1.getId()) ? "1f" : "3f";
+            if (circuit.type == null || !circuit.type.equals(newType)) {
+                circuit.type = newType;
+                circuitViewModel.update(circuit);
+            }
+        });
+
 
         Button deleteButton = new Button(this);
         deleteButton.setText("USUŃ");
@@ -459,7 +544,7 @@ public class BoardActivity extends AppCompatActivity {
                 if (isInitializing) return;
                 String selected = circuitNames[position];
 
-                if (selected.equals("Inny") || selected.equals("Gniazdka -")) {
+                if (selected.equals("Inny") || selected.equals("Gniazdka -") || selected.equals("Oświetlenie -")) {
                     customName.setVisibility(View.VISIBLE);
                     saveButton.setVisibility(View.VISIBLE);
 
@@ -468,6 +553,10 @@ public class BoardActivity extends AppCompatActivity {
                         customName.setSelection(customName.getText().length());
                     }
 
+                    if (selected.equals("Oświetlenie -") && customName.getText().toString().isEmpty()) {
+                        customName.setText("Oświetlenie ");
+                        customName.setSelection(customName.getText().length());
+                    }
                     customName.post(() -> {
                         customName.requestFocus();
                         if (imm != null) {
@@ -524,21 +613,21 @@ public class BoardActivity extends AppCompatActivity {
             saveButton.setVisibility(View.GONE);
         });
 
-        phaseSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                if (isInitializing) return;
-                String newType = phases[position];
-                if (!newType.equals(circuit.type)) {
-                    circuit.type = newType;
-                    circuitViewModel.update(circuit);
-                }
-            }
-
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-            }
-        });
+//        phaseSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+//            @Override
+//            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+//                if (isInitializing) return;
+//                String newType = phases[position];
+//                if (!newType.equals(circuit.type)) {
+//                    circuit.type = newType;
+//                    circuitViewModel.update(circuit);
+//                }
+//            }
+//
+//            @Override
+//            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+//            }
+//        });
 
         deleteButton.setOnClickListener(v -> {
             if (!isInitializing) circuitViewModel.delete(circuit);
@@ -546,7 +635,7 @@ public class BoardActivity extends AppCompatActivity {
 
         circuitRow.addView(numberView);
         circuitRow.addView(nameContainer);
-        circuitRow.addView(phaseSpinner);
+        circuitRow.addView(phaseGroup);
         circuitRow.addView(deleteButton);
 
         boardLayout.addView(circuitRow);

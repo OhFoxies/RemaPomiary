@@ -14,6 +14,7 @@ public class ProFonts {
     public static Font fontNormal;
     public static Font small;
     public static Font medium;
+    public static Font mediumNotBold;
     public static Font fontNormalBold;
     public static Font large;
     public static Font logoNormal;
@@ -34,6 +35,7 @@ public class ProFonts {
             fontNormal = new Font(bfRegular, 10);
             fontNormalBold = new Font(bfBold, 10, Font.BOLD);
             medium = new Font(bfBold, 8);
+            mediumNotBold = new Font(bfRegular, 8);
             small = new Font(bfRegular, 6);
             large = new Font(bfBold, 50);
 

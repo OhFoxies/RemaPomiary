@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.generator.helpers;
 
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
@@ -23,9 +24,9 @@ public class TableHeaders {
             subChunk.setTextRise(-1f);
             Chunk unit;
             if (sub.equals("W")) {
-                unit = new Chunk("\n[MΩ]", ProFonts.medium);
+                unit = new Chunk("\n[MΩ]", ProFonts.mediumNotBold);
             } else {
-                unit = new Chunk("\n[GΩ]", ProFonts.small);
+                unit = new Chunk("\n[GΩ]", ProFonts.mediumNotBold);
             }
             phrase = new Phrase();
             phrase.add(mainChunk);
@@ -40,6 +41,7 @@ public class TableHeaders {
         cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         cell.setPaddingBottom(5f);
         cell.setPaddingTop(5f);
+        cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
         return cell;
     }
 }

@@ -13,6 +13,7 @@ import com.itextpdf.text.Chunk;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
@@ -59,8 +60,11 @@ public class ProtocolGenerator {
     private ArrayList<String> grade0Flats = new ArrayList<>();
     private ArrayList<String> grade1Flats = new ArrayList<>();
     private ArrayList<String> grade2Flats = new ArrayList<>();
+    private Font normalFont = ProFonts.mediumNotBold;
+    private Font subscriptFont = ProFonts.small;
     private int totalFlats = 0;
     private int generatedFlats = 0;
+    float subscriptOffset = 1;
     private ArrayList<String> skippedFlats = new ArrayList<>();
     AppDatabase db;
     int omGrade = 0;
@@ -166,7 +170,151 @@ public class ProtocolGenerator {
 
                     PdfPTable table = tableFor3fGenerator.createMeasurementTableFor3f(circuits3f, flat.flat);
                     document.add(table);
-                    table.setSpacingAfter(15f);
+                    table.setSpacingAfter(5f);
+
+                    if (flat.flat.type.equals("TN-S")) {
+                        Paragraph f3Legend = new Paragraph();
+
+                        f3Legend.setFont(normalFont); // Ustaw domyślną czcionkę dla paragrafu
+
+                        // R L1-L2
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL1L2 = new Chunk("L1-L2", subscriptFont);
+                        subL1L2.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL1L2);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i L2, ", normalFont));
+
+                        // R L2-L3
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL2L3 = new Chunk("L2-L3", subscriptFont);
+                        subL2L3.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL2L3);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i L3, ", normalFont));
+
+                        // R L3-L1
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL3L1 = new Chunk("L3-L1", subscriptFont);
+                        subL3L1.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL3L1);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i L1, ", normalFont));
+
+                        // R L1-PE
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL1PE = new Chunk("L1-PE", subscriptFont);
+                        subL1PE.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL1PE);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i PE, ", normalFont));
+
+                        // R L2-PE
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL2PE = new Chunk("L2-PE", subscriptFont);
+                        subL2PE.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL2PE);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i PE, ", normalFont));
+
+                        // R L3-PE
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL3PE = new Chunk("L3-PE", subscriptFont);
+                        subL3PE.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL3PE);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i PE, ", normalFont));
+
+                        // R L1-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL1N = new Chunk("L1-N", subscriptFont);
+                        subL1N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL1N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i N, ", normalFont));
+
+                        // R L2-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL2N = new Chunk("L2-N", subscriptFont);
+                        subL2N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL2N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i N, ", normalFont));
+
+                        // R L3-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL3N = new Chunk("L3-N", subscriptFont);
+                        subL3N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL3N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i N, ", normalFont));
+
+                        // R N-PE
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subNPE = new Chunk("N-PE", subscriptFont);
+                        subNPE.setTextRise(-subscriptOffset);
+                        f3Legend.add(subNPE);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
+
+                        // Rw
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subW = new Chunk("w", subscriptFont);
+                        subW.setTextRise(-subscriptOffset);
+                        f3Legend.add(subW);
+                        f3Legend.add(new Chunk(": wartość rezystancji wymagane", normalFont));
+
+                        // Ustawienia końcowe i dodanie do dokumentu
+                        f3Legend.setSpacingAfter(15f);
+                        document.add(f3Legend);
+                    } else {
+                        Paragraph f3Legend = new Paragraph();
+                        f3Legend.setFont(normalFont); // Ustaw domyślną czcionkę
+
+                        // R L1-L2
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL1L2 = new Chunk("L1-L2", subscriptFont);
+                        subL1L2.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL1L2);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i L2, ", normalFont));
+
+                        // R L2-L3
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL2L3 = new Chunk("L2-L3", subscriptFont);
+                        subL2L3.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL2L3);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i L3, ", normalFont));
+
+                        // R L3-L1
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL3L1 = new Chunk("L3-L1", subscriptFont);
+                        subL3L1.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL3L1);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i L1, ", normalFont));
+
+                        // R L1-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL1N = new Chunk("L1-N", subscriptFont);
+                        subL1N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL1N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i N, ", normalFont));
+
+                        // R L2-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL2N = new Chunk("L2-N", subscriptFont);
+                        subL2N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL2N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i N, ", normalFont));
+
+                        // R L3-N
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subL3N = new Chunk("L3-N", subscriptFont);
+                        subL3N.setTextRise(-subscriptOffset);
+                        f3Legend.add(subL3N);
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i N, ", normalFont));
+
+                        // Rw
+                        f3Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subW = new Chunk("W", subscriptFont);
+                        subW.setTextRise(-subscriptOffset);
+                        f3Legend.add(subW);
+                        f3Legend.add(new Chunk(": wartość rezystancji wymagane", normalFont));
+
+                        // Ustawienia końcowe i dodanie do dokumentu
+                        f3Legend.setSpacingAfter(15f);
+                        document.add(f3Legend);
+                    }
+
                 }
 
                 List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
@@ -180,7 +328,61 @@ public class ProtocolGenerator {
 
                     PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1f(circuits, flat.flat);
                     document.add(tableFor1f);
-                    tableFor1f.setSpacingAfter(15f);
+                    tableFor1f.setSpacingAfter(5f);
+
+                    if(flat.flat.type.equals("TN-S")) {
+                        Paragraph f1Legend = new Paragraph();
+                        f1Legend.setFont(normalFont);
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subLPE = new Chunk("L-PE", subscriptFont);
+                        subLPE.setTextRise(-subscriptOffset);
+                        f1Legend.add(subLPE);
+                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i PE, ", normalFont));
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subLN = new Chunk("L-N", subscriptFont);
+                        subLN.setTextRise(-subscriptOffset);
+                        f1Legend.add(subLN);
+                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
+
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subNPE = new Chunk("N-PE", subscriptFont);
+                        subNPE.setTextRise(-subscriptOffset);
+                        f1Legend.add(subNPE);
+                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
+
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subRw = new Chunk("W", subscriptFont);
+                        subRw.setTextRise(-subscriptOffset);
+                        f1Legend.add(subRw);
+                        f1Legend.add(new Chunk(": wartość rezystancji wymagane.", normalFont));
+
+                        f1Legend.setSpacingAfter(15f);
+                        document.add(f1Legend);
+                    } else {
+                        Paragraph f1Legend = new Paragraph();
+                        f1Legend.setFont(normalFont);
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subLN = new Chunk("L-N", subscriptFont);
+                        subLN.setTextRise(-subscriptOffset);
+                        f1Legend.add(subLN);
+                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
+
+
+                        f1Legend.add(new Chunk("R", ProFonts.medium));
+                        Chunk subRw = new Chunk("W", subscriptFont);
+                        subRw.setTextRise(-subscriptOffset);
+                        f1Legend.add(subRw);
+                        f1Legend.add(new Chunk(": wartość rezystancji wymagane.", normalFont));
+
+                        f1Legend.setSpacingAfter(15f);
+                        document.add(f1Legend);
+                    }
+
                 }
 
 
@@ -194,7 +396,7 @@ public class ProtocolGenerator {
 
                     PdfPTable rcdTable = rcdTableGenerator.createRCDTable(flat.flat);
                     document.add(rcdTable);
-                    rcdTable.setSpacingAfter(15f);
+                    rcdTable.setSpacingAfter(5f);
                     rcdIsGood = rcdTableGenerator.getRcdIsGood();
                     if (!rcdTableGenerator.getMistakes().isEmpty()) {
                         rcdMistakes.addAll(rcdTableGenerator.getMistakes());
@@ -202,6 +404,13 @@ public class ProtocolGenerator {
                     if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
                         endNotes += rcdTableGenerator.getRcdNotes() + "\n";
                     }
+
+                    Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
+                            "Ia [mA]: prąd powodujący wyłączenie RCD, " +
+                            "t rcd [ms]: zmierzony czas wyłączenia RCD", ProFonts.mediumNotBold);
+                    rcdLegend.setSpacingAfter(15f);
+                    document.add(rcdLegend);
+
                 }
 
                 if (!circuits.isEmpty()) {
@@ -214,11 +423,18 @@ public class ProtocolGenerator {
 
                     PdfPTable omTable = omTableGenerator.createOmTable(flat.flat);
                     document.add(omTable);
-                    omTable.setSpacingAfter(15f);
+                    omTable.setSpacingAfter(5f);
                     omGrade = omTableGenerator.getGrade();
                     if (!omTableGenerator.getMistakes().isEmpty()) {
                         omMistakes.addAll(omTableGenerator.getMistakes());
                     }
+                    Paragraph omLegend = new Paragraph("Typ: charakterystyka bezpiecznika, In [A]: prąd nominalny bezpiecznika, " +
+                            "Ia [A]: prąd powodujący wyzwolenie bezpiecznika, " +
+                            "Zs [Ω]: zmierzona impedancja pętli zwarciowej, " +
+                            "Za [Ω]: wartość wymagana impedancji pętli zwarciowej: Za = (Uo/Ia)", ProFonts.mediumNotBold);
+                    omLegend.setSpacingAfter(15f);
+                    document.add(omLegend);
+
                 }
                 if (!flat.flat.notes.isEmpty()) {
                     endNotes += flat.flat.circuitNotes;
