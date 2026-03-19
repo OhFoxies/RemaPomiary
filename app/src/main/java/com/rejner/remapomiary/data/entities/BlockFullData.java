@@ -19,7 +19,6 @@ public class BlockFullData {
     )
     public Client client;
 
-    // Getter z zabezpieczeniem przed null
     public Client getClient() {
         if (client == null) {
             Client defaultClient = new Client("-","-","-","Zleceniodawca został usunięty", -1);

@@ -61,8 +61,8 @@ public class BlockActivity extends AppCompatActivity {
         });
 
         LinearLayout flats = findViewById(R.id.flats);
-        LinearLayout commonSpace = findViewById(R.id.commonSpace);
-        LinearLayout lps = findViewById(R.id.lps);
+//        LinearLayout commonSpace = findViewById(R.id.commonSpace);
+//        LinearLayout lps = findViewById(R.id.lps);
 
         flats.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,18 +73,18 @@ public class BlockActivity extends AppCompatActivity {
             }
         });
 
-        commonSpace.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
-
-        lps.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-            }
-        });
+//        commonSpace.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//
+//            }
+//        });
+//
+//        lps.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//            }
+//        });
 
     }
 }

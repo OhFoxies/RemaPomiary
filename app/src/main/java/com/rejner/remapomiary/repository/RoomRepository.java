@@ -21,22 +21,18 @@ public class RoomRepository {
         dao = db.roomDao();
     }
 
-    // Wstawianie pokoju
     public void insert(RoomInFlat room) {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.insert(room));
     }
 
-    // Aktualizacja pokoju
     public void update(RoomInFlat room) {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.update(room));
     }
 
-    // Usuwanie pokoju
     public void delete(RoomInFlat room) {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(room));
     }
 
-    // Pobieranie listy pokoi dla danego mieszkania (LiveData)
     public LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId) {
         return dao.getRoomsForFlat(flatId);
     }
@@ -47,12 +43,10 @@ public class RoomRepository {
         });
     }
 
-    // Pobieranie pełnych danych pokoju
     public LiveData<RoomFullData> getRoomFullData(int roomId) {
         return dao.getRoomFullData(roomId);
     }
 
-    // Alternatywna metoda callback (jeśli ktoś woli niż LiveData)
     public void getRoomFullDataOnce(int roomId, Consumer<RoomFullData> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             RoomFullData data = dao.getRoomFullData(roomId).getValue();

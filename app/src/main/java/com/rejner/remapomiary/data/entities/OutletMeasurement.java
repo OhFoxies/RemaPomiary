@@ -19,19 +19,15 @@ public class OutletMeasurement {
     @PrimaryKey(autoGenerate = true)
     public int id;
 
-    // Powiązanie z pokojem
     @ColumnInfo(name = "roomId", index = true)
     public int roomId;
 
-    // Numer gniazdka lub 0 dla innych urządzeń
     @ColumnInfo(name = "number")
     public int number;
 
-    // Urządzenie: gniazdko, indukcja, pralka, inne
     @ColumnInfo(name = "appliance")
     public String appliance;
 
-    // Nazwa wyłącznika
     @ColumnInfo(name = "switchName")
     public String switchName;
 
@@ -47,7 +43,6 @@ public class OutletMeasurement {
     @ColumnInfo(name = "ohms")
     public Double ohms;
 
-    // Uwagi (brak bolca, urwane, inne)
     @ColumnInfo(name = "note")
     public String note;
 

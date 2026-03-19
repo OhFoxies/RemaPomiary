@@ -29,10 +29,10 @@ public interface RoomDao {
     @Delete
     void delete(RoomInFlat room);
 
-    @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY name ASC")
+    @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY id ASC")
     LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId);
 
-    @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY name ASC")
+    @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY id ASC")
     List<RoomInFlat> getRoomsForFlatSync(int flatId);
 
 

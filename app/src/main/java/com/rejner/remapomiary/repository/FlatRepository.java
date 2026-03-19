@@ -62,7 +62,7 @@ public class FlatRepository {
         return dao.getFlatsFullDataByBlockId(blockId);
     }
     public boolean shouldSetGradeToOneSync(int flatId) {
-        return dao.shouldSetGradeToOneSync(flatId); // DAO zwraca boolean
+        return dao.shouldSetGradeToOneSync(flatId);
     }
     public void getFlatByIdSync(int flatId, Consumer<FlatFullData> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {

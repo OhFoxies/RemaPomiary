@@ -47,9 +47,8 @@ public class RoomActivity extends AppCompatActivity {
     private int flatId;
     private Flat flat;
 
-    // Przeniesiono tablice opcji tutaj, aby można je było łatwo przekazać do adapterów
-    public final String[] roomNames = {"Pokój", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
-    public final String[] applianceOptions = {"Gniazdko", "Lodówka", "Pralka", "Grzejnik", "Inne"};
+    public final String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
+    public final String[] applianceOptions = {"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Inne"};
     public final String[] breakerTypes = {"B", "C", "D", "Gg"};
     public final String[] noteOptions = {"brak uwag", "nie podłączony bolec", "Urwane", "zepsute", "Inne"};
     public final String[] ampsOptions = {"3", "6", "10", "16", "20", "25", "32", "40"};
@@ -65,7 +64,6 @@ public class RoomActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Użyj View Binding
         binding = ActivityRoomBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -84,7 +82,7 @@ public class RoomActivity extends AppCompatActivity {
         setupAddRoomUi();
         setupRecyclerView();
         observeRooms();
-        observeAllMeasurements(); // Do obliczania wartości domyślnych
+        observeAllMeasurements();
     }
 
     private void setupUIElements() {
@@ -214,12 +212,10 @@ public class RoomActivity extends AppCompatActivity {
                 outletViewModel,
                 this, // LifecycleOwner
                 this, // Context
-                // Przekazanie opcji do adapterów
                 applianceOptions,
                 breakerTypes,
                 noteOptions,
                 ampsOptions,
-                // Przekazanie listenerów
                 this::onDeleteRoomClicked,
                 this::onAddMeasurementClicked,
                 catalogId
@@ -230,10 +226,9 @@ public class RoomActivity extends AppCompatActivity {
 
     private void observeRooms() {
         roomViewModel.getRoomsForFlat(flatId).observe(this, rooms -> {
-            roomMeasurementsMap.clear(); // Wyczyść mapę przy aktualizacji listy pokoi
+            roomMeasurementsMap.clear();
             if (rooms != null) {
                 roomAdapter.submitList(rooms);
-                // Dla każdego pokoju obserwuj jego pomiary (do obliczeń domyślnych)
                 for (RoomInFlat room : rooms) {
                     observeMeasurementsForRoom(room.id);
                 }
@@ -243,7 +238,6 @@ public class RoomActivity extends AppCompatActivity {
         });
     }
 
-    // Obserwuje pomiary TYLKO na potrzeby obliczania wartości domyślnych
     private void observeMeasurementsForRoom(int roomId) {
         outletViewModel.getMeasurementsForRoom(roomId).observe(this, measurements -> {
             roomMeasurementsMap.put(roomId, measurements != null ? new ArrayList<>(measurements) : new ArrayList<>());
@@ -251,7 +245,6 @@ public class RoomActivity extends AppCompatActivity {
         });
     }
 
-    // Ta metoda jest teraz wywoływana z adaptera, ale zachowuje logikę domyślnych
     private void onAddMeasurementClicked(int roomId) {
         OutletMeasurement newOm = new OutletMeasurement();
         newOm.roomId = roomId;
@@ -276,12 +269,10 @@ public class RoomActivity extends AppCompatActivity {
         }
 
         outletViewModel.insert(newOm, lastId -> {
-            // Przekaż ID do adaptera, aby mógł ustawić fokus
             roomAdapter.setNewlyAddedMeasurementId(lastId);
         });
     }
 
-    // Wywoływane z adaptera
     private void onDeleteRoomClicked(RoomInFlat room) {
         new AlertDialog.Builder(this)
                 .setTitle("Usuń pokój")
@@ -291,13 +282,9 @@ public class RoomActivity extends AppCompatActivity {
                 .show();
     }
 
-    // --- Logika wartości domyślnych (pozostaje w Activity) ---
 
-    // Ta obserwacja jest potrzebna tylko do wyzwalania `recomputeGlobalDefaults`
-    // Alternatywnie, `observeRooms` może to robić
     private void observeAllMeasurements() {
-        // To jest uproszczenie. W idealnym świecie ViewModel agregowałby te dane.
-        // Na razie będziemy polegać na `observeMeasurementsForRoom` wywoływanym z `observeRooms`.
+
     }
 
     private void recomputeGlobalDefaults() {
@@ -358,8 +345,6 @@ public class RoomActivity extends AppCompatActivity {
         return best;
     }
 
-    // --- Metody pomocnicze (publiczne, by adaptery miały dostęp) ---
-
     public void showKeyboard(View view) {
         view.post(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
@@ -377,7 +362,6 @@ public class RoomActivity extends AppCompatActivity {
         }
     }
 
-    // --- OhmsTextWatcher (bez zmian, zgodnie z prośbą) ---
     public static class OhmsTextWatcher implements TextWatcher {
         private final EditText editText;
         private String current = "";

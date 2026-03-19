@@ -24,6 +24,6 @@ public interface ClientDao {
     @Delete
     void delete(Client client);
 
-    @Query("UPDATE clients SET street = :street, city = :city, postal_code = :postalCode, name=:name WHERE catalogId = :catalogId")
-    void update(String street, String city, String postalCode, String name, int catalogId);
+    @Query("UPDATE clients SET street = :street, city = :city, postal_code = :postalCode, name=:name WHERE id = :clientId")
+    void update(String street, String city, String postalCode, String name, int clientId);
 }

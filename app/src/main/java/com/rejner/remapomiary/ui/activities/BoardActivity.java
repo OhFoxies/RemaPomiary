@@ -62,13 +62,10 @@ public class BoardActivity extends AppCompatActivity {
     };
     private final String[] phases = {"L1", "L2", "L3", "3f"};
 
-    // --- NOWE: pola dla uwag ---
     private EditText circuitNotesEditText;
     private Button saveNotesButton;
-    private LinearLayout notesContainer; // kontener z EditText + przyciskiem
-    // ---------------------------
+    private LinearLayout notesContainer;
 
-    // --- NOWE: pola dla wyboru typu instalacji ---
     private LinearLayout installationTypeContainer;
     private RadioGroup installationRadioGroup;
     private RadioButton tnSRadio;
@@ -79,9 +76,8 @@ public class BoardActivity extends AppCompatActivity {
     private boolean firstLoad = true;
 
     private boolean isSettingInstallation = false;
-    // ---------------------------------------------
 
-    // --- OPTIMIZACJE: cache i ponowne użycie ---
+
     private ArrayAdapter<String> nameAdapter;
     private ArrayAdapter<String> phaseAdapter;
     private Set<String> nameSet;
@@ -97,7 +93,6 @@ public class BoardActivity extends AppCompatActivity {
     private android.graphics.drawable.Drawable inputDrawable;
     private InputMethodManager imm;
     private int catalogId;
-    // -------------------------------------------
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -106,7 +101,6 @@ public class BoardActivity extends AppCompatActivity {
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
 
-        // CACHE: dp i wartości paddingów/marginów/zasobów
         dp = getResources().getDisplayMetrics().density;
         smallPad = (int) (8 * dp);
         mediumPad = (int) (16 * dp);
@@ -121,27 +115,20 @@ public class BoardActivity extends AppCompatActivity {
 
         imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-        // Przygotuj ponownie używane adaptery i set zawierający nazwy
         nameAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, circuitNames);
         nameAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-//        phaseAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, phases);
-//        phaseAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         nameSet = new HashSet<>(Arrays.asList(circuitNames));
 
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
-        // Pobierz flat (asynchronicznie) i przypisz do pola
         flatViewModel.getFlatByIdSync(flatId, flat1 -> {
             flat = flat1.flat;
             runOnUiThread(() -> {
                 setupUIElements();
-                prepareInstallationTypeViews(); // przygotuj widok typ instalacji
-                // jeśli notes zostały dodane wcześniej do layoutu, zaktualizuj ich tekst
+                prepareInstallationTypeViews();
                 if (circuitNotesEditText != null && flat != null) {
                     circuitNotesEditText.setText(flat.circuitNotes != null ? flat.circuitNotes : "");
                 }
-                // ustawienie wyboru instalacji na podstawie obiektu flat (jeśli istnieje)
                 if (installationRadioGroup != null && flat != null) {
                     isSettingInstallation = true;
                     if (flat.type != null && flat.type.equals("TN-C")) {
@@ -169,16 +156,13 @@ public class BoardActivity extends AppCompatActivity {
         setupSectionTitle();
         setupTableHeader();
         setupAddButton();
-        // przygotuj widoki uwag (kontener, EditText, przyciskiem) — nie dodajemy ich jeszcze do boardLayout,
-        // bo najpierw chcemy, żeby przy obserwacji listy obwodów były dodane zawsze po addCircuitButton.
+
         prepareNotesViews();
 
-        // Upewnij się, że widok wyboru instalacji został przygotowany także jeśli flat załaduje się później
         if (installationTypeContainer == null) prepareInstallationTypeViews();
         circuitViewModel.getCircuitsForFlat(flatId).observe(this, circuits -> {
             isInitializing = true;
 
-            // ZAMIANA: usuwamy wszystkie podwidoki i tworzymy je na nowo (jak było), ale tylko raz per zmiana listy.
             boardLayout.removeAllViews();
             boardLayout.addView(sectionTitle);
 
@@ -201,7 +185,6 @@ public class BoardActivity extends AppCompatActivity {
 
             isInitializing = false;
 
-            // 🟢 tylko przy pierwszym załadowaniu przewiń na górę
             if (firstLoad) {
                 boardLayout.post(() -> {
                     ScrollView scrollView = findScrollView(boardLayout);
@@ -370,7 +353,6 @@ public class BoardActivity extends AppCompatActivity {
     }
 
     private void addCircuitView(Circuit circuit, int number) {
-        // Tworzymy wiersz
         LinearLayout circuitRow = new LinearLayout(this);
         circuitRow.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -383,21 +365,17 @@ public class BoardActivity extends AppCompatActivity {
         circuitRow.setBackground(rowBackgroundDrawable);
         circuitRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        // Numer
         TextView numberView = new TextView(this);
         numberView.setText(String.valueOf(number));
         numberView.setGravity(Gravity.CENTER);
         numberView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.5f));
 
-        // Nazwa container
         LinearLayout nameContainer = new LinearLayout(this);
         nameContainer.setOrientation(LinearLayout.HORIZONTAL);
         nameContainer.setGravity(Gravity.CENTER_VERTICAL);
         nameContainer.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f));
 
-//        TUTAJ
         Spinner nameSpinner = new Spinner(this);
-        // używamy wcześniej przygotowanego adaptera
         nameSpinner.setAdapter(nameAdapter);
 
         EditText customName = new EditText(this);
@@ -417,7 +395,6 @@ public class BoardActivity extends AppCompatActivity {
         ));
         saveButton.setVisibility(View.GONE);
 
-        // Wybór domyślny / customName
         int selectedIndex = 0;
         for (int i = 0; i < circuitNames.length; i++) {
             if (circuitNames[i].equals(circuit.name)) {
@@ -455,21 +432,16 @@ public class BoardActivity extends AppCompatActivity {
         RadioButton f1;
 
         phaseGroup = new RadioGroup(this);
-        // 1. Ustawienie orientacji poziomej
         phaseGroup.setOrientation(LinearLayout.HORIZONTAL);
 
-        // 2. Ustawienie parametrów layoutu dla RadioGroup
         LinearLayout.LayoutParams phaseParams = new LinearLayout.LayoutParams(
-                0, // 0dp szerokości przy użyciu wagi
+                0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f // waga 1f
+                1f
         );
 
-        // === ZMIANA 1: WIĘKSZY MARGINES Z LEWEJ ===
-        // Ustawiamy margines 16dp po lewej stronie całej grupy
         int leftMarginPx = (int) (16 * getResources().getDisplayMetrics().density); // 16dp
         phaseParams.setMargins(leftMarginPx, 0, 0, 0);
-        // === KONIEC ZMIANY 1 ===
 
         phaseGroup.setLayoutParams(phaseParams);
         phaseGroup.setGravity(Gravity.CENTER_VERTICAL);
@@ -479,36 +451,27 @@ public class BoardActivity extends AppCompatActivity {
 
         f1.setText("1f");
         f1.setId(View.generateViewId());
-        // 3. Zwiększenie czcionki
         f1.setTextSize(18f);
 
-        // 4. Ustawienie wagi, aby przyciski równo się rozłożyły
         LinearLayout.LayoutParams radioParams = new LinearLayout.LayoutParams(
-                0, // 0dp szerokości
+                0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f // waga 1
+                1f
         );
         f1.setLayoutParams(radioParams);
 
-        // === ZMIANA 2: TEKST PRZYKLEJONY DO KÓŁKA ===
-        // Zmiana z Gravity.CENTER na START | CENTER_VERTICAL
-        // Wyrównuje do lewej (tekst przy kółku) i centruje w pionie
+
         f1.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        // === KONIEC ZMIANY 2 ===
 
 
         f3 = new RadioButton(this);
         f3.setText("3f");
         f3.setId(View.generateViewId());
-        // 3. Zwiększenie czcionki
         f3.setTextSize(18f);
 
-        // 4. Użycie tych samych parametrów wagi co dla f1
         f3.setLayoutParams(radioParams);
 
-        // === ZMIANA 2: TEKST PRZYKLEJONY DO KÓŁKA ===
         f3.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        // === KONIEC ZMIANY 2 ===
 
 
         phaseGroup.addView(f1);
@@ -537,7 +500,6 @@ public class BoardActivity extends AppCompatActivity {
         deleteButton.setBackgroundTintList(redTint);
         deleteButton.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.7f));
 
-        // Listener dla spinnera nazw
         nameSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
@@ -641,7 +603,6 @@ public class BoardActivity extends AppCompatActivity {
         boardLayout.addView(circuitRow);
     }
 
-    // --- NOWE METODY I PRZYGOTOWANIE WIDOKÓW UWAG ---
 
     private void prepareNotesViews() {
         if (notesContainer == null) {
@@ -658,7 +619,6 @@ public class BoardActivity extends AppCompatActivity {
             notesContainer.setBackground(rowBackgroundDrawable);
         }
 
-        // 🔹 Nagłówek
         TextView notesTitle = new TextView(this);
         notesTitle.setText("Uwagi do rozdzielni");
         notesTitle.setTextSize(22f);
@@ -667,7 +627,6 @@ public class BoardActivity extends AppCompatActivity {
         notesTitle.setTextColor(ContextCompat.getColor(this, android.R.color.black));
         notesTitle.setGravity(Gravity.START);
 
-        // 🔹 Pole tekstowe
         circuitNotesEditText = new EditText(this);
         if (catalogId != -1) {
             circuitNotesEditText.setEnabled(false);
@@ -687,12 +646,10 @@ public class BoardActivity extends AppCompatActivity {
         );
         circuitNotesEditText.setLayoutParams(etParams);
 
-        // 🔹 Usuwamy underline i dajemy ramkę
         circuitNotesEditText.setBackground(inputDrawable);
         circuitNotesEditText.setPadding((int)(20*dp), (int)(16*dp), (int)(20*dp), (int)(16*dp));
         circuitNotesEditText.setText(flat != null && flat.circuitNotes != null ? flat.circuitNotes : "");
 
-        // 🔹 Przycisk Zapisz
         saveNotesButton = new Button(this);
         saveNotesButton.setText("✔ Zapisz");
         if (catalogId != -1) {
@@ -710,7 +667,6 @@ public class BoardActivity extends AppCompatActivity {
         saveNotesButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
         saveNotesButton.setBackgroundTintList(blueTint);
 
-        // Obsługa fokusa i zapisu
         circuitNotesEditText.setOnFocusChangeListener((v, hasFocus) ->
                 saveNotesButton.setVisibility(hasFocus ? View.VISIBLE : View.GONE)
         );
@@ -806,7 +762,6 @@ public class BoardActivity extends AppCompatActivity {
         installationRadioGroup.addView(tnSRadio);
         installationRadioGroup.addView(tnCRadio);
 
-        // Domyślnie TN-S
         installationRadioGroup.check(tnSRadio.getId());
 
         installationRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -831,7 +786,6 @@ public class BoardActivity extends AppCompatActivity {
         if (flat != null && circuitNotesEditText != null) {
             circuitNotesEditText.setText(flat.circuitNotes != null ? flat.circuitNotes : "");
         }
-        // Usuń istniejący notesContainer (jeśli był dodany wcześniej), żeby nie duplikować
         int childCount = boardLayout.getChildCount();
         for (int i = 0; i < childCount; i++) {
             View child = boardLayout.getChildAt(i);
@@ -842,5 +796,4 @@ public class BoardActivity extends AppCompatActivity {
         }
         boardLayout.addView(notesContainer);
     }
-    // --- KONIEC NOWYCH METOD ---
 }

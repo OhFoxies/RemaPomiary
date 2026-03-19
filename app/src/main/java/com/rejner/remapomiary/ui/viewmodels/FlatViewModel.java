@@ -84,7 +84,6 @@ public class FlatViewModel extends AndroidViewModel {
             Flat flat = flatMediator.getValue();
             if (flat == null) return;
 
-            // ✅ tylko jeśli użytkownik NIE zablokował (czyli gradeByUser == 0)
             if (flat.gradeByUser == 0) {
                 int newGrade = verdict ? 1 : 0;
                 if (flat.grade != newGrade) {

@@ -2,9 +2,13 @@ package com.rejner.remapomiary.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -13,13 +17,20 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.google.android.flexbox.FlexboxLayout;
 import com.rejner.remapomiary.R;
@@ -31,6 +42,7 @@ import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
@@ -55,11 +67,14 @@ public class FlatsActivity extends AppCompatActivity {
     private Button flatAddButton, flatCancelButton;
     private FlexboxLayout flatsContainer;
     private TextView noFlatsText;
+    private ScrollView scrollView;
+
     private BlockViewModel blockViewModel;
     private CircuitViewModel circuitViewModel;
     private RCDViewModel rcdViewModel;
     private OutletMeasurementViewModel outletMeasurementViewModel;
     private RoomViewModel roomViewModel;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
 
     private int blockId;
     private List<Flat> currentFlats;
@@ -74,6 +89,8 @@ public class FlatsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_flats);
+        scrollView = findViewById(R.id.mainScroll);
+
         blockId = getIntent().getIntExtra("blockId", -1);
         catalogViewModel = new ViewModelProvider(FlatsActivity.this).get(CatalogViewModel.class);
         templateViewModel = new ViewModelProvider(FlatsActivity.this).get(TemplateViewModel.class);
@@ -98,7 +115,6 @@ public class FlatsActivity extends AppCompatActivity {
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
 
-
         inputFlatNumber = findViewById(R.id.inputFlatNumber);
         templatesSpinner = findViewById(R.id.templatesSpinner);
         sortBySpinner = findViewById(R.id.sortBySpinner);
@@ -121,6 +137,7 @@ public class FlatsActivity extends AppCompatActivity {
             inputFlatNumber.clearFocus();
 
         });
+
         Button backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -135,6 +152,7 @@ public class FlatsActivity extends AppCompatActivity {
             currentFlats = flats;
             updateFlatsDisplay();
         });
+
     }
     public void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -253,7 +271,6 @@ public class FlatsActivity extends AppCompatActivity {
                                 });
                             }
 
-                            // UI updates (Toast, hideKeyboard, clearFocus) must be on the main thread:
                             Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
                             inputFlatNumber.setText("");
                             hideKeyboard();
@@ -282,14 +299,20 @@ public class FlatsActivity extends AppCompatActivity {
         });
     }
     private void setupSortSpinner() {
-        String[] sortOptions = {"Numer mieszkania", "Data utworzenia", "Data edycji", "Status", "Uwagi na początku"};
+        String[] sortOptions = {"Numer mieszkania", "Data utworzenia \\/", "Data utworzenia /\\", "Data edycji", "Status", "Uwagi na początku"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, sortOptions);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sortBySpinner.setAdapter(adapter);
-
+        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+        int savedPosition = prefs.getInt("sort_option", 0);
+        sortBySpinner.setSelection(savedPosition);
         sortBySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putInt("sort_option", position);
+                editor.apply();
                 updateFlatsDisplay();
             }
 
@@ -298,6 +321,67 @@ public class FlatsActivity extends AppCompatActivity {
         });
     }
 
+    private void createProtocols(int blockId, int catalogId, int flatId, int protocolNumber) {
+        new AlertDialog.Builder(this)
+                .setTitle("Potwierdzenie")
+                .setMessage("Czy na pewno chcesz rozpocząć tworzenie protokołów? To trochę potrwa...")
+                .setPositiveButton("Tak", (dialog, which) -> {
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                                != PackageManager.PERMISSION_GRANTED) {
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                    REQUEST_NOTIFICATION_PERMISSION);
+                            return;
+                        }
+                    }
+
+                    startProtocolWorker(blockId, catalogId, flatId, protocolNumber);
+
+                })
+                .setNegativeButton("Nie", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void startProtocolWorker(int blockId, int catalogId, int flatId, int protocolNumber) {
+        Data inputData = new Data.Builder()
+                .putInt("blockId", blockId)
+                .putInt("catalogId", catalogId)
+                .putInt("flatId", flatId)
+                .putInt("protocolNumber", protocolNumber)
+                .build();
+
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ProtocolWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(getApplicationContext()).enqueue(request);
+
+        Toast.makeText(this, "🔄 Generowanie protokołów rozpoczęte w tle.", Toast.LENGTH_LONG).show();
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "✅ Uprawnienie do powiadomień przyznane. Rozpocznij generowanie jeszcze raz.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "❌ Brak uprawnienia do powiadomień", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+    @Override
+    protected void onPause() {
+        super.onPause();
+        int scrollY = scrollView.getScrollY();
+
+        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+        prefs.edit().putInt("scroll_y", scrollY).apply();
+    }
     private void updateFlatsDisplay() {
         if (currentFlats == null) return;
 
@@ -325,20 +409,21 @@ public class FlatsActivity extends AppCompatActivity {
                     return 0;
                 }
             }));
-        } else if (selectedSort.equals("Data utworzenia")) {
+        } else if (selectedSort.equals("Data utworzenia \\/")) {
             Collections.sort(currentFlats, (f1, f2) -> f2.creation_date.compareTo(f1.creation_date));
-        } else if (selectedSort.equals("Data edycji")) {
+        } else if (selectedSort.equals("Data utworzenia /\\")) {
+            Collections.sort(currentFlats, (f1, f2) -> f1.creation_date.compareTo(f2.creation_date));
+        }
+        else if (selectedSort.equals("Data edycji")) {
             Collections.sort(currentFlats, (f1, f2) -> f2.edition_date.compareTo(f1.edition_date));
         } else if (selectedSort.equals("Status")) {
-            // "Pomiar gotowy" na górze, "Pomiar niewykonany" na dole
             Collections.sort(currentFlats, (f1, f2) -> {
                 boolean done1 = f1.status.contains("gotowy");
                 boolean done2 = f2.status.contains("gotowy");
-                return Boolean.compare(done1, done2); // true = 1, false = 0, więc "gotowy" na górze
+                return Boolean.compare(done1, done2);
             });
         } else if(selectedSort.equals("Uwagi na początku")) {
             Collections.sort(currentFlats, (f1, f2) -> {
-                // 1️⃣ Priorytet: notes lub circuitNotes niepuste
                 boolean f1HasNotes = (f1.notes != null && !f1.notes.trim().isEmpty()) ||
                         (f1.circuitNotes != null && !f1.circuitNotes.trim().isEmpty());
                 boolean f2HasNotes = (f2.notes != null && !f2.notes.trim().isEmpty()) ||
@@ -347,13 +432,12 @@ public class FlatsActivity extends AppCompatActivity {
                 if (f1HasNotes && !f2HasNotes) return -1; // f1 przed f2
                 if (!f1HasNotes && f2HasNotes) return 1;  // f2 przed f1
 
-                // 2️⃣ Sortowanie po numerze mieszkania
                 try {
                     int num1 = Integer.parseInt(f1.number.replaceAll("\\s+", ""));
                     int num2 = Integer.parseInt(f2.number.replaceAll("\\s+", ""));
                     return Integer.compare(num1, num2);
                 } catch (NumberFormatException e) {
-                    return f1.number.compareToIgnoreCase(f2.number); // fallback dla np. "10A"
+                    return f1.number.compareToIgnoreCase(f2.number);
                 }
             });
         }
@@ -361,6 +445,16 @@ public class FlatsActivity extends AppCompatActivity {
         for (Flat flat : currentFlats) {
             addFlatItemToFlex(flat);
         }
+        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+
+        int scrollY = prefs.getInt("scroll_y", 0);
+
+        if (scrollView != null) {
+            scrollView.post(() -> scrollView.scrollTo(0, scrollY));
+        } else {
+            Log.e("FlatsActivity", "ScrollView is null! Check if R.id.mainScroll exists in activity_flats.xml");
+        }
+
     }
 
     private void addFlatItemToFlex(Flat flat) {
@@ -375,6 +469,8 @@ public class FlatsActivity extends AppCompatActivity {
         Button markButton = itemView.findViewById(R.id.flatMark);
         Button deleteButton = itemView.findViewById(R.id.blockDelete);
         Button editButton = itemView.findViewById(R.id.blockEdit);
+        Button createProtocolButton = itemView.findViewById(R.id.generateProtocol);
+        EditText protocolNumber = itemView.findViewById(R.id.inputProtocolNumber);
         LinearLayout flatMain = itemView.findViewById(R.id.flatMain);
 
         title.setText("Mieszkanie nr " + flat.number);
@@ -480,6 +576,17 @@ public class FlatsActivity extends AppCompatActivity {
             }
         });
 
+        createProtocolButton.setOnClickListener(v ->{
+            int protocolNumberNum;
+            if (protocolNumber.getText().toString().isEmpty()) {
+                protocolNumberNum = -1;
+            } else {
+                protocolNumberNum = Integer.parseInt(protocolNumber.getText().toString());
+                Log.d("test", String.valueOf(protocolNumberNum));
+            }
+
+            createProtocols(blockId, block.catalog.id, flat.id, protocolNumberNum);
+        });
         deleteButton.setOnClickListener(v -> {
             boolean isEditing = titleEdit.getVisibility() == View.VISIBLE;
 

@@ -167,6 +167,31 @@
         </LinearLayout>
 
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:id="@+id/itemFlatProtocols"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+        <EditText
+            android:id="@+id/inputProtocolNumber"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:ems="10"
+            android:inputType="number"
+            android:hint="Numer protokołu" />
+        <Button
+            android:id="@+id/generateProtocol"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="0dp"
+            android:backgroundTint="#03A9F4"
+            android:text="Utwórz protokół"
+            />
 
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -27,7 +27,7 @@ import java.util.Locale;
 
 public class MeasurementAdapter extends ListAdapter<OutletMeasurement, MeasurementAdapter.MeasurementViewHolder> {
 
-    private final RoomActivity activity; // Do zarządzania klawiaturą
+    private final RoomActivity activity;
     private final OutletMeasurementViewModel outletViewModel;
     private final String[] applianceOptions, breakerTypes, noteOptions, ampsOptions;
     private final int catalogId;
@@ -48,9 +48,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     public void setFocusToMeasurementId(long id) {
         this.focusToMeasurementId = id;
-        // Powiadom adapter, aby ponownie związał wiersze (choć submitList powinien to załatwić)
-        // To jest trudniejsze; ViewHolder musi to sprawdzić podczas bindowania.
-        notifyDataSetChanged(); // Nieidealne, ale proste
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -75,12 +73,10 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             super(binding.getRoot());
             this.binding = binding;
 
-            // Dołącz Watcher do OhmsEdit
             binding.ohmsEdit.addTextChangedListener(new RoomActivity.OhmsTextWatcher(binding.ohmsEdit));
         }
 
         void bind(OutletMeasurement om) {
-            // Zresetuj listenery, aby uniknąć wywołań zwrotnych podczas bindowania
             binding.applianceSpinner.setOnItemSelectedListener(null);
             binding.breakerSpinner.setOnItemSelectedListener(null);
             binding.ampsSpinner.setOnItemSelectedListener(null);
@@ -89,13 +85,11 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 binding.noteSpinner.setEnabled(false);
                 binding.ohmsEdit.setEnabled(false);
             }
-            // --- Ustawienie adapterów dla Spinnerów ---
             setupSpinner(binding.applianceSpinner, applianceOptions);
             setupSpinner(binding.breakerSpinner, breakerTypes);
             setupSpinner(binding.ampsSpinner, ampsOptions);
             setupSpinner(binding.noteSpinner, noteOptions);
 
-            // --- Ustawienie wartości początkowych ---
             isProgrammaticSelection = true;
             setupApplianceField(om);
             setupNoteField(om);
@@ -108,7 +102,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             isProgrammaticSelection = false;
 
-            // --- Ustawienie Listenerów ---
             setupApplianceListeners(om);
             setupSwitchListeners(om);
             setupBreakerListener(om);
@@ -117,12 +110,11 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             setupNoteListeners(om);
             setupDeleteListener(om);
 
-            // --- Logika Fokusu dla nowego elementu ---
             if (focusToMeasurementId != -1 && om.id == focusToMeasurementId) {
                 binding.ohmsEdit.requestFocus();
                 binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
                 activity.showKeyboard(binding.ohmsEdit);
-                focusToMeasurementId = -1; // Resetuj ID
+                focusToMeasurementId = -1;
             }
         }
 
@@ -158,7 +150,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             return true;
         }
 
-        // --- Logika pól "Inne" (Appliance i Note) ---
 
         private void setupApplianceField(OutletMeasurement om) {
             if (isCustomValue(applianceOptions, om.appliance)) {
@@ -188,7 +179,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             }
         }
 
-        // --- Listenery ---
 
         private void setupApplianceListeners(OutletMeasurement om) {
             binding.applianceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -221,7 +211,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 outletViewModel.update(om, null);
                 activity.hideKeyboard();
                 binding.customApplianceEdit.clearFocus();
-                if (txt.isEmpty()) setupApplianceField(om); // Wróć do spinnera
+                if (txt.isEmpty()) setupApplianceField(om);
             });
 
             binding.customApplianceClearBtn.setOnClickListener(v -> {
@@ -230,7 +220,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 outletViewModel.update(om, null);
                 activity.hideKeyboard();
                 binding.customApplianceEdit.clearFocus();
-                setupApplianceField(om); // Wróć do spinnera
+                setupApplianceField(om);
             });
         }
 
@@ -251,7 +241,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 String newSwitch = binding.switchEdit.getText().toString().trim();
                 if (!newSwitch.equals(om.switchName)) {
                     om.switchName = newSwitch;
-                    outletViewModel.update(om, null); // Logika `lastDefaultSwitchName` jest w Activity
+                    outletViewModel.update(om, null);
                 }
                 activity.hideKeyboard();
                 binding.switchEdit.clearFocus();
@@ -299,10 +289,9 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.ohmsEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.ohmsSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-                // Logika rozszerzania pola
                 toggleFieldExpansion(binding.ohmsContainer, binding.noteSpinner, hasFocus, 1f, 2f);
                 if (hasFocus) binding.customNoteContainer.setVisibility(View.GONE);
-                else setupNoteField(om); // Przywróć właściwy widok notatek
+                else setupNoteField(om);
             });
 
             binding.ohmsSaveBtn.setOnClickListener(v -> {
@@ -356,7 +345,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 outletViewModel.update(om, null);
                 activity.hideKeyboard();
                 binding.customNoteEdit.clearFocus();
-                if (txt.isEmpty()) setupNoteField(om); // Wróć do spinnera
+                if (txt.isEmpty()) setupNoteField(om);
             });
 
             binding.customNoteClearBtn.setOnClickListener(v -> {
@@ -365,7 +354,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 outletViewModel.update(om, null);
                 activity.hideKeyboard();
                 binding.customNoteEdit.clearFocus();
-                setupNoteField(om); // Wróć do spinnera
+                setupNoteField(om);
             });
         }
 
@@ -373,7 +362,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             binding.deleteBtn.setOnClickListener(v -> outletViewModel.delete(om, null));
         }
 
-        // Pomocnik do rozszerzania pól (jak w oryginale)
         private void toggleFieldExpansion(View fieldToExpand, View fieldToHide, boolean expand,
                                           float originalWeight, float hiddenWeight) {
             fieldToHide.setVisibility(expand ? View.GONE : View.VISIBLE);
@@ -383,7 +371,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         }
     }
 
-    // DiffUtil Callback
     private static final DiffUtil.ItemCallback<OutletMeasurement> DIFF_CALLBACK =
             new DiffUtil.ItemCallback<OutletMeasurement>() {
                 @Override
@@ -393,7 +380,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
                 @Override
                 public boolean areContentsTheSame(@NonNull OutletMeasurement oldItem, @NonNull OutletMeasurement newItem) {
-                    // Sprawdź wszystkie pola, które mogą się zmienić
                     return oldItem.equals(newItem);
                 }
             };

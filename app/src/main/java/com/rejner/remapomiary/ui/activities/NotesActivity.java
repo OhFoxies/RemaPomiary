@@ -113,7 +113,6 @@ public class NotesActivity extends AppCompatActivity {
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
 
-        // Main observer - single source of truth for UI updates
         flatViewModel.getCombinedFlat(flatId).observe(this, flat -> {
             if (flat != null) {
                 currentFlat = flat;
@@ -148,7 +147,7 @@ public class NotesActivity extends AppCompatActivity {
         blockGrade.setOnClickListener(v -> {
             if (currentFlat == null) return;
 
-            flatViewModel.toggleGradeBlock(currentFlat.id); // Załóżmy, że Flat ma metodę getId()
+            flatViewModel.toggleGradeBlock(currentFlat.id);
 
         });
 
@@ -194,20 +193,15 @@ public class NotesActivity extends AppCompatActivity {
                 templateFlat.number = "MIESZKANIE SZABLONOWE";
                 templateFlat.blockId = currentFlat.blockId;
                 flatViewModel.insertWithId(templateFlat, id -> {
-                    // This callback runs on a background thread (where the DB operation finished).
 
-                    // 1. **Perform non-UI/non-LiveData operations on the background thread:**
                     Template template = new Template();
                     template.creationDate = new Date();
                     template.flatId = Math.toIntExact(id);
                     template.name = name;
                     templateViewModel.insert(template);
 
-                    // 2. **Switch to the Main Thread for LiveData observation and UI updates:**
                     NotesActivity.this.runOnUiThread(() -> {
-                        // Now we are on the Main Thread.
 
-                        // Observe Circuits
                         LiveDataUtil.observeOnce(circuitViewModel.getCircuitsForFlat(currentFlat.id), NotesActivity.this, circuits -> {
                             for (Circuit c : circuits) {
                                 Circuit newCircuit = new Circuit();
@@ -218,7 +212,6 @@ public class NotesActivity extends AppCompatActivity {
                             }
                         });
 
-                        // Observe RCDs
                         if (templateFlat.hasRCD == 1) {
                             LiveDataUtil.observeOnce(rcdViewModel.getRcdsForFlat(currentFlat.id), NotesActivity.this, rcds -> {
                                 for (RCD r : rcds) {
@@ -231,7 +224,6 @@ public class NotesActivity extends AppCompatActivity {
                             });
                         }
 
-                        // Observe Rooms and Outlet Measurements
                         LiveDataUtil.observeOnce(roomViewModel.getRoomsForFlat(currentFlat.id), NotesActivity.this, roomInFlats -> {
                             for (RoomInFlat r : roomInFlats) {
                                 RoomInFlat room = new RoomInFlat();
@@ -258,7 +250,6 @@ public class NotesActivity extends AppCompatActivity {
                                 });
                             }
 
-                            // UI updates (Toast, hideKeyboard, clearFocus) must be on the main thread:
                             Toast.makeText(NotesActivity.this, "Szablon został zapisany", Toast.LENGTH_SHORT).show();
                             templateName.setText("");
                             hideKeyboard();

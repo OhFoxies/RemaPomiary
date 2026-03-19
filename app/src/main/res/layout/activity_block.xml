@@ -58,7 +58,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_margin="8dp"
-                app:layout_flexBasisPercent="30%"
+                app:layout_flexBasisPercent="100%"
                 app:layout_flexGrow="1"
                 android:background="@drawable/round_corners"
                 android:orientation="vertical"
@@ -82,63 +82,63 @@
                     android:textSize="16sp" />
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/commonSpace"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_margin="8dp"
-                app:layout_flexBasisPercent="30%"
-                app:layout_flexGrow="1"
-                android:background="@drawable/round_corners"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:minHeight="200dp">
+<!--            <LinearLayout-->
+<!--                android:id="@+id/commonSpace"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_margin="8dp"-->
+<!--                app:layout_flexBasisPercent="30%"-->
+<!--                app:layout_flexGrow="1"-->
+<!--                android:background="@drawable/round_corners"-->
+<!--                android:orientation="vertical"-->
+<!--                android:padding="16dp"-->
+<!--                android:minHeight="200dp">-->
 
-                <TextView
-                    android:id="@+id/CommonSpaceTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Część wspólna"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="8dp" />
+<!--                <TextView-->
+<!--                    android:id="@+id/CommonSpaceTitle"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="Część wspólna"-->
+<!--                    android:textSize="24sp"-->
+<!--                    android:textStyle="bold"-->
+<!--                    android:paddingBottom="8dp" />-->
 
-                <TextView
-                    android:id="@+id/commonSpaceDesc"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tutaj znajdują się pomiary części wspólnej - korytarze, piwnica, garaże"
-                    android:textSize="16sp" />
-            </LinearLayout>
+<!--                <TextView-->
+<!--                    android:id="@+id/commonSpaceDesc"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="Tutaj znajdują się pomiary części wspólnej - korytarze, piwnica, garaże"-->
+<!--                    android:textSize="16sp" />-->
+<!--            </LinearLayout>-->
 
-            <LinearLayout
-                android:id="@+id/lps"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_margin="8dp"
-                app:layout_flexBasisPercent="30%"
-                app:layout_flexGrow="1"
-                android:background="@drawable/round_corners"
-                android:orientation="vertical"
-                android:padding="16dp"
-                android:minHeight="200dp">
+<!--            <LinearLayout-->
+<!--                android:id="@+id/lps"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_margin="8dp"-->
+<!--                app:layout_flexBasisPercent="30%"-->
+<!--                app:layout_flexGrow="1"-->
+<!--                android:background="@drawable/round_corners"-->
+<!--                android:orientation="vertical"-->
+<!--                android:padding="16dp"-->
+<!--                android:minHeight="200dp">-->
 
-                <TextView
-                    android:id="@+id/lpsTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Odgromy"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="8dp" />
+<!--                <TextView-->
+<!--                    android:id="@+id/lpsTitle"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="Odgromy"-->
+<!--                    android:textSize="24sp"-->
+<!--                    android:textStyle="bold"-->
+<!--                    android:paddingBottom="8dp" />-->
 
-                <TextView
-                    android:id="@+id/lpsDesc"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tutaj znajdują się pomiary odgromów"
-                    android:textSize="16sp" />
-            </LinearLayout>
+<!--                <TextView-->
+<!--                    android:id="@+id/lpsDesc"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:text="Tutaj znajdują się pomiary odgromów"-->
+<!--                    android:textSize="16sp" />-->
+<!--            </LinearLayout>-->
             <LinearLayout
                 android:id="@+id/blockInfo"
                 android:layout_width="0dp"

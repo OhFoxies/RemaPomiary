@@ -20,22 +20,18 @@ public class CircuitViewModel extends AndroidViewModel {
         repository = new CircuitRepository(application);
     }
 
-    // Pobranie listy obwodów w danym mieszkaniu
     public LiveData<List<Circuit>> getCircuitsForFlat(int flatId) {
         return repository.getCircuitsForFlat(flatId);
     }
 
-    // Dodanie obwodu
     public void insert(Circuit circuit) {
         repository.insert(circuit);
     }
 
-    // Aktualizacja obwodu
     public void update(Circuit circuit) {
         repository.update(circuit);
     }
 
-    // Usunięcie obwodu
     public void delete(Circuit circuit) {
         repository.delete(circuit);
     }

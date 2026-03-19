@@ -10,14 +10,19 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.db.AppDatabase;
+import com.rejner.remapomiary.data.entities.ProtocolNumber;
+import com.rejner.remapomiary.ui.viewmodels.ProtocolNumViewModel;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,20 +30,55 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 
 public class AdvancedView extends AppCompatActivity {
 
     private ActivityResultLauncher<Intent> importFilePickerLauncher;
-
+    private  Integer lastNumber;
+    private  Integer currentNumber;
+    private EditText editText;
+    private Button button;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_advanced_view);
 
+        ProtocolNumViewModel protocolNumViewModel = new ViewModelProvider(this).get(ProtocolNumViewModel.class);
+        protocolNumViewModel.getLastNumber().observe(this, last -> {
+            if (last != null) {
+                lastNumber = last;
+                runOnUiThread(this::updateLast);
+            }
+        });
+
+        protocolNumViewModel.getCurrentNumber().observe(this, current -> {
+            if (current != null) {
+                currentNumber = current;
+                runOnUiThread(this::updateCurrent);
+
+            }
+        });
+
+        editText = findViewById(R.id.setNumber);
+        button = findViewById(R.id.saveProtocolNum);
         Button btnExport = findViewById(R.id.btnExportDB);
         Button btnImport = findViewById(R.id.btnImportDB);
         Button back = findViewById(R.id.backButton);
 
+
+        button.setOnClickListener(v -> {
+            if (!editText.getText().toString().isEmpty()) {
+                protocolNumViewModel.deleteOld();
+                protocolNumViewModel.saveLast();
+
+                ProtocolNumber newProtocolNumber = new ProtocolNumber();
+                newProtocolNumber.number = Integer.parseInt(editText.getText().toString());
+                newProtocolNumber.isCurrent = 1;
+                newProtocolNumber.creationDate = new Date();
+                protocolNumViewModel.insert(newProtocolNumber);
+            }
+        });
         btnExport.setOnClickListener(v -> backupDatabase());
 
         importFilePickerLauncher = registerForActivityResult(
@@ -55,16 +95,33 @@ public class AdvancedView extends AppCompatActivity {
                 }
         );
 
-        // 🔹 Import bazy danych
         btnImport.setOnClickListener(v -> openFilePicker());
         back.setOnClickListener(v-> {finish();});
     }
 
-    // ====================================
-    // 📤 EKSPORT BAZY DANYCH
-    // ====================================
+
+
+    private  void  updateCurrent() {
+        TextView textView = findViewById(R.id.currentProtocol);
+        if (currentNumber != null) {
+            textView.setText("" + currentNumber);
+
+        } else {
+            textView.setText("Brak");
+        }
+    }
+
+    private  void  updateLast() {
+        TextView textView = findViewById(R.id.lastNumber);
+        if (lastNumber != null) {
+            textView.setText("" + lastNumber);
+
+        } else {
+            textView.setText("Brak");
+        }
+    }
     private void backupDatabase() {
-        File dbFile = getDatabasePath("pomiary_db"); // ← nazwa Twojej bazy danych
+        File dbFile = getDatabasePath("pomiary_db");
 
         if (!dbFile.exists()) {
             Toast.makeText(this, "❌ Baza danych nie istnieje!", Toast.LENGTH_SHORT).show();
@@ -73,7 +130,6 @@ public class AdvancedView extends AppCompatActivity {
 
         String fileName = "app_backup_" + System.currentTimeMillis() + ".db";
 
-        // 🔹 Przygotowanie wpisu w MediaStore (Downloads)
         ContentValues values = new ContentValues();
         values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
         values.put(MediaStore.Downloads.MIME_TYPE, "application/octet-stream");
@@ -113,9 +169,6 @@ public class AdvancedView extends AppCompatActivity {
         }
     }
 
-    // ====================================
-    // 📥 IMPORT BAZY DANYCH
-    // ====================================
 
     private void openFilePicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -139,12 +192,12 @@ public class AdvancedView extends AppCompatActivity {
                 out.write(buffer, 0, len);
             }
 
-            Toast.makeText(this, "✅ Baza danych została zaimportowana.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, " Baza danych została zaimportowana.", Toast.LENGTH_LONG).show();
             System.exit(0);
 
         } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(this, "❌ Błąd importu: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Błąd importu: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 }

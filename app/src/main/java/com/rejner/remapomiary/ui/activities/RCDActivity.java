@@ -364,16 +364,14 @@ public class RCDActivity extends AppCompatActivity {
             if (hasFocus) {
                 LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) editText.getLayoutParams();
 
-// Usunięcie wszystkich marginesów
+
                 params.setMargins(0, 0, 0, 0);  // left, top, right, bottom
 
-// Lub tylko marginEnd
                 params.setMarginEnd(0);
 
                 editText.setLayoutParams(params);
                 saveButton.setVisibility(View.VISIBLE);
             } else {
-                // Don't hide if the save button is the next view to get focus
                 if (getCurrentFocus() != saveButton) {
                     saveButton.setVisibility(View.GONE);
                 }
@@ -387,7 +385,7 @@ public class RCDActivity extends AppCompatActivity {
             LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) editText.getLayoutParams();
 
             final float scale = getResources().getDisplayMetrics().density;
-            int marginInPx = (int) (20 * scale + 0.5f); // konwersja dp -> px
+            int marginInPx = (int) (20 * scale + 0.5f);
             params.setMarginEnd(marginInPx);
 
             editText.setLayoutParams(params);

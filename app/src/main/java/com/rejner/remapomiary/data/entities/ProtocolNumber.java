@@ -16,4 +16,8 @@ public class ProtocolNumber {
 
     @ColumnInfo(name = "creation")
     public Date creationDate;
+
+    @ColumnInfo(name="is_current")
+    public int isCurrent;
+
 }

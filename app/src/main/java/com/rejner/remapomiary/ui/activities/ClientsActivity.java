@@ -241,7 +241,7 @@ public class ClientsActivity extends AppCompatActivity {
         deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                clientViewModel.update(client.street, client.city, client.postal_code, client.name, catalog.id);
+                clientViewModel.update(client.street, client.city, client.postal_code, client.name, client.id);
 //                blockViewModel.update();
 
             }
@@ -262,7 +262,7 @@ public class ClientsActivity extends AppCompatActivity {
                 }
                 catalogViewModel.updateEdition(catalogId);
 
-                clientViewModel.update(list.get(1), list.get(0), list.get(2), titleEditText.getText().toString(), catalog.id);
+                clientViewModel.update(list.get(1), list.get(0), list.get(2), titleEditText.getText().toString(), client.id);
             }
         });
     }

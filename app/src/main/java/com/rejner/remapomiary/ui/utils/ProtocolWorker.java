@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.BlockFullData;
+import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.generator.ProtocolGenerator;
 
 import java.text.SimpleDateFormat;
@@ -31,6 +32,8 @@ public class ProtocolWorker extends Worker {
     public Result doWork() {
         int blockId = getInputData().getInt("blockId", -1);
         int catalogId = getInputData().getInt("catalogId", -1);
+        int flatId = getInputData().getInt("flatId", -1);
+        int providedNumber = getInputData().getInt("protocolNumber", -1);
 
         if (blockId == -1 || catalogId == -1) {
             showNotification("❌ Błąd", "Brak wymaganych danych do wygenerowania protokołu.");
@@ -40,10 +43,31 @@ public class ProtocolWorker extends Worker {
         AppDatabase db = AppDatabase.getDatabase(getApplicationContext());
         BlockFullData block = db.blockDao().getBlockById(blockId);
         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+        String nazwaPliku;
 
         ProtocolGenerator generator = new ProtocolGenerator(getApplicationContext());
-        String nazwaPliku = "protokol_" + block.block.number + "_" + sdf.format(new Date()) + ".pdf";
-        Uri plikPdfUri = generator.generate(nazwaPliku, blockId);
+        if (flatId != -1) {
+            FlatFullData flat = db.flatDao().getFlatFullDataSync(flatId);
+            nazwaPliku = "protokol_mieszkanie_" + block.block.number + "_" + flat.flat.number +  "_" + sdf.format(new Date()) + ".pdf";
+
+        } else {
+
+            nazwaPliku = "protokol_" + block.block.number + "_" + sdf.format(new Date()) + ".pdf";
+        }
+        Integer _flatId;
+        Integer _providedNumber;
+        if (flatId == -1) {
+            _flatId = null;
+        } else {
+            _flatId = flatId;
+        }
+
+        if (providedNumber == -1) {
+            _providedNumber = null;
+        } else {
+            _providedNumber = providedNumber;
+        }
+        Uri plikPdfUri = generator.generate(nazwaPliku, blockId, _flatId, _providedNumber);
 
         if (plikPdfUri != null) {
             showNotification("✅ Sukces", "Protokół został wygenerowany: " + nazwaPliku);
@@ -69,7 +93,7 @@ public class ProtocolWorker extends Worker {
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), channelId)
-                .setSmallIcon(android.R.drawable.ic_dialog_info) // ← dodaj dowolną ikonę do res/drawable/
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(title)
                 .setContentText(message)
                 .setAutoCancel(true);

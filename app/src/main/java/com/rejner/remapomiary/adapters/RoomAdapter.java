@@ -87,16 +87,12 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         void bind(RoomInFlat room) {
             binding.roomTitle.setText(room.name != null ? room.name : ("Pokój " + room.id));
 
-            // Ustawienie usuwania pokoju
             binding.deleteRoomButton.setOnClickListener(v -> deleteListener.accept(room));
 
-            // Ustawienie dodawania pomiaru
             binding.addMeasurementBtn.setOnClickListener(v -> addMeasurementListener.accept(room.id));
 
-            // Konfiguracja zagnieżdżonego RecyclerView
             setupNestedRecyclerView(room.id);
 
-            // Obserwacja pomiarów dla TEGO pokoju
             outletViewModel.getMeasurementsForRoom(room.id).observe(lifecycleOwner, measurements -> {
                 if (measurements != null && !measurements.isEmpty()) {
                     binding.measurementsHeader.setVisibility(View.VISIBLE);
@@ -107,7 +103,6 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 }
                 measurementAdapter.submitList(measurements);
 
-                // Sprawdź, czy nowo dodany element należy do tego pokoju
                 if (newlyAddedMeasurementId != -1) {
                     boolean found = false;
                     for (int i = 0; i < measurements.size(); i++) {
@@ -115,7 +110,6 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                             int finalI = i;
                             binding.measurementsRecyclerView.post(() -> {
                                 binding.measurementsRecyclerView.smoothScrollToPosition(finalI);
-                                // Przekaż ID do adaptera pomiarów, aby ustawił fokus
                                 measurementAdapter.setFocusToMeasurementId(newlyAddedMeasurementId);
                                 newlyAddedMeasurementId = -1; // Resetuj
                             });
@@ -129,7 +123,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
         private void setupNestedRecyclerView(int roomId) {
             measurementAdapter = new MeasurementAdapter(
-                    (RoomActivity) context, // Przekaż aktywność jako kontekst i managera klawiatury
+                    (RoomActivity) context,
                     outletViewModel,
                     applianceOptions,
                     breakerTypes,
@@ -139,7 +133,6 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             );
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
-            // Wyłączenie zagnieżdżonego przewijania, aby główny RecyclerView przewijał się płynnie
             binding.measurementsRecyclerView.setNestedScrollingEnabled(false);
         }
     }

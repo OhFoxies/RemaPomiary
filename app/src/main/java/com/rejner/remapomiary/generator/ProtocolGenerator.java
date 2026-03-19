@@ -17,6 +17,7 @@ import com.itextpdf.text.Font;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.CMYKColor;
 import com.itextpdf.text.pdf.ColumnText;
 import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfPCell;
@@ -79,31 +80,47 @@ public class ProtocolGenerator {
 
     }
 
-    public Uri generate(String fileName, int blockId) {
+    public Uri generate(String fileName, int blockId, Integer flatId, Integer protocolNumberProvided) {
         try {
             Uri fileUri = createPdfFileInDownloads(fileName);
             if (fileUri == null) {
                 throw new IOException("Nie udało się utworzyć URI dla pliku PDF.");
             }
-            FlatPageNumberEvent pageEvent = new FlatPageNumberEvent(ProFonts.fontNormal);
+
+            boolean ignore = true;
+            if (flatId != null) {
+                ignore = false;
+            }
+            FlatPageNumberEvent pageEvent = new FlatPageNumberEvent(ProFonts.fontNormal, ignore, document);
             writer.setPageEvent(pageEvent);
             document.open();
+            List<FlatFullData> flats;
+            boolean allFlats = true;
+            if (flatId != null) {
+                flats = Collections.singletonList(db.flatDao().getFlatFullDataSync(flatId));
+                allFlats = false;
+            } else {
 
-            List<FlatFullData> flats = db.flatDao().getFlatsSync(blockId);
-
+                flats = db.flatDao().getFlatsSync(blockId);
+            }
             BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
-            Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
-            p.setAlignment(Element.ALIGN_CENTER);
-            float pageHeight = document.getPageSize().getHeight();
-            float textHeight = p.getLeading(); // wysokość wiersza tekstu
-            float yPosition = (pageHeight / 2) - (textHeight / 2);
 
-            PdfContentByte canvas = writer.getDirectContent();
-            ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
-                    new Phrase("BLOK " + blockFullData1.block.number, ProFonts.large),
-                    document.getPageSize().getWidth() / 2,  // środek w poziomie
-                    yPosition,                              // środek w pionie
-                    0);
+            if (allFlats) {
+                Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
+                p.setAlignment(Element.ALIGN_CENTER);
+                float pageHeight = document.getPageSize().getHeight();
+                float textHeight = p.getLeading(); // wysokość wiersza tekstu
+                float yPosition = (pageHeight / 2) - (textHeight / 2);
+
+                PdfContentByte canvas = writer.getDirectContent();
+                ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
+                        new Phrase("BLOK " + blockFullData1.block.number, ProFonts.large),
+                        document.getPageSize().getWidth() / 2,  // środek w poziomie
+                        yPosition,                              // środek w pionie
+                        0);
+                writer.setPageEmpty(false);
+                document.newPage();
+            }
 
             Collections.sort(flats, Comparator.comparingInt(f -> {
                 try {
@@ -113,11 +130,14 @@ public class ProtocolGenerator {
                     return 0;
                 }
             }));
+            int currentProtocolNumber;
+
 
             List<ProtocolNumber> protocolNumber = db.protocolNumberDao().getAllProtocols();
             if (protocolNumber.isEmpty()) {
                 ProtocolNumber newProtocolNumber = new ProtocolNumber();
                 newProtocolNumber.number = 1;
+                newProtocolNumber.isCurrent = 1;
                 newProtocolNumber.creationDate = new Date();
                 db.protocolNumberDao().insert(newProtocolNumber);
                 protocolNumber.add(newProtocolNumber);
@@ -129,35 +149,123 @@ public class ProtocolGenerator {
             int creationYear = cal.get(Calendar.YEAR);
 
             int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+
             if (creationYear != currentYear) {
-                protocolNumber.get(0).number = 1;
-                protocolNumber.get(0).creationDate = new Date();
-                db.protocolNumberDao().update(protocolNumber.get(0));
+                db.protocolNumberDao().deleteOld();
+                db.protocolNumberDao().saveLast();
+
+                ProtocolNumber newProtocolNumber = new ProtocolNumber();
+                newProtocolNumber.number = 1;
+                newProtocolNumber.isCurrent = 1;
+                newProtocolNumber.creationDate = new Date();
+                db.protocolNumberDao().insert(newProtocolNumber);
             }
+
+            currentProtocolNumber = db.protocolNumberDao().getCurrentNumber();
+            boolean saveData = false;
+
+            if (protocolNumberProvided != null) {
+                if (currentProtocolNumber + 1 == protocolNumberProvided || currentProtocolNumber == protocolNumberProvided) {
+                    saveData = true;
+                }
+                currentProtocolNumber = protocolNumberProvided;
+            }
+            if (protocolNumberProvided == null) {
+                saveData = true;
+            }
+
+            if (saveData) {
+                db.protocolNumberDao().deleteOld();
+                db.protocolNumberDao().saveLast();
+
+                ProtocolNumber newProtocolNumber = new ProtocolNumber();
+                newProtocolNumber.number = currentProtocolNumber;
+                newProtocolNumber.isCurrent = 1;
+                newProtocolNumber.creationDate = new Date();
+                db.protocolNumberDao().insert(newProtocolNumber);
+            }
+
             totalFlats = flats.size();
 
-            int currentProtocolNumber = db.protocolNumberDao().getCurrentNumber();
+
             for (FlatFullData flat : flats) {
-                if (flat.flat.status.contains("niewykonany")) {
-                    skippedFlats.add("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
-                    continue;
-                }
+                int current = document.getPageNumber();
+
                 String endNotes = "";
                 document.newPage();
-                pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
+                pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number, writer);
 
                 addHeader();
-                String protocolNumberTitle = "Protokół nr w/" + currentProtocolNumber + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
+                String protocolNumberTitle;
+                if (!flat.flat.status.contains("niewykonany")) {
+                    protocolNumberTitle = "Protokół nr w/" + currentProtocolNumber + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
+                } else {
+                    protocolNumberTitle = "Oświadczenie";
+                }
 
-                addTitleSection(protocolNumberTitle, flat.flat.type, flat.flat.hasRCD);
+                addTitleSection(protocolNumberTitle, flat.flat.type, flat.flat.hasRCD, flat.flat.status);
                 BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
 
                 String clientData = blockFullData.client.name + "\n" +
                         "ul. " + blockFullData.client.street + ", " + blockFullData.client.postal_code + " " + blockFullData.client.city;
                 String objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
                 addDetailsTable(clientData, objectData);
-                addData(flat.flat.type, flat.flat.creation_date);
 
+                if (flat.flat.status.contains("niewykonany")) {
+                    skippedFlats.add("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
+                    Paragraph gradeTitle = new Paragraph("3. Orzeczenie", ProFonts.fontNormalBold);
+                    gradeTitle.setSpacingBefore(titleSpacing);
+                    gradeTitle.setSpacingAfter(titleSpacingA);
+                    gradeTitle.setAlignment(Element.ALIGN_LEFT);
+
+                    Paragraph gradeDesc = new Paragraph("Pomimo wielokrotnych prób kontaktu z właścicielem lokalu, nie udało się uzyskać dostępu do mieszkania i wykonać wymaganych pomiarów instalacji elektrycznej.\n" +
+                            "Do czasu przeprowadzenia obowiązkowego przeglądu instalacji, instalacja nie powinna być eksploatowana.", ProFonts.fontNormal);
+                    gradeDesc.setAlignment(Element.ALIGN_LEFT);
+                    gradeDesc.setIndentationLeft(indentation);
+
+                    document.add(gradeTitle);
+                    document.add(gradeDesc);
+
+                    Paragraph whoDidTitle = new Paragraph("4. Wykonawcy pomiarów:", ProFonts.fontNormalBold);
+                    whoDidTitle.setSpacingBefore(titleSpacing);
+                    whoDidTitle.setSpacingAfter(titleSpacingA);
+                    whoDidTitle.setAlignment(Element.ALIGN_LEFT);
+                    document.add(whoDidTitle);
+                    PdfPTable table = new PdfPTable(2);
+                    table.setWidthPercentage(100);
+                    table.setWidths(new float[]{1f, 1f});
+
+                    Paragraph p1 = new Paragraph();
+                    p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+                    p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
+                    p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
+                    p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+
+                    PdfPCell cell1 = new PdfPCell(p1);
+                    cell1.setPaddingLeft(15f);
+                    cell1.setBorder(PdfPCell.NO_BORDER); // brak obramowania
+                    cell1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell1.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+                    Paragraph p2 = new Paragraph();
+                    p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+                    p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
+                    p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
+                    p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
+
+                    PdfPCell cell2 = new PdfPCell(p2);
+                    cell2.setBorder(PdfPCell.NO_BORDER);
+                    cell2.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    cell2.setHorizontalAlignment(Element.ALIGN_LEFT);
+
+                    table.addCell(cell1);
+                    table.addCell(cell2);
+
+                    document.add(table);
+
+                    continue;
+                }
+                addData(flat.flat.type, flat.flat.creation_date);
 
                 List<Circuit> circuits3f = db.circuitDao().getCircuitsForFlatSync3f(flat.flat.id);
                 if (!circuits3f.isEmpty()) {
@@ -175,70 +283,28 @@ public class ProtocolGenerator {
                     if (flat.flat.type.equals("TN-S")) {
                         Paragraph f3Legend = new Paragraph();
 
-                        f3Legend.setFont(normalFont); // Ustaw domyślną czcionkę dla paragrafu
+                        f3Legend.setFont(normalFont);
 
                         // R L1-L2
                         f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1L2 = new Chunk("L1-L2", subscriptFont);
+                        Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
                         subL1L2.setTextRise(-subscriptOffset);
                         f3Legend.add(subL1L2);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i L2, ", normalFont));
-
-                        // R L2-L3
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL2L3 = new Chunk("L2-L3", subscriptFont);
-                        subL2L3.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL2L3);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i L3, ", normalFont));
-
-                        // R L3-L1
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL3L1 = new Chunk("L3-L1", subscriptFont);
-                        subL3L1.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL3L1);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i L1, ", normalFont));
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
 
                         // R L1-PE
                         f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1PE = new Chunk("L1-PE", subscriptFont);
+                        Chunk subL1PE = new Chunk("Lx-PE", subscriptFont);
                         subL1PE.setTextRise(-subscriptOffset);
                         f3Legend.add(subL1PE);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i PE, ", normalFont));
-
-                        // R L2-PE
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL2PE = new Chunk("L2-PE", subscriptFont);
-                        subL2PE.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL2PE);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i PE, ", normalFont));
-
-                        // R L3-PE
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL3PE = new Chunk("L3-PE", subscriptFont);
-                        subL3PE.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL3PE);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i PE, ", normalFont));
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i PE, ", normalFont));
 
                         // R L1-N
                         f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1N = new Chunk("L1-N", subscriptFont);
+                        Chunk subL1N = new Chunk("Lx-N", subscriptFont);
                         subL1N.setTextRise(-subscriptOffset);
                         f3Legend.add(subL1N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i N, ", normalFont));
-
-                        // R L2-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL2N = new Chunk("L2-N", subscriptFont);
-                        subL2N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL2N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i N, ", normalFont));
-
-                        // R L3-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL3N = new Chunk("L3-N", subscriptFont);
-                        subL3N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL3N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i N, ", normalFont));
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
 
                         // R N-PE
                         f3Legend.add(new Chunk("R", ProFonts.medium));
@@ -252,10 +318,10 @@ public class ProtocolGenerator {
                         Chunk subW = new Chunk("w", subscriptFont);
                         subW.setTextRise(-subscriptOffset);
                         f3Legend.add(subW);
-                        f3Legend.add(new Chunk(": wartość rezystancji wymagane", normalFont));
+                        f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
 
                         // Ustawienia końcowe i dodanie do dokumentu
-                        f3Legend.setSpacingAfter(15f);
+                        f3Legend.setSpacingAfter(7f);
                         document.add(f3Legend);
                     } else {
                         Paragraph f3Legend = new Paragraph();
@@ -263,55 +329,27 @@ public class ProtocolGenerator {
 
                         // R L1-L2
                         f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1L2 = new Chunk("L1-L2", subscriptFont);
+                        Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
                         subL1L2.setTextRise(-subscriptOffset);
                         f3Legend.add(subL1L2);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i L2, ", normalFont));
-
-                        // R L2-L3
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL2L3 = new Chunk("L2-L3", subscriptFont);
-                        subL2L3.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL2L3);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i L3, ", normalFont));
-
-                        // R L3-L1
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL3L1 = new Chunk("L3-L1", subscriptFont);
-                        subL3L1.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL3L1);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i L1, ", normalFont));
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
 
                         // R L1-N
                         f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1N = new Chunk("L1-N", subscriptFont);
+                        Chunk subL1N = new Chunk("Lx-N", subscriptFont);
                         subL1N.setTextRise(-subscriptOffset);
                         f3Legend.add(subL1N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L1 i N, ", normalFont));
-
-                        // R L2-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL2N = new Chunk("L2-N", subscriptFont);
-                        subL2N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL2N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L2 i N, ", normalFont));
-
-                        // R L3-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL3N = new Chunk("L3-N", subscriptFont);
-                        subL3N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL3N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L3 i N, ", normalFont));
+                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
 
                         // Rw
                         f3Legend.add(new Chunk("R", ProFonts.medium));
                         Chunk subW = new Chunk("W", subscriptFont);
                         subW.setTextRise(-subscriptOffset);
                         f3Legend.add(subW);
-                        f3Legend.add(new Chunk(": wartość rezystancji wymagane", normalFont));
+                        f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
 
                         // Ustawienia końcowe i dodanie do dokumentu
-                        f3Legend.setSpacingAfter(15f);
+                        f3Legend.setSpacingAfter(7f);
                         document.add(f3Legend);
                     }
 
@@ -330,7 +368,7 @@ public class ProtocolGenerator {
                     document.add(tableFor1f);
                     tableFor1f.setSpacingAfter(5f);
 
-                    if(flat.flat.type.equals("TN-S")) {
+                    if (flat.flat.type.equals("TN-S")) {
                         Paragraph f1Legend = new Paragraph();
                         f1Legend.setFont(normalFont);
 
@@ -358,9 +396,9 @@ public class ProtocolGenerator {
                         Chunk subRw = new Chunk("W", subscriptFont);
                         subRw.setTextRise(-subscriptOffset);
                         f1Legend.add(subRw);
-                        f1Legend.add(new Chunk(": wartość rezystancji wymagane.", normalFont));
+                        f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
 
-                        f1Legend.setSpacingAfter(15f);
+                        f1Legend.setSpacingAfter(7f);
                         document.add(f1Legend);
                     } else {
                         Paragraph f1Legend = new Paragraph();
@@ -377,9 +415,9 @@ public class ProtocolGenerator {
                         Chunk subRw = new Chunk("W", subscriptFont);
                         subRw.setTextRise(-subscriptOffset);
                         f1Legend.add(subRw);
-                        f1Legend.add(new Chunk(": wartość rezystancji wymagane.", normalFont));
+                        f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
 
-                        f1Legend.setSpacingAfter(15f);
+                        f1Legend.setSpacingAfter(7f);
                         document.add(f1Legend);
                     }
 
@@ -408,7 +446,7 @@ public class ProtocolGenerator {
                     Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
                             "Ia [mA]: prąd powodujący wyłączenie RCD, " +
                             "t rcd [ms]: zmierzony czas wyłączenia RCD", ProFonts.mediumNotBold);
-                    rcdLegend.setSpacingAfter(15f);
+                    rcdLegend.setSpacingAfter(7f);
                     document.add(rcdLegend);
 
                 }
@@ -440,23 +478,31 @@ public class ProtocolGenerator {
                     endNotes += flat.flat.circuitNotes;
                 }
                 int next = 7;
+                if (flat.flat.hasRCD == 1) {
+                    if (rcdIsGood == 0) {
+                       endNotes += " Wyłącznik różnicowoprądowy jest niesprawny, zaleca się wymianę. ";
+                    }
+                }
                 if (!endNotes.isEmpty()) {
                     createNotes(endNotes);
                     next = 8;
                 }
                 generatedFlats++;
                 createGrade(next, flat.flat);
-                next ++;
-                currentProtocolNumber++;
+                next++;
                 createEndSummary(next, flat.flat);
-                db.protocolNumberDao().incrementNum();
-
+                if (allFlats || saveData) {
+                    currentProtocolNumber++;
+                    db.protocolNumberDao().incrementNum();
+                }
             }
 
             document.newPage();
-            pageEvent.finishDocument();
+            pageEvent.finishDocument(writer);
             writer.setPageEvent(null);
-            addSummary(blockFullData1.block);
+            if (flatId == null) {
+                addSummary(blockFullData1.block);
+            }
             document.close();
 
 
@@ -469,7 +515,8 @@ public class ProtocolGenerator {
             closeDocument();
         }
     }
-    public void createEndSummary(int next, Flat flat)  throws DocumentException {
+
+    public void createEndSummary(int next, Flat flat) throws DocumentException {
 
         Paragraph nextTitle = new Paragraph(next + ". Data następnego badania", ProFonts.fontNormalBold);
         nextTitle.setSpacingBefore(titleSpacing);
@@ -484,10 +531,9 @@ public class ProtocolGenerator {
         Paragraph nextDesc = new Paragraph("Nie później niż: " + formatMonthAndYear(datePlus5Years), ProFonts.fontNormal);
         nextDesc.setAlignment(Element.ALIGN_LEFT);
         nextDesc.setIndentationLeft(indentation);
-        next ++;
+        next++;
         document.add(nextTitle);
         document.add(nextDesc);
-
 
 
         Paragraph whoDidTitle = new Paragraph(next + ". Wykonawcy pomiarów:", ProFonts.fontNormalBold);
@@ -529,6 +575,7 @@ public class ProtocolGenerator {
 
 
     }
+
     private void createNotes(String endNotes) throws DocumentException {
 
 
@@ -595,7 +642,6 @@ public class ProtocolGenerator {
         title.setAlignment(Element.ALIGN_CENTER);
         title.setSpacingAfter(15f);
         document.add(title);
-
 
 
         Paragraph flatsNumtitle = new Paragraph("Informacje o mieszkaniach:", ProFonts.fontNormalBold);
@@ -801,10 +847,8 @@ public class ProtocolGenerator {
     private void addHeader() throws DocumentException {
         Chunk phuChunk = new Chunk("PHU ", ProFonts.logoNormal);
 
-// Chunk dla REMA z inną czcionką
         Chunk remaChunk = new Chunk("REMA", ProFonts.logo);
 
-// Tworzymy Paragraph i dodajemy oba Chunki
         Paragraph companyName = new Paragraph();
         companyName.add(phuChunk);
         companyName.add(remaChunk);
@@ -814,7 +858,7 @@ public class ProtocolGenerator {
 
         document.add(companyName);
 
-        Paragraph companyDetails = new Paragraph ("Marek Rejner\n" + "ul. Wyzwolenia 10A/2, 41-907 Bytom\n" +
+        Paragraph companyDetails = new Paragraph("Marek Rejner\n" + "ul. Wyzwolenia 10A/2, 41-907 Bytom\n" +
                 "NIP: 626-101-54-81\n" +
                 "Tel: 601-411-391",
                 ProFonts.fontNormal);
@@ -834,16 +878,26 @@ public class ProtocolGenerator {
     }
 
 
-    private void addTitleSection(String protocolNumber, String type, int hasRCD) throws DocumentException {
+    private void addTitleSection(String protocolNumber, String type, int hasRCD, String status) throws DocumentException {
+
         Paragraph title = new Paragraph(protocolNumber, ProFonts.fontBold14);
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
-        Paragraph subtitle = new Paragraph("Z badań okresowych", ProFonts.fontNormal);
+        if (status.contains("niewykonany")) {
+            Paragraph subtitle = new Paragraph("Z badań okresowych instalacji elektrycznej", ProFonts.fontNormal);
+            subtitle.setAlignment(Element.ALIGN_CENTER);
+            subtitle.setSpacingBefore(5f);
+            subtitle.setSpacingAfter(15f);
+            document.add(subtitle);
+            return;
+        }
+        Paragraph subtitle = new Paragraph("Z badań okresowych instalacji elektrycznej", ProFonts.fontNormal);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(5f);
         subtitle.setSpacingAfter(15f);
         document.add(subtitle);
+
 
         Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
         desc1.setAlignment(Element.ALIGN_LEFT);

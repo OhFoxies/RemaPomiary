@@ -75,7 +75,7 @@ public class OmTable {
             boolean found = false;
             if (!oms.isEmpty()) {
                 for (OutletMeasurement om : oms) {
-                    if (om.ohms != null && om.ohms != 0.0) {
+                    if (om.ohms != null && om.ohms != 0.0 || !om.note.equals("brak uwag")) {
                         found = true;
                         break;
                     }
@@ -132,7 +132,10 @@ public class OmTable {
                 values.add(Double.toString(ia).replace(".", ","));
                 if (om.ohms != null &&  om.ohms != 0.0) {
                     values.add(Double.toString(om.ohms).replace(".", ","));
-                } else {
+                } else if(!om.note.equals("brak uwag")) {
+                    values.add("-");
+                }
+                else {
                     continue;
                 }
                 values.add(Double.toString(za).replace(".", ","));
