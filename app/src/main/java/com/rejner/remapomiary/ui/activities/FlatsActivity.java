@@ -75,6 +75,7 @@ public class FlatsActivity extends AppCompatActivity {
     private OutletMeasurementViewModel outletMeasurementViewModel;
     private RoomViewModel roomViewModel;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
+    private boolean firstSetup = true;
 
     private int blockId;
     private List<Flat> currentFlats;
@@ -151,7 +152,21 @@ public class FlatsActivity extends AppCompatActivity {
         flatViewModel.getFlatsByBlockId(blockId).observe(this, flats -> {
             currentFlats = flats;
             updateFlatsDisplay();
+            if (firstSetup) {
+                SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+
+                int scrollY = prefs.getInt("scroll_y", 0);
+
+                if (scrollView != null) {
+                    scrollView.post(() -> scrollView.scrollTo(0, scrollY));
+                } else {
+                    Log.e("FlatsActivity", "ScrollView is null! Check if R.id.mainScroll exists in activity_flats.xml");
+                }
+                firstSetup = false;
+            }
+
         });
+
 
     }
     public void hideKeyboard() {
@@ -445,15 +460,7 @@ public class FlatsActivity extends AppCompatActivity {
         for (Flat flat : currentFlats) {
             addFlatItemToFlex(flat);
         }
-        SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
 
-        int scrollY = prefs.getInt("scroll_y", 0);
-
-        if (scrollView != null) {
-            scrollView.post(() -> scrollView.scrollTo(0, scrollY));
-        } else {
-            Log.e("FlatsActivity", "ScrollView is null! Check if R.id.mainScroll exists in activity_flats.xml");
-        }
 
     }
 
