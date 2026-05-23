@@ -17,6 +17,7 @@ import com.rejner.remapomiary.data.dao.CatalogDao;
 import com.rejner.remapomiary.data.dao.CircuitCommonSpaceDao;
 import com.rejner.remapomiary.data.dao.CircuitDao;
 import com.rejner.remapomiary.data.dao.ClientDao;
+import com.rejner.remapomiary.data.dao.ContractorsDao;
 import com.rejner.remapomiary.data.dao.FlatDao;
 import com.rejner.remapomiary.data.dao.OutletMeasurementDao;
 import com.rejner.remapomiary.data.dao.ProtocolNumberDao;
@@ -58,6 +59,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract TemplateDao templateDao();
     public abstract BoardCommonSpaceDao boardCommonSpaceDao();
     public abstract CircuitCommonSpaceDao circuitCommonSpaceDao();
+    public abstract ContractorsDao contractorsDao();
 
     static final Migration MIGRATION_14_15 = new Migration(14, 15) {
         @Override
@@ -103,6 +105,16 @@ public abstract class AppDatabase extends RoomDatabase {
                             "FOREIGN KEY(`boardId`) REFERENCES `board_common_space`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
             );
 
+
+            database.execSQL("" +
+                    "CREATE TABLE IF NOT EXISTS `contractors` (\n" +
+                    "    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \n" +
+                    "    `name` TEXT, \n" +
+                    "    `surnanme` TEXT, \n" +
+                    "    `e_permit` TEXT, \n" +
+                    "    `d_permit` TEXT, \n" +
+                    "    `type` INTEGER NOT NULL\n" +
+                    ");");
             // Optional: Create indices for foreign keys to improve query performance and avoid table scans during cascading deletes
             database.execSQL("CREATE INDEX IF NOT EXISTS `index_board_common_space_flatId` ON `board_common_space` (`flatId`)");
             database.execSQL("CREATE INDEX IF NOT EXISTS `index_circuit_common_space_boardId` ON `circuit_common_space` (`boardId`)");
