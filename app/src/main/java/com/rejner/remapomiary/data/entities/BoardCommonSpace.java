@@ -1,6 +1,7 @@
 package com.rejner.remapomiary.data.entities;
 
 
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
@@ -20,6 +21,11 @@ public class BoardCommonSpace {
     @ColumnInfo(name = "name")
     public String name;
 
+    @ColumnInfo(name = "type", defaultValue = "TN-S")
+    public String type = "TN-S";
+
+    @ColumnInfo(name = "notes", defaultValue = "")
+    public String notes;
 
     @ColumnInfo(name = "creation_date")
     public Date creation_date;

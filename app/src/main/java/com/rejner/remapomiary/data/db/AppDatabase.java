@@ -30,6 +30,7 @@ import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
 import com.rejner.remapomiary.data.entities.Client;
+import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.ProtocolNumber;
@@ -40,7 +41,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 17)
+@Database(entities = {Contractors.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 18)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -92,7 +93,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             "`flatId` INTEGER NOT NULL, " +
                             "`name` TEXT, " +
                             "`creation_date` INTEGER, " +
-                            "FOREIGN KEY(`flatId`) REFERENCES `Flat`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                            "FOREIGN KEY(`flatId`) REFERENCES `flat`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)"
             );
 
             // Create the circuit_common_space table
@@ -110,23 +111,34 @@ public abstract class AppDatabase extends RoomDatabase {
                     "CREATE TABLE IF NOT EXISTS `contractors` (\n" +
                     "    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \n" +
                     "    `name` TEXT, \n" +
-                    "    `surnanme` TEXT, \n" +
+                    "    `surname` TEXT, \n" +
                     "    `e_permit` TEXT, \n" +
                     "    `d_permit` TEXT, \n" +
                     "    `type` INTEGER NOT NULL\n" +
                     ");");
-            // Optional: Create indices for foreign keys to improve query performance and avoid table scans during cascading deletes
-            database.execSQL("CREATE INDEX IF NOT EXISTS `index_board_common_space_flatId` ON `board_common_space` (`flatId`)");
-            database.execSQL("CREATE INDEX IF NOT EXISTS `index_circuit_common_space_boardId` ON `circuit_common_space` (`boardId`)");
         }
     };
+
+    static final Migration MIGRATION_17_18 = new Migration(17, 18) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE board_common_space ADD column type TEXT default 'TN-S';"
+            );
+            database.execSQL(
+                    "ALTER TABLE board_common_space ADD column notes TEXT default '';"
+            );
+        }
+    };
+
+
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                             .build();
 
                 }

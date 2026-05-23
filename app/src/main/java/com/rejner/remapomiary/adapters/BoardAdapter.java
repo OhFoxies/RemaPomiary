@@ -10,14 +10,33 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.rejner.remapomiary.R;
+import com.rejner.remapomiary.data.entities.BoardCommonSpace;
+import com.rejner.remapomiary.data.entities.BoardsFullData;
+import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHolder> {
+    public interface OnBoardActionListener {
+        void onDeleteBoard(BoardsFullData board);
+        void onAddCircuit(BoardsFullData board);
+        void onSaveNotes(BoardsFullData board, String notes);
+        void onInstallationTypeChanged(BoardsFullData board, int checkedId);
+        void onCircuitTypeChange(CircuitCommonSpace circuit, int checkedId);
+        void onCircuitDelete(CircuitCommonSpace circuit);
+        void onCircuitNameSave(CircuitCommonSpace circuit, String name);
+        void onCircuitNameSpinner(CircuitCommonSpace circuit, String name);
+    }
+    private final OnBoardActionListener listener;
+    private List<BoardsFullData> boards = new ArrayList<>();
 
-    private List<Board> boards = new ArrayList<>();
-
-    public void setBoards(List<Board> boards) {
+    public BoardAdapter(OnBoardActionListener listener) {
+        this.listener = listener;
+    }
+    public void setBoards(List<BoardsFullData> boards) {
         this.boards = boards;
         notifyDataSetChanged();
     }
@@ -31,10 +50,31 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
 
     @Override
     public void onBindViewHolder(@NonNull BoardViewHolder holder, int position) {
-        Board board = boards.get(position);
-        holder.boardName.setText(board.name != null ? board.name : "Rozdzielnia " + (position + 1));
+        BoardsFullData board = boards.get(position);
 
-        // Zasilenie zagnieżdżonego RecyclerView listą obwodów z danego Boarda
+        holder.boardName.setText(board.board.name);
+        holder.boardNotes.setText(board.board.notes);
+
+        // Usuń listener przed check()
+        holder.radioButtonsInstallationType.setOnCheckedChangeListener(null);
+
+        if ("TN-S".equals(board.board.type)) {
+            holder.radioButtonsInstallationType.check(R.id.radioTNS);
+        } else {
+            holder.radioButtonsInstallationType.check(R.id.radioTNC);
+        }
+
+        // Przywróć listener
+        holder.radioButtonsInstallationType.setOnCheckedChangeListener((group, checkedId) -> {
+            int adapterPosition = holder.getBindingAdapterPosition();
+
+            if (adapterPosition != RecyclerView.NO_POSITION && listener != null) {
+                listener.onInstallationTypeChanged(
+                        boards.get(adapterPosition),
+                        checkedId
+                );
+            }
+        });
         if (board.circuits != null) {
             holder.circuitAdapter.setCircuits(board.circuits);
         }
@@ -69,25 +109,60 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
 
         private void setupNestedRecyclerView() {
             circuitsRecyclerView.setLayoutManager(new LinearLayoutManager(itemView.getContext()));
-            circuitAdapter = new CircuitAdapter();
+            circuitAdapter = new CircuitAdapter(new CircuitAdapter.OnCircuitActionListener() {
+                @Override
+                public void onCircuitTypeChange_(CircuitCommonSpace circuit, int checkedId) {
+                    listener.onCircuitTypeChange(circuit, checkedId);
+                }
+
+                @Override
+                public void onCircuitDelete_(CircuitCommonSpace circuit) {
+                    listener.onCircuitDelete(circuit);
+                }
+
+                @Override
+                public void onCircuitNameSave_(CircuitCommonSpace circuit, String name) {
+                    listener.onCircuitNameSave(circuit, name);
+
+                }
+
+                @Override
+                public void onCircuitNameSpinner_(CircuitCommonSpace circuit, String name) {
+                    listener.onCircuitNameSpinner(circuit, name);
+
+                }
+            });
             circuitsRecyclerView.setAdapter(circuitAdapter);
         }
 
         private void setupButtons() {
             deleteBoardButton.setOnClickListener(v -> {
-                // TODO: Usunięcie rozdzielni z bazy
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && listener != null) {
+                    listener.onDeleteBoard(boards.get(position));
+                }
             });
 
             addCircuit.setOnClickListener(v -> {
-                // TODO: Dodanie nowego obwodu do tej rozdzielni
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && listener != null) {
+                    listener.onAddCircuit(boards.get(position));
+                }
             });
 
             saveBoardNotes.setOnClickListener(v -> {
-                // TODO: Zapisanie uwag z boardNotes
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && listener != null) {
+                    String notes = boardNotes.getText().toString();
+                    listener.onSaveNotes(boards.get(position), notes);
+                }
             });
 
             radioButtonsInstallationType.setOnCheckedChangeListener((group, checkedId) -> {
-                // TODO: Zmiana typu instalacji (TN-C / TN-S)
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && listener != null) {
+                    listener.onInstallationTypeChanged(boards.get(position), checkedId);
+                }
             });
         }
     }

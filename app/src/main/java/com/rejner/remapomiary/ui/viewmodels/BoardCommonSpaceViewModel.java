@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
+import com.rejner.remapomiary.data.entities.BoardsFullData;
 import com.rejner.remapomiary.repository.BoardCommonSpaceRepository;
 
 import java.util.List;
@@ -22,6 +23,10 @@ public class BoardCommonSpaceViewModel extends AndroidViewModel {
 
     public LiveData<List<BoardCommonSpace>> getBoardsForFlat(int flatId) {
         return repository.getBoardsForFlat(flatId);
+    }
+
+    public LiveData<List<BoardsFullData>> getBoardsFullData(int flatId) {
+        return repository.getBoardsFullData(flatId);
     }
 
     public void insert(BoardCommonSpace board) {

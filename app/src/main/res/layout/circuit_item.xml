@@ -59,7 +59,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="10dp"
-
+        android:id="@+id/phasesGroup"
         android:layout_weight="1.5"
         android:gravity="center"
 
@@ -75,7 +75,7 @@
             android:textSize="16sp" />
 
         <RadioButton
-            android:id="@+id/radio2f"
+            android:id="@+id/radio3f"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
 

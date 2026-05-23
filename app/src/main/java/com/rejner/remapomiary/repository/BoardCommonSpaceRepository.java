@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData;
 import com.rejner.remapomiary.data.dao.BoardCommonSpaceDao;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
+import com.rejner.remapomiary.data.entities.BoardsFullData;
 
 import java.util.List;
 
@@ -33,5 +34,9 @@ public class BoardCommonSpaceRepository {
 
     public LiveData<List<BoardCommonSpace>> getBoardsForFlat(int flatId) {
         return dao.getBoardsForFlat(flatId);
+    }
+
+    public LiveData<List<BoardsFullData>> getBoardsFullData(int flatId) {
+        return dao.getBoardsWithCircuitsForFlat(flatId);
     }
 }

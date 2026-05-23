@@ -48,6 +48,9 @@
             android:name=".ui.activities.CatalogActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.activities.BoardCommonSpace"
+            android:exported="false" />
+        <activity
             android:name=".ui.activities.MainActivity"
             android:exported="true">
             <intent-filter>

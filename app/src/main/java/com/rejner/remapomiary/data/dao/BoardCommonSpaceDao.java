@@ -6,9 +6,11 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Transaction;
 import androidx.room.Update;
 
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
+import com.rejner.remapomiary.data.entities.BoardsFullData;
 
 import java.util.List;
 
@@ -27,4 +29,8 @@ public interface BoardCommonSpaceDao {
     // Get all boards in a flat by flatID
     @Query("SELECT * FROM board_common_space WHERE flatId = :flatId")
     LiveData<List<BoardCommonSpace>> getBoardsForFlat(int flatId);
+
+    @Transaction
+    @Query("SELECT * FROM board_common_space WHERE flatId = :flatId")
+    LiveData<List<BoardsFullData>> getBoardsWithCircuitsForFlat(int flatId);
 }

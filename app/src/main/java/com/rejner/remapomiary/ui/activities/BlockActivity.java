@@ -107,8 +107,10 @@ public class BlockActivity extends AppCompatActivity {
         commonSpace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(BlockActivity.this, BoardActivity.class);
+                Intent intent = new Intent(BlockActivity.this, BoardCommonSpace.class);
                 intent.putExtra("flatId", commonSpaceId);
+                intent.putExtra("blockId", block.block.id);
+
                 intent.putExtra("commonSpace", 1);
 
                 startActivity(intent);
