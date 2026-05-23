@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="350dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/round_corners"
+    android:orientation="vertical"
+
+    android:padding="15dp"
+    android:layout_marginBottom="15dp"
+    android:id="@+id/clientMain">
+    <TextView
+        android:id="@+id/clientAddressTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:text="Wykonawca:"
+        android:layout_marginBottom="3dp"/>
+
+    <LinearLayout
+        android:id="@+id/itemClientData"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/clientNameContractor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:text="Imie:"
+            android:textSize="18sp" />
+        <TextView
+            android:id="@+id/clientSurname"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:text="Nazwisko:"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/clientD"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:text="Numer uprawnień D:  "
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/clientE"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="25dp"
+            android:text="Numer uprawnień E:  "
+            android:textSize="18sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:id="@+id/itemClientControls"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal">
+
+        <Button
+            android:id="@+id/clientDelete"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="15dp"
+            android:backgroundTint="#f23022"
+            android:text="🗑️ Usuń" />
+
+        <Button
+            android:id="@+id/clientEdit"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+
+            android:layout_height="wrap_content"
+            android:backgroundTint="#3FAB1F"
+            android:text="✏️ Edytuj" />
+    </LinearLayout>
+</LinearLayout>
