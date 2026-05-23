@@ -35,7 +35,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Catalog.class, Block.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 15)
+@Database(entities = {Catalog.class, Block.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 16)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -61,13 +61,22 @@ public abstract class AppDatabase extends RoomDatabase {
             );
         }
     };
+
+    static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE flat ADD column isCommonSpace INT NOT NULL default 0;"
+            );
+        }
+    };
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16)
                             .build();
 
                 }

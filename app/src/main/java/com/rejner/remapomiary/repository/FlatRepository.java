@@ -31,7 +31,9 @@ public class FlatRepository {
     public void delete(Flat flat) {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(flat));
     }
-
+    public LiveData<Flat> getCommonSpace(int blockId) {
+        return dao.getCommonSpace(blockId);
+    }
     public void insertWithId(Flat flat, Consumer<Long> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             long id = dao.insertWithId(flat);

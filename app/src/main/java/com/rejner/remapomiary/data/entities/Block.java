@@ -49,6 +49,7 @@ public class Block {
     @ColumnInfo(name = "clientId")
     public Integer clientId;
 
+
     public Block(int catalogId, String street, String city, String number, String postal_code, Integer clientId, Date creation_date, Date edition_date) {
         this.catalogId = catalogId;
         this.street = street;

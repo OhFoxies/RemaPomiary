@@ -9,6 +9,8 @@ import androidx.lifecycle.LiveData;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
+import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.repository.BlockRepository;
 
 import java.util.List;
@@ -21,7 +23,9 @@ public class BlockViewModel extends AndroidViewModel
         super(application);
         repository = new BlockRepository(application);
     }
-
+    public interface IdCallBack {
+        void onResult(Long x);
+    }
     public interface BlocksCallback {
         void onResult(List<BlockFullData> blocks);
     }
@@ -33,7 +37,9 @@ public class BlockViewModel extends AndroidViewModel
     public void getBlockById(int blockId, BlockCallback callback) {
         repository.getBlockById(blockId, callback::onResult);
     }
-
+    public void insertWithId(Block block, BlockViewModel.IdCallBack callBack) {
+        repository.insertWithId(block, callBack::onResult);
+    }
 
     public void updateEdition(int blockId) {
         repository.updateEditionTime(blockId);

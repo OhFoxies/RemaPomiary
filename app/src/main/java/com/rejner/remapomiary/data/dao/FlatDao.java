@@ -33,9 +33,12 @@ public interface FlatDao {
     @Query("SELECT * FROM flat WHERE id = :flatId")
     LiveData<Flat> getFlatById(int flatId);
 
-    @Query("SELECT * FROM flat WHERE istemplate = 0 ORDER BY creation_date ASC")
+
+    @Query("SELECT * FROM flat WHERE blockId = :blockId and isCommonSpace = 1;")
+    LiveData<Flat> getCommonSpace(int blockId);
+    @Query("SELECT * FROM flat WHERE istemplate = 0 AND isCommonSpace = 0 ORDER BY creation_date ASC")
     LiveData<List<Flat>> getAllFlats();
-    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 AND isCommonSpace = 0 ORDER BY creation_date ASC")
     LiveData<List<Flat>> getFlatsByBlockId(int blockId);
 
     @Transaction
@@ -43,9 +46,9 @@ public interface FlatDao {
     LiveData<FlatFullData> getFlatFullData(int flatId);
 
     @Transaction
-    @Query("SELECT * FROM flat WHERE istemplate = 0 ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE istemplate = 0 AND isCommonSpace = 0 ORDER BY creation_date ASC")
     LiveData<List<FlatFullData>> getAllFlatsFullData();
-    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 AND isCommonSpace = 0 ORDER BY creation_date ASC")
     LiveData<List<FlatFullData>> getFlatsFullDataByBlockId(int blockId);
 
     @Transaction

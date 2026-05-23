@@ -8,17 +8,25 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.rejner.remapomiary.R;
+import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
+import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
+import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
+
+import java.util.Date;
 
 public class BlockActivity extends AppCompatActivity {
 
 
     private BlockFullData block;
     private int blockId;
+    private int commonSpaceId;
     private BlockViewModel blockViewModel;
 
     @Override
@@ -27,6 +35,29 @@ public class BlockActivity extends AppCompatActivity {
         setContentView(R.layout.activity_block);
         blockId = getIntent().getIntExtra("blockId", 0);
         BlockViewModel blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
+        FlatViewModel flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        LiveDataUtil.observeOnce(flatViewModel.getCommonSpace(blockId), this, flat -> {
+            if (flat == null) {
+                Date now = new Date();
+
+                Flat commonSpace = new Flat();
+                commonSpace.isCommonSpace = 1;
+                commonSpace.blockId = Math.toIntExact(blockId);
+                commonSpace.number = "Część wspólna";
+                commonSpace.creation_date = now;
+                commonSpace.edition_date = now;
+                commonSpace.status = "";
+                flatViewModel.insertWithId(commonSpace, id ->{
+                    commonSpaceId = Math.toIntExact(id);
+                });
+
+            } else {
+                commonSpaceId = flat.id;
+
+            }
+
+        });
+        flatViewModel.getCommonSpace(blockId);
         blockViewModel.getBlockById(blockId, block1 -> {
             block = block1;
             runOnUiThread(this::initializeElements);
@@ -61,7 +92,7 @@ public class BlockActivity extends AppCompatActivity {
         });
 
         LinearLayout flats = findViewById(R.id.flats);
-//        LinearLayout commonSpace = findViewById(R.id.commonSpace);
+        LinearLayout commonSpace = findViewById(R.id.commonSpace);
 //        LinearLayout lps = findViewById(R.id.lps);
 
         flats.setOnClickListener(new View.OnClickListener() {
@@ -73,12 +104,16 @@ public class BlockActivity extends AppCompatActivity {
             }
         });
 
-//        commonSpace.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//
-//            }
-//        });
+        commonSpace.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(BlockActivity.this, BoardActivity.class);
+                intent.putExtra("flatId", commonSpaceId);
+                intent.putExtra("commonSpace", 1);
+
+                startActivity(intent);
+            }
+        });
 //
 //        lps.setOnClickListener(new View.OnClickListener() {
 //            @Override

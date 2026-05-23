@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:background="@drawable/round_corners"
+    android:padding="16dp"
+    android:orientation="vertical"
+    android:layout_marginBottom="16dp"
+
+    android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_marginBottom="20dp"
+
+        android:layout_height="wrap_content">
+
+
+        <TextView
+            android:id="@+id/boardName"
+            android:layout_width="wrap_content"
+            android:textSize="28sp"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:text="Rozdzielnia - nazwa" />
+        <Button
+            android:id="@+id/deleteBoardButton"
+            android:layout_width="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#f23022"
+            android:textSize="18sp"
+            style="@style/Widget.MaterialComponents.Button"
+
+            android:text="🗑️ Usuń rozdzielnie" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_marginBottom="30dp"
+
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="@color/white">
+        <TextView
+            android:id="@+id/textView15"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/radioButtons"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="15dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Typ instalacji" />
+
+        <RadioGroup
+            android:id="@+id/radioButtons"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textView15"
+            app:layout_constraintBottom_toTopOf="parent"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+
+            <RadioButton
+                android:id="@+id/radioTNS"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:layout_marginEnd="60dp"
+                android:text="TN-S" />
+
+            <RadioButton
+                android:id="@+id/radioTNC"
+                android:layout_width="wrap_content"
+                android:textSize="20sp"
+
+                android:layout_height="wrap_content"
+                android:text="TN-C" />
+        </RadioGroup>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="6dp"
+        android:layout_marginBottom="15dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:layout_marginEnd="10dp"
+
+            android:text="Nr"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="5"
+            android:gravity="center"
+            android:text="Nazwa obwodu"
+            android:textSize="16sp"
+            android:layout_marginEnd="10dp"
+
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:text="Faza"
+            android:layout_marginEnd="10dp"
+
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.5"
+            android:gravity="center"
+            android:text="Usuń"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/circuitsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/circuit_item"
+
+        android:nestedScrollingEnabled="false"
+        />
+
+
+
+    <Button
+        android:id="@+id/addCircuit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="➕ Dodaj obwód"
+        style="@style/Widget.MaterialComponents.Button"
+
+        android:textColor="@android:color/white"
+        android:backgroundTint="#669900"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:padding="16dp"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical">
+
+
+        <TextView
+            android:id="@+id/textView17"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:layout_marginBottom="15dp"
+            android:textStyle="bold"
+            android:text="Uwagi do rozdzielni" />
+
+        <EditText
+            android:id="@+id/boardNotes"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:ems="10"
+            android:layout_marginBottom="15dp"
+
+            android:background="@drawable/input"
+            android:gravity="start|top"
+            android:inputType="textMultiLine" />
+
+
+
+        <Button
+            android:id="@+id/saveBoardNotes"
+            android:layout_gravity="end"
+            android:layout_width="wrap_content"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_height="wrap_content"
+            android:text="Zapisz" />
+    </LinearLayout>
+
+
+
+</LinearLayout>

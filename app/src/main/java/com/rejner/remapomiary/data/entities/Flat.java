@@ -58,4 +58,14 @@ public class Flat {
     @ColumnInfo(name = "istemplate", defaultValue = "0")
     public int isTemplate = 0;
 
+    @ColumnInfo(name = "isCommonSpace", defaultValue = "0")
+    public int isCommonSpace = 0;
+
+    public boolean getIsCommonSpace() {
+        return isCommonSpace == 1;
+    }
+
+    public void setIsCommonSpace(int isCommonSpace) {
+        this.isCommonSpace = isCommonSpace;
+    }
 }

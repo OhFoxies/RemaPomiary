@@ -37,6 +37,7 @@ import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Client;
+import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.generator.ProtocolGenerator;
 import com.rejner.remapomiary.ui.utils.PostalCodeTextWatcher;
@@ -44,6 +45,7 @@ import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.ClientViewModel;
+import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
 import org.w3c.dom.Text;
 
@@ -211,7 +213,22 @@ public class BlocksActivity extends AppCompatActivity {
             return;
         }
         Block newBlock = new Block(catalogId, street.getText().toString(), city.getText().toString(), number.getText().toString(), postal_code.getText().toString(), selectedClient.id, new Date(), new Date());
-        blockViewModel.insert(newBlock);
+        blockViewModel.insertWithId(newBlock, id -> {
+            Date now = new Date();
+            FlatViewModel flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+
+            Flat commonSpace = new Flat();
+            commonSpace.isCommonSpace = 1;
+            commonSpace.blockId = Math.toIntExact(id);
+            commonSpace.number = "Część wspólna";
+            commonSpace.creation_date = now;
+            commonSpace.edition_date = now;
+            commonSpace.status = "";
+            flatViewModel.insert(commonSpace);
+
+
+        });
+
         catalogViewModel.updateEdition(catalogId);
         resetBlockInput();
 

@@ -10,6 +10,7 @@ import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Catalog;
+import com.rejner.remapomiary.data.entities.Flat;
 
 import java.util.Date;
 import java.util.List;
@@ -49,7 +50,12 @@ public class BlockRepository {
 
     }
 
-
+    public void insertWithId(Block block, Consumer<Long> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            long id = dao.insertWithId(block);
+            callback.accept(id);
+        });
+    }
     public void updateEditionTime(int blockId) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             AppDatabase.databaseWriteExecutor.execute(() -> {

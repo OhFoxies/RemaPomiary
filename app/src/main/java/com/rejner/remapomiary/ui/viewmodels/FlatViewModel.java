@@ -99,9 +99,8 @@ public class FlatViewModel extends AndroidViewModel {
 
     public void insertWithId(Flat flat, IdCallBack callBack) {
         repository.insertWithId(flat, callBack::onResult);
-
-
     }
+
     public LiveData<List<FlatFullData>> getTemplatesForCatalog(int catalogId) {
         return repository.getTemplatesForCatalog(catalogId);
     }
@@ -116,6 +115,10 @@ public class FlatViewModel extends AndroidViewModel {
                 repository.update(flatFullData.flat);
             }
         });
+    }
+
+    public LiveData<Flat> getCommonSpace(int blockId) {
+        return repository.getCommonSpace(blockId);
     }
 
 

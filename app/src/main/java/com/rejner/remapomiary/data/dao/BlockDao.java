@@ -9,6 +9,7 @@ import androidx.room.Transaction;
 
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
+import com.rejner.remapomiary.data.entities.Flat;
 
 import java.util.Date;
 import java.util.List;
@@ -33,4 +34,8 @@ public interface BlockDao {
 
     @Query("UPDATE blocks SET edition_date = :time WHERE id = :blockId")
     void updateEditionTime(int blockId, Date time);
+
+    @Insert
+    long insertWithId(Block block);
+
 }
