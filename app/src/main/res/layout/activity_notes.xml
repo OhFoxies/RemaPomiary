@@ -232,6 +232,7 @@
 
 
 
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -286,7 +287,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone"
+                        android:visibility="visible"
                         android:padding="16dp">
 
                         <TextView
@@ -310,8 +311,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone"
+                        android:visibility="visible"
                         android:padding="16dp">
+
 
                         <TextView
                             android:layout_width="match_parent"
@@ -321,14 +323,32 @@
                             android:textColor="#E53935"
                             android:gravity="center"
                             android:layout_marginBottom="12dp"/>
-
-                        <EditText
-                            android:id="@+id/etSignerName"
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Imię i Nazwisko osoby podpisującej"
-                            android:inputType="textPersonName"
-                            android:layout_marginBottom="12dp"/>
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="12dp">
+
+                            <EditText
+                                android:id="@+id/etSignerName"
+                                android:layout_width="0dp"
+                                android:layout_weight="3"
+                                android:layout_marginEnd="20dp"
+                                android:layout_height="wrap_content"
+                                android:hint="Imię i Nazwisko osoby podpisującej"
+                                android:inputType="textPersonName"
+                                android:imeOptions="actionDone" />
+
+                            <Button
+                                android:id="@+id/confirmName"
+                                android:layout_weight="1"
+                                style="@style/Widget.MaterialComponents.Button"
+                                android:text="✔"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+
 
                         <com.rejner.remapomiary.ui.activities.SignatureView
                             android:id="@+id/signatureView"

@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -79,6 +80,7 @@ public class NotesActivity extends AppCompatActivity {
     private SignatureView signatureView;
     private ImageView savedSignatureImage;
     private EditText etSignerName;
+    private Button saveName;
     private Button btnCancelSignature;
     private Button btnClearSignature;
     private Button btnShowTermsPostSign;
@@ -124,6 +126,8 @@ public class NotesActivity extends AppCompatActivity {
         btnSaveSignature = findViewById(R.id.btnSaveSignature);
         signatureView = findViewById(R.id.signatureView);
         savedSignatureImage = findViewById(R.id.savedSignatureImage);
+        saveName = findViewById(R.id.confirmName);
+
 
         if (catalogId != -1) {
             radioDopuszczona.setEnabled(false);
@@ -192,10 +196,23 @@ public class NotesActivity extends AppCompatActivity {
         });
 
         templateSave.setOnClickListener(v -> saveAsTemplate());
+
     }
 
     // NOWA METODA - Logika widoczności i zapisu podpisu
     private void setupSignatureLogic() {
+        saveName.setOnClickListener(v-> {
+            hideKeyboard();
+            etSignerName.clearFocus();
+        });
+        etSignerName.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                hideKeyboard();          // Ukrywa klawiaturę (korzysta z Twojej metody)
+                etSignerName.clearFocus(); // Usuwa focus (kursor) z pola tekstowego
+                return true;             // Konsumuje zdarzenie
+            }
+            return false;
+        });
         signatureViewModel.getSignatureForFlat(flatId).observe(this, signature -> {
             if (signature != null && signature.signatureData != null) {
                 // Podpis istnieje w bazie - ukryj panele wprowadzania, pokaż podgląd
