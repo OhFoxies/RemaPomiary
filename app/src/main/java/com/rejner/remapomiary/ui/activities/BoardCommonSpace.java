@@ -1,5 +1,6 @@
 package com.rejner.remapomiary.ui.activities;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -8,6 +9,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -20,11 +22,9 @@ import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.BoardAdapter;
 import com.rejner.remapomiary.data.entities.BoardsFullData;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
-import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.BoardCommonSpaceViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitCommonSpaceViewModel;
-import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
 import java.util.Date;
 
@@ -34,7 +34,7 @@ public class BoardCommonSpace extends AppCompatActivity {
     private BoardAdapter boardAdapter;
 
     // Elementy UI
-    private Button backButton, backSave, notesButton, boardButton, RCDButton, roomsButton;
+    private Button backButton, notesButton, roomsButton;
     private Spinner boardNameSpinner;
 
     private EditText boardNameInput;
@@ -43,6 +43,8 @@ public class BoardCommonSpace extends AppCompatActivity {
     private CircuitCommonSpaceViewModel circuitCommonSpaceViewModel;
     private int commonSpaceFlatId;
     private Button confirmBoardName, cancelBoardName, addNewBoard;
+    private int catalogId;
+    private String blockName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,9 +54,15 @@ public class BoardCommonSpace extends AppCompatActivity {
         blockId = getIntent().getIntExtra("blockId", 0);
         commonSpaceFlatId = getIntent().getIntExtra("flatId", 0);
 
+
+        BlockViewModel blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
         circuitCommonSpaceViewModel = new ViewModelProvider(this).get(CircuitCommonSpaceViewModel.class);
         boardCommonSpaceViewModel = new ViewModelProvider(this).get(BoardCommonSpaceViewModel.class);
-
+        catalogId = -1;
+        blockViewModel.getBlockById(blockId, block1 -> {
+                blockName = block1.block.city + "/" + block1.block.number;
+                catalogId = block1.catalog.id;
+        });
 
         initViews();
         setupRecyclerView();
@@ -67,17 +75,17 @@ public class BoardCommonSpace extends AppCompatActivity {
     private void initViews() {
         boardsRecyclerView = findViewById(R.id.boardsRecyclerView);
         backButton = findViewById(R.id.backButton);
-        backSave = findViewById(R.id.backSave);
         notesButton = findViewById(R.id.notesButton);
-        boardButton = findViewById(R.id.boardButton);
-        RCDButton = findViewById(R.id.RCDButton);
         roomsButton = findViewById(R.id.roomsButton);
+        TextView boardTitle = findViewById(R.id.boardTitle);
 
         boardNameSpinner = findViewById(R.id.boardNameSpinner);
         boardNameInput = findViewById(R.id.boardNameInput);
         confirmBoardName = findViewById(R.id.confirmBoardName);
         cancelBoardName = findViewById(R.id.cancelBoardName);
         addNewBoard = findViewById(R.id.addNewBoard);
+
+        boardTitle.setText("Rozdzielnie - " + blockName);
     }
 
     private void setupRecyclerView() {
@@ -184,12 +192,35 @@ public class BoardCommonSpace extends AppCompatActivity {
     }
 
     private void setupNavigationButtons() {
-        backButton.setOnClickListener(v -> { /* TODO: Wróć */ });
-        backSave.setOnClickListener(v -> { /* TODO: Zapisz stan i wróć */ });
-        notesButton.setOnClickListener(v -> { /* TODO: Przejdź do notatek */ });
-        boardButton.setOnClickListener(v -> { /* TODO: Widok rozdzielni */ });
-        RCDButton.setOnClickListener(v -> { /* TODO: Przejdź do różnicówki */ });
-        roomsButton.setOnClickListener(v -> { /* TODO: Pętla zwarcia */ });
+        backButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, BlockActivity.class);
+            intent.putExtra("blockId", blockId);
+            startActivity(intent);
+        });
+        notesButton.setOnClickListener(v -> {
+
+            Intent intent = new Intent(this, NotesActivity.class);
+            if (catalogId != -1) {
+                intent.putExtra("catalogId", catalogId);
+
+            }
+            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("flatId", commonSpaceFlatId);
+            startActivity(intent);
+        });
+
+//        RCDButton.setOnClickListener(v -> { /* TODO: Przejdź do różnicówki */ });
+
+        roomsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, RoomActivity.class);
+            if (catalogId != -1) {
+                intent.putExtra("catalogId", catalogId);
+
+            }
+            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("flatId", commonSpaceFlatId);
+            startActivity(intent);
+        });
     }
 
     private void setupBoardSpinnerLogic() {
@@ -281,8 +312,6 @@ public class BoardCommonSpace extends AppCompatActivity {
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
     private void observeDatabase() {
-         boardCommonSpaceViewModel.getBoardsFullData(commonSpaceFlatId).observe(this, boardsList -> {
-             boardAdapter.setBoards(boardsList);
-         });
+         boardCommonSpaceViewModel.getBoardsFullData(commonSpaceFlatId).observe(this, boardsList -> boardAdapter.setBoards(boardsList));
     }
 }

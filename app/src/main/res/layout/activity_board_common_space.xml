@@ -36,7 +36,7 @@
                 android:layout_marginEnd="16dp" />
 
             <TextView
-                android:id="@+id/flatTitle"
+                android:id="@+id/boardTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:text="Mieszkanie - numer"
@@ -44,15 +44,6 @@
 
                 android:textSize="24sp"
                 android:textStyle="bold" />
-            <Button
-                android:id="@+id/backSave"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="✅  Oznacz jako wykonane"
-                android:backgroundTint="#3E902A"
-                android:gravity="center_vertical"
-                android:textSize="18sp"
-                android:layout_marginStart="16dp" />
         </LinearLayout>
 
         <LinearLayout
@@ -87,18 +78,6 @@
                 android:paddingBottom="15dp"
                 android:text="Rozdzielnia"
 
-                android:textSize="18sp" />
-
-            <Button
-                android:id="@+id/RCDButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Różnicówka"
                 android:textSize="18sp" />
 
             <Button
