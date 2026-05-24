@@ -31,6 +31,6 @@ public interface BoardCommonSpaceDao {
     LiveData<List<BoardCommonSpace>> getBoardsForFlat(int flatId);
 
     @Transaction
-    @Query("SELECT * FROM board_common_space WHERE flatId = :flatId")
+    @Query("SELECT * FROM board_common_space WHERE flatId = :flatId ORDER BY creation_date DESC")
     LiveData<List<BoardsFullData>> getBoardsWithCircuitsForFlat(int flatId);
 }

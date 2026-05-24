@@ -32,8 +32,6 @@ public class BoardCommonSpace extends AppCompatActivity {
 
     private RecyclerView boardsRecyclerView;
     private BoardAdapter boardAdapter;
-
-    // Elementy UI
     private Button backButton, notesButton, roomsButton;
     private Spinner boardNameSpinner;
 
@@ -60,8 +58,13 @@ public class BoardCommonSpace extends AppCompatActivity {
         boardCommonSpaceViewModel = new ViewModelProvider(this).get(BoardCommonSpaceViewModel.class);
         catalogId = -1;
         blockViewModel.getBlockById(blockId, block1 -> {
-                blockName = block1.block.city + "/" + block1.block.number;
+                blockName = block1.block.city + " / " + block1.block.number;
                 catalogId = block1.catalog.id;
+                runOnUiThread(() -> {
+                    TextView boardTitle = findViewById(R.id.boardTitle);
+                    boardTitle.setText("Rozdzielnie - " + blockName);
+
+                });
         });
 
         initViews();
@@ -77,7 +80,6 @@ public class BoardCommonSpace extends AppCompatActivity {
         backButton = findViewById(R.id.backButton);
         notesButton = findViewById(R.id.notesButton);
         roomsButton = findViewById(R.id.roomsButton);
-        TextView boardTitle = findViewById(R.id.boardTitle);
 
         boardNameSpinner = findViewById(R.id.boardNameSpinner);
         boardNameInput = findViewById(R.id.boardNameInput);
@@ -85,7 +87,6 @@ public class BoardCommonSpace extends AppCompatActivity {
         cancelBoardName = findViewById(R.id.cancelBoardName);
         addNewBoard = findViewById(R.id.addNewBoard);
 
-        boardTitle.setText("Rozdzielnie - " + blockName);
     }
 
     private void setupRecyclerView() {
@@ -285,6 +286,12 @@ public class BoardCommonSpace extends AppCompatActivity {
             if ("inne".equalsIgnoreCase(boardNameSpinner.getSelectedItem().toString())) {
                 if (!boardNameInput.getText().toString().isEmpty()) {
                     boardName = boardNameInput.getText().toString();
+                    boardNameInput.setText("");
+                    boardNameSpinner.setSelection(0);
+                    boardNameInput.setVisibility(View.GONE);
+                    confirmBoardName.setVisibility(View.GONE);
+                    cancelBoardName.setVisibility(View.GONE);
+                    hideKeyboard();
                 } else {
                     Toast.makeText(this, "Podaj nazwę rozdzielni", Toast.LENGTH_SHORT).show();
 
