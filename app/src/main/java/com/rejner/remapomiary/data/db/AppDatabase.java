@@ -23,6 +23,7 @@ import com.rejner.remapomiary.data.dao.OutletMeasurementDao;
 import com.rejner.remapomiary.data.dao.ProtocolNumberDao;
 import com.rejner.remapomiary.data.dao.RCDDao;
 import com.rejner.remapomiary.data.dao.RoomDao;
+import com.rejner.remapomiary.data.dao.SignatureDao;
 import com.rejner.remapomiary.data.dao.TemplateDao;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
@@ -36,12 +37,13 @@ import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.ProtocolNumber;
 import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.entities.Signature;
 import com.rejner.remapomiary.data.entities.Template;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Contractors.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 18)
+@Database(entities = {Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 20)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -62,6 +64,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract CircuitCommonSpaceDao circuitCommonSpaceDao();
     public abstract ContractorsDao contractorsDao();
 
+    public abstract SignatureDao signatureDao();
     static final Migration MIGRATION_14_15 = new Migration(14, 15) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -131,6 +134,29 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_18_19 = new Migration(18, 19) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `signatures` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`flatId` INTEGER NOT NULL, " +
+                    "`signatureData` BLOB, " +
+                    "FOREIGN KEY(`flatId`) REFERENCES `flat`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+
+            // 2. Tworzenie indeksu dokładnie tak, jak oczekuje tego Room
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_signatures_flatId` ON `signatures` (`flatId`)");
+        }
+    };
+
+    static final Migration MIGRATION_19_20= new Migration(19, 20) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE `signatures` ADD COLUMN `signerName` TEXT");
+            // Dodanie kolumny na datę (jako INTEGER/timestamp)
+            database.execSQL("ALTER TABLE `signatures` ADD COLUMN `signatureDate` INTEGER");
+        }
+    };
+
 
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
@@ -138,7 +164,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                             .build();
 
                 }

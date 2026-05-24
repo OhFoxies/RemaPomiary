@@ -282,6 +282,142 @@
 
                     </LinearLayout>
                     <LinearLayout
+                        android:id="@+id/termsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/tvTermsText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Regulamin akceptacji pomiarów: \n1. Wykonawca oświadcza, że pomiary zostały przeprowadzone rzetelnie.\n2. Lokator potwierdza odbiór i stan instalacji."
+                            android:textSize="14sp"
+                            android:textColor="#333333"/>
+
+                        <Button
+                            android:id="@+id/btnNextToSignature"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="Dalej (Przejdź do podpisu)"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/signaturePadContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Złożenie podpisu oznacza akceptację regulaminu"
+                            android:textStyle="bold"
+                            android:textColor="#E53935"
+                            android:gravity="center"
+                            android:layout_marginBottom="12dp"/>
+
+                        <EditText
+                            android:id="@+id/etSignerName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Imię i Nazwisko osoby podpisującej"
+                            android:inputType="textPersonName"
+                            android:layout_marginBottom="12dp"/>
+
+                        <com.rejner.remapomiary.ui.activities.SignatureView
+                            android:id="@+id/signatureView"
+                            android:layout_width="match_parent"
+                            android:layout_height="200dp"
+                            android:background="#E0E0E0" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp"
+                            android:weightSum="3">
+
+                            <Button
+                                android:id="@+id/btnCancelSignature"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Anuluj"
+                                android:backgroundTint="#757575"
+                                android:layout_marginEnd="4dp"/>
+
+                            <Button
+                                android:id="@+id/btnClearSignature"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Wyczyść"
+                                android:backgroundTint="#FF9800"
+                                android:layout_marginEnd="4dp"/>
+
+                            <Button
+                                android:id="@+id/btnSaveSignature"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Zapisz"
+                                android:backgroundTint="#4CAF50"/>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/savedSignatureContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:id="@+id/tvSavedSignatureInfo"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Podpis złożony przez: -\nData: -"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp"/>
+
+                        <ImageView
+                            android:id="@+id/savedSignatureImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="150dp"
+                            android:scaleType="fitCenter"
+                            android:background="#F5F5F5"
+                            android:layout_marginBottom="8dp"/>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnShowTermsPostSign"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Pokaż Regulamin"
+                                android:layout_marginEnd="4dp"/>
+
+                            <Button
+                                android:id="@+id/btnDeleteSignature"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Podpisz ponownie"
+                                android:backgroundTint="#D32F2F"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"

@@ -1,36 +1,33 @@
-
 package com.rejner.remapomiary.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.rejner.remapomiary.R;
-import com.rejner.remapomiary.data.dao.RCDDao;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
-import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.entities.Signature;
 import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
@@ -40,20 +37,24 @@ import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 import com.rejner.remapomiary.ui.viewmodels.TemplateViewModel;
+import com.rejner.remapomiary.ui.viewmodels.SignatureViewModel; // NOWE
+import com.rejner.remapomiary.ui.activities.SignatureView; // NOWE
 
+import java.io.ByteArrayOutputStream;
 import java.util.Date;
 
 public class NotesActivity extends AppCompatActivity {
 
     private FlatViewModel flatViewModel;
     private TemplateViewModel templateViewModel;
+    private SignatureViewModel signatureViewModel; // NOWE
+
     private Flat currentFlat;
     private int flatId;
     private BlockViewModel blockViewModel;
     private CircuitViewModel circuitViewModel;
     private RCDViewModel rcdViewModel;
     private OutletMeasurementViewModel outletMeasurementViewModel;
-
     private RoomViewModel roomViewModel;
 
     private RadioGroup radioGroup;
@@ -69,11 +70,25 @@ public class NotesActivity extends AppCompatActivity {
     private int catalogId;
     private boolean areButtonsSet = false;
 
+    // NOWE POLA DLA PODPISU
+    private LinearLayout termsContainer;
+    private LinearLayout signaturePadContainer;
+    private LinearLayout savedSignatureContainer;
+    private Button btnNextToSignature;
+    private Button btnSaveSignature;
+    private SignatureView signatureView;
+    private ImageView savedSignatureImage;
+    private EditText etSignerName;
+    private Button btnCancelSignature;
+    private Button btnClearSignature;
+    private Button btnShowTermsPostSign;
+    private Button btnDeleteSignature;
+    private TextView tvSavedSignatureInfo;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notes);
-
 
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
@@ -82,7 +97,6 @@ public class NotesActivity extends AppCompatActivity {
             finish();
             return;
         }
-
 
         radioGroup = findViewById(R.id.radioGroup_instalacja);
         radioDopuszczona = findViewById(R.id.radio_dopuszczona);
@@ -95,6 +109,22 @@ public class NotesActivity extends AppCompatActivity {
         templateSave = findViewById(R.id.templateSave);
         templateName = findViewById(R.id.templateName);
 
+        etSignerName = findViewById(R.id.etSignerName);
+        btnCancelSignature = findViewById(R.id.btnCancelSignature);
+        btnClearSignature = findViewById(R.id.btnClearSignature);
+        btnShowTermsPostSign = findViewById(R.id.btnShowTermsPostSign);
+        btnDeleteSignature = findViewById(R.id.btnDeleteSignature);
+        tvSavedSignatureInfo = findViewById(R.id.tvSavedSignatureInfo);
+
+        // NOWE WIDOKI
+        termsContainer = findViewById(R.id.termsContainer);
+        signaturePadContainer = findViewById(R.id.signaturePadContainer);
+        savedSignatureContainer = findViewById(R.id.savedSignatureContainer);
+        btnNextToSignature = findViewById(R.id.btnNextToSignature);
+        btnSaveSignature = findViewById(R.id.btnSaveSignature);
+        signatureView = findViewById(R.id.signatureView);
+        savedSignatureImage = findViewById(R.id.savedSignatureImage);
+
         if (catalogId != -1) {
             radioDopuszczona.setEnabled(false);
             radioDopuszczonaUsterki.setEnabled(false);
@@ -105,6 +135,7 @@ public class NotesActivity extends AppCompatActivity {
             templateName.setEnabled(false);
             templateSave.setEnabled(false);
         }
+
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
         templateViewModel = new ViewModelProvider(this).get(TemplateViewModel.class);
         blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
@@ -112,6 +143,7 @@ public class NotesActivity extends AppCompatActivity {
         rcdViewModel = new ViewModelProvider(this).get(RCDViewModel.class);
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
+        signatureViewModel = new ViewModelProvider(this).get(SignatureViewModel.class); // INICJALIZACJA
 
         flatViewModel.getCombinedFlat(flatId).observe(this, flat -> {
             if (flat != null) {
@@ -126,9 +158,11 @@ public class NotesActivity extends AppCompatActivity {
             }
         });
 
+        // OBSŁUGA LOGIKI PODPISÓW
+        setupSignatureLogic();
+
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (currentFlat == null) return;
-
             int newGrade = currentFlat.grade;
             if (checkedId == R.id.radio_dopuszczona) {
                 newGrade = 0;
@@ -137,7 +171,6 @@ public class NotesActivity extends AppCompatActivity {
             } else if (checkedId == R.id.radio_niedopuszczona) {
                 newGrade = 2;
             }
-
             if (currentFlat.grade != newGrade) {
                 currentFlat.grade = newGrade;
                 flatViewModel.update(currentFlat);
@@ -146,9 +179,7 @@ public class NotesActivity extends AppCompatActivity {
 
         blockGrade.setOnClickListener(v -> {
             if (currentFlat == null) return;
-
             flatViewModel.toggleGradeBlock(currentFlat.id);
-
         });
 
         saveButton.setOnClickListener(v -> {
@@ -160,13 +191,109 @@ public class NotesActivity extends AppCompatActivity {
             }
         });
 
-        templateName = findViewById(R.id.templateName);
+        templateSave.setOnClickListener(v -> saveAsTemplate());
+    }
 
-        templateSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                saveAsTemplate();
+    // NOWA METODA - Logika widoczności i zapisu podpisu
+    private void setupSignatureLogic() {
+        signatureViewModel.getSignatureForFlat(flatId).observe(this, signature -> {
+            if (signature != null && signature.signatureData != null) {
+                // Podpis istnieje w bazie - ukryj panele wprowadzania, pokaż podgląd
+                termsContainer.setVisibility(View.GONE);
+                signaturePadContainer.setVisibility(View.GONE);
+                savedSignatureContainer.setVisibility(View.VISIBLE);
+
+                // Wyświetlenie danych tekstowych (Kto i Kiedy)
+                String dateStr = signature.signatureDate != null ?
+                        android.text.format.DateFormat.format("yyyy-MM-dd HH:mm", signature.signatureDate).toString() : "-";
+                tvSavedSignatureInfo.setText("Podpis złożony przez: " + signature.signerName + "\nData: " + dateStr);
+
+                // Wyświetlenie rysunku podpisu
+                Bitmap bitmap = BitmapFactory.decodeByteArray(signature.signatureData, 0, signature.signatureData.length);
+                savedSignatureImage.setImageBitmap(bitmap);
+            } else {
+                // Brak podpisu - pokaż panel startowy (Regulamin)
+                if (catalogId == -1) {
+                    termsContainer.setVisibility(View.VISIBLE);
+                    signaturePadContainer.setVisibility(View.GONE);
+                    savedSignatureContainer.setVisibility(View.GONE);
+                    // Czyszczenie pól tekstowych i padu rysowania na wszelki wypadek
+                    etSignerName.setText("");
+                    signatureView.clear();
+                }
             }
+        });
+
+        // Przejście z regulaminu do podpisywania
+        btnNextToSignature.setOnClickListener(v -> {
+            termsContainer.setVisibility(View.GONE);
+            signaturePadContainer.setVisibility(View.VISIBLE);
+        });
+
+        // Przycisk: ANULUJ składanie podpisu (wraca do regulaminu)
+        btnCancelSignature.setOnClickListener(v -> {
+            hideKeyboard();
+            signatureView.clear();
+            etSignerName.setText("");
+            signaturePadContainer.setVisibility(View.GONE);
+            termsContainer.setVisibility(View.VISIBLE);
+        });
+
+        // Przycisk: WYCZYŚĆ pad (czyści tylko płótno rysunku w trakcie podpisywania)
+        btnClearSignature.setOnClickListener(v -> {
+            signatureView.clear();
+        });
+
+        // Przycisk: ZAPISZ podpis w bazie
+        btnSaveSignature.setOnClickListener(v -> {
+            String name = etSignerName.getText().toString().trim();
+            if (name.isEmpty()) {
+                etSignerName.setError("Wprowadź imię i nazwisko!");
+                return;
+            }
+
+            Bitmap signatureBitmap = signatureView.getSignatureBitmap();
+
+            // Kompresja grafiki bitmapy do tablicy bajtów
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            signatureBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            byte[] byteArray = stream.toByteArray();
+
+            // Budowanie nowego obiektu z datą i nazwiskiem
+            Signature newSignature = new Signature();
+            newSignature.flatId = flatId;
+            newSignature.signatureData = byteArray;
+            newSignature.signerName = name;
+            newSignature.signatureDate = new Date(); // Bieżąca data i czas
+
+            hideKeyboard();
+            signatureViewModel.insert(newSignature);
+            Toast.makeText(this, "Podpis został pomyślnie zapisany!", Toast.LENGTH_SHORT).show();
+        });
+
+        // Przycisk: POKAŻ REGULAMIN po złożeniu podpisu (wyświetla Dialog)
+        btnShowTermsPostSign.setOnClickListener(v -> {
+            TextView termsTv = findViewById(R.id.tvTermsText);
+            CharSequence termsContent = termsTv != null ? termsTv.getText() : "Treść regulaminu";
+
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Regulamin")
+                    .setMessage(termsContent)
+                    .setPositiveButton("Zamknij", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
+
+        // Przycisk: PODPISZ PONOWNIE / USUŃ (Kasuje stary podpis i pozwala zacząć od nowa)
+        btnDeleteSignature.setOnClickListener(v -> {
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Usuwanie podpisu")
+                    .setMessage("Czy na pewno chcesz usunąć obecny podpis i podpisać dokument ponownie?")
+                    .setPositiveButton("Tak, usuń", (dialog, which) -> {
+                signatureViewModel.deleteSignatureForFlat(flatId);
+                Toast.makeText(this, "Stary podpis usunięty.", Toast.LENGTH_SHORT).show();
+            })
+                    .setNegativeButton("Nie", null)
+                    .show();
         });
     }
 
@@ -180,10 +307,7 @@ public class NotesActivity extends AppCompatActivity {
         blockViewModel.getBlockById(currentFlat.blockId, block -> {
             templateViewModel.doesTemplateNameExists(name, block.catalog.id, doesExist -> {
                 if (doesExist) {
-                    // Must run on the Main Thread for UI (Toast)
-                    runOnUiThread(() -> {
-                        Toast.makeText(NotesActivity.this, "Szablon z tą nazwą już istnieje", Toast.LENGTH_SHORT).show();
-                    });
+                    runOnUiThread(() -> Toast.makeText(NotesActivity.this, "Szablon z tą nazwą już istnieje", Toast.LENGTH_SHORT).show());
                     return;
                 }
                 Flat templateFlat = new Flat();
@@ -193,7 +317,6 @@ public class NotesActivity extends AppCompatActivity {
                 templateFlat.number = "MIESZKANIE SZABLONOWE";
                 templateFlat.blockId = currentFlat.blockId;
                 flatViewModel.insertWithId(templateFlat, id -> {
-
                     Template template = new Template();
                     template.creationDate = new Date();
                     template.flatId = Math.toIntExact(id);
@@ -201,7 +324,6 @@ public class NotesActivity extends AppCompatActivity {
                     templateViewModel.insert(template);
 
                     NotesActivity.this.runOnUiThread(() -> {
-
                         LiveDataUtil.observeOnce(circuitViewModel.getCircuitsForFlat(currentFlat.id), NotesActivity.this, circuits -> {
                             for (Circuit c : circuits) {
                                 Circuit newCircuit = new Circuit();
@@ -235,21 +357,16 @@ public class NotesActivity extends AppCompatActivity {
                                             for (OutletMeasurement o : outletMeasurements) {
                                                 OutletMeasurement newOutlet = new OutletMeasurement();
                                                 newOutlet.amps = o.amps;
-
                                                 newOutlet.appliance = o.appliance;
-
                                                 newOutlet.breakerType = o.breakerType;
-
                                                 newOutlet.switchName = o.switchName;
                                                 newOutlet.roomId = Math.toIntExact(roomId);
-                                                outletMeasurementViewModel.insert(newOutlet, x -> {
-                                                });
+                                                outletMeasurementViewModel.insert(newOutlet, x -> {});
                                             }
                                         });
                                     });
                                 });
                             }
-
                             Toast.makeText(NotesActivity.this, "Szablon został zapisany", Toast.LENGTH_SHORT).show();
                             templateName.setText("");
                             hideKeyboard();
@@ -259,8 +376,6 @@ public class NotesActivity extends AppCompatActivity {
                 });
             });
         });
-
-
     }
 
     private void setupUIElements() {
@@ -281,63 +396,39 @@ public class NotesActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        boardButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(NotesActivity.this, BoardActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
+        boardButton.setOnClickListener(v -> {
+            Intent intent = new Intent(NotesActivity.this, BoardActivity.class);
+            if (catalogId != -1) intent.putExtra("catalogId", catalogId);
+            intent.putExtra("flatId", currentFlat.id);
+            startActivity(intent);
+        });
 
-                }
-                intent.putExtra("flatId", currentFlat.id);
+        roomButton.setOnClickListener(v -> {
+            Intent intent = new Intent(NotesActivity.this, RoomActivity.class);
+            if (catalogId != -1) intent.putExtra("catalogId", catalogId);
+            intent.putExtra("flatId", currentFlat.id);
+            startActivity(intent);
+        });
+
+        RCDButton.setOnClickListener(v -> {
+            Intent intent = new Intent(NotesActivity.this, RCDActivity.class);
+            if (catalogId != -1) intent.putExtra("catalogId", catalogId);
+            intent.putExtra("flatId", currentFlat.id);
+            startActivity(intent);
+        });
+
+        backButton.setOnClickListener(v -> {
+            if (currentFlat == null) return;
+            if (catalogId != -1) {
+                Intent intent = new Intent(NotesActivity.this, CatalogActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
+            } else {
+                Intent intent = new Intent(NotesActivity.this, FlatsActivity.class);
+                intent.putExtra("blockId", currentFlat.blockId);
                 startActivity(intent);
             }
         });
-
-        roomButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(NotesActivity.this, RoomActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
-
-                }
-                intent.putExtra("flatId", currentFlat.id);
-                startActivity(intent);
-            }
-        });
-
-
-        RCDButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(NotesActivity.this, RCDActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
-
-                }
-                intent.putExtra("flatId", currentFlat.id);
-                startActivity(intent);
-            }
-        });
-
-
-        backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (currentFlat == null) return;
-                if (catalogId != -1) {
-                    Intent intent = new Intent(NotesActivity.this, CatalogActivity.class);
-                    intent.putExtra("catalogId", catalogId);
-                    startActivity(intent);
-                } else {
-                    Intent intent = new Intent(NotesActivity.this, FlatsActivity.class);
-                    intent.putExtra("blockId", currentFlat.blockId);
-                    startActivity(intent);
-                }
-            }
-        });
-
     }
 
     private void gradeButtonState() {
@@ -348,7 +439,6 @@ public class NotesActivity extends AppCompatActivity {
                 blockGrade.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F44336")));
             } else {
                 currentMode.setText("Automatyczna aktualizacja wyłączona!");
-
                 blockGrade.setText("Włącz automatyczną aktualizacje");
                 blockGrade.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#ff669900")));
             }
