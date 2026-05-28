@@ -45,4 +45,7 @@ public class OutletMeasurementRepository {
     public LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId) {
         return dao.getMeasurementsForRoom(roomId);
     }
+    public String getLastRCDName(int roomId) {
+        return dao.getLastRcdNameInFlat(roomId);
+    }
 }

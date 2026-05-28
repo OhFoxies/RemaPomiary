@@ -47,8 +47,8 @@ public class RoomActivity extends AppCompatActivity {
     private int flatId;
     private Flat flat;
 
-    public final String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
-    public final String[] applianceOptions = {"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Inne"};
+    public String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
+    public String[] applianceOptions = {"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Inne"};
     public final String[] breakerTypes = {"B", "C", "D", "Gg"};
     public final String[] noteOptions = {"brak uwag", "nie podłączony bolec", "Urwane", "zepsute", "Inne"};
     public final String[] ampsOptions = {"3", "6", "10", "16", "20", "25", "32", "40"};
@@ -59,6 +59,8 @@ public class RoomActivity extends AppCompatActivity {
     private Double lastDefaultAmps = null;
     private int catalogId;
     private long newlyAddedMeasurementId = -1;
+    private boolean isCommonSpace;
+    private String blockName;
     private FlatViewModel flatViewModel;
 
     @Override
@@ -69,10 +71,17 @@ public class RoomActivity extends AppCompatActivity {
 
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
+        isCommonSpace = getIntent().getIntExtra("isCommonSpace", 0) == 1;
+        blockName = getIntent().getStringExtra("name");
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
 
+
+        if (isCommonSpace) {
+            roomNames = new String[]{"Korytarz", "Garaż", "Piwnica", "Rowerownia", "Pralnia", "Piętro -", "Inne"};
+            applianceOptions = new String[]{"Gniazdko", "Brama garażowa", "Inne"};
+        }
         LiveDataUtil.observeOnce(flatViewModel.getFlatById(flatId), this, flat1 -> {
             flat = flat1;
             runOnUiThread(this::setupUIElements);
@@ -86,55 +95,99 @@ public class RoomActivity extends AppCompatActivity {
     }
 
     private void setupUIElements() {
+
         if (flat == null) return;
-        binding.flatTitle.setText("Mieszkanie numer - " + flat.number + " pętla zwarcia");
+        if (isCommonSpace) {
+            binding.flatTitle.setText("Pętla zwarcia - " + blockName);
+            binding.customRoomEditText.setHint("Podaj nazwę pomieszczenia");
+            binding.addRoomButton.setText("Dodaj pomieszczenie");
+
+        } else {
+
+            binding.flatTitle.setText("Mieszkanie numer - " + flat.number + " pętla zwarcia");
+        }
         if (catalogId != -1) {
             binding.notesButton.setVisibility(View.GONE);
         }
+        if (isCommonSpace) {
+            binding.backSave.setVisibility(View.GONE);
+        } else {
+            binding.backSave.setOnClickListener(v -> {
+                flat.status = "Pomiar gotowy ✅";
+                flat.edition_date = new Date();
+                flatViewModel.update(flat);
+                Intent intent = new Intent(RoomActivity.this, FlatsActivity.class);
+                intent.putExtra("blockId", flat.blockId);
+                startActivity(intent);
+            });
+        }
 
-        binding.backSave.setOnClickListener(v -> {
-            flat.status = "Pomiar gotowy ✅";
-            flat.edition_date = new Date();
-            flatViewModel.update(flat);
-            Intent intent = new Intent(RoomActivity.this, FlatsActivity.class);
-            intent.putExtra("blockId", flat.blockId);
-            startActivity(intent);
-        });
 
 
         binding.boardButton.setOnClickListener(v -> {
-            Intent intent = new Intent(RoomActivity.this, BoardActivity.class);
-            if (catalogId != -1) {
-                intent.putExtra("catalogId", catalogId);
+            if (isCommonSpace) {
+                Intent intent = new Intent(RoomActivity.this, BoardCommonSpace.class);
+                intent.putExtra("flatId", flatId);
+                intent.putExtra("blockId", flat.blockId);
 
+                intent.putExtra("commonSpace", 1);
+
+                startActivity(intent);
+            } else {
+                Intent intent = new Intent(RoomActivity.this, BoardActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
+                intent.putExtra("flatId", flat.id);
+                startActivity(intent);
             }
-            intent.putExtra("flatId", flat.id);
-            startActivity(intent);
+
+
         });
 
         binding.notesButton.setOnClickListener(v -> {
-            Intent intent = new Intent(RoomActivity.this, NotesActivity.class);
-            if (catalogId != -1) {
-                intent.putExtra("catalogId", catalogId);
+            if (isCommonSpace) {
+                Intent intent = new Intent(RoomActivity.this, BoardCommonSpace.class);
+                intent.putExtra("flatId", flatId);
+                intent.putExtra("blockId", flat.blockId);
 
+                intent.putExtra("commonSpace", 1);
+
+                startActivity(intent);
+            } else {
+                Intent intent = new Intent(RoomActivity.this, NotesActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+
+                }
+                intent.putExtra("flatId", flat.id);
+                startActivity(intent);
             }
-            intent.putExtra("flatId", flat.id);
-            startActivity(intent);
         });
+        if (isCommonSpace) {
+            binding.RCDButton.setVisibility(View.GONE);
+        } else {
+            binding.RCDButton.setOnClickListener(v -> {
+                Intent intent = new Intent(RoomActivity.this, RCDActivity.class);
+                if (catalogId != -1) {
+                    intent.putExtra("catalogId", catalogId);
+                }
+                intent.putExtra("flatId", flat.id);
+                startActivity(intent);
+            });
+        }
 
-        binding.RCDButton.setOnClickListener(v -> {
-            Intent intent = new Intent(RoomActivity.this, RCDActivity.class);
-            if (catalogId != -1) {
-                intent.putExtra("catalogId", catalogId);
-
-            }
-            intent.putExtra("flatId", flat.id);
-            startActivity(intent);
-        });
 
         binding.backButton.setOnClickListener(v -> {
             if (flat == null) return;
-            if (catalogId != -1) {
+
+            else if (isCommonSpace) {
+                Intent intent = new Intent(RoomActivity.this, BlockActivity.class);
+                intent.putExtra("blockId", flat.blockId);
+                startActivity(intent);
+            }
+            else if (catalogId != -1) {
                 Intent intent = new Intent(RoomActivity.this, TemplatesActivity.class);
                 intent.putExtra("catalogId", catalogId);
                 startActivity(intent);
@@ -163,7 +216,14 @@ public class RoomActivity extends AppCompatActivity {
                     binding.customRoomEditText.setVisibility(View.VISIBLE);
                     binding.customRoomEditText.requestFocus();
                     showKeyboard(binding.customRoomEditText);
-                } else {
+
+                } else if ("Piętro -".equals(sel)) {
+                    binding.customRoomEditText.setVisibility(View.VISIBLE);
+                    binding.customRoomEditText.setText("Piętro ");
+                    binding.customRoomEditText.requestFocus();
+                    showKeyboard(binding.customRoomEditText);
+                }
+                else {
                     hideKeyboard();
                     binding.customRoomEditText.setVisibility(View.GONE);
                 }
@@ -188,7 +248,13 @@ public class RoomActivity extends AppCompatActivity {
             if (pos >= 0 && pos < roomNames.length && "Inne".equals(roomNames[pos])) {
                 name = binding.customRoomEditText.getText() != null ? binding.customRoomEditText.getText().toString().trim() : "";
                 if (name.isEmpty()) {
-                    binding.customRoomEditText.setError("Wpisz nazwę pokoju");
+                    if (isCommonSpace ) {
+                        binding.customRoomEditText.setError("Wpisz nazwę pomieszczenia");
+
+                    } else {
+
+                        binding.customRoomEditText.setError("Wpisz nazwę pokoju");
+                    }
                     binding.customRoomEditText.requestFocus();
                     return;
                 }
@@ -218,7 +284,8 @@ public class RoomActivity extends AppCompatActivity {
                 ampsOptions,
                 this::onDeleteRoomClicked,
                 this::onAddMeasurementClicked,
-                catalogId
+                catalogId,
+                isCommonSpace
         );
         binding.roomRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.roomRecyclerView.setAdapter(roomAdapter);
@@ -274,9 +341,15 @@ public class RoomActivity extends AppCompatActivity {
     }
 
     private void onDeleteRoomClicked(RoomInFlat room) {
+        String name;
+        if (isCommonSpace) {
+            name = "pomieszczenie";
+        } else {
+            name = "pokój";
+        }
         new AlertDialog.Builder(this)
-                .setTitle("Usuń pokój")
-                .setMessage("Czy na pewno chcesz usunąć pokój "+ room.name + " wraz ze wszystkimi pomiarami?")
+                .setTitle("Usuń " + name)
+                .setMessage("Czy na pewno chcesz usunąć  " + name + room.name + " wraz ze wszystkimi pomiarami?")
                 .setPositiveButton("Usuń", (dialog, which) -> roomViewModel.delete(room))
                 .setNegativeButton("Anuluj", null)
                 .show();

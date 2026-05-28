@@ -39,4 +39,8 @@ public class OutletMeasurementViewModel extends AndroidViewModel {
     public LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId) {
         return repository.getMeasurementsForRoom(roomId);
     }
+
+    public String getLastRCDName(int roomId) {
+        return repository.getLastRCDName(roomId);
+    }
 }

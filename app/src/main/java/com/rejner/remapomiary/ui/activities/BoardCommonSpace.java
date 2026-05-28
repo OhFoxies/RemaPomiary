@@ -41,7 +41,6 @@ public class BoardCommonSpace extends AppCompatActivity {
     private CircuitCommonSpaceViewModel circuitCommonSpaceViewModel;
     private int commonSpaceFlatId;
     private Button confirmBoardName, cancelBoardName, addNewBoard;
-    private int catalogId;
     private String blockName;
 
     @Override
@@ -56,10 +55,8 @@ public class BoardCommonSpace extends AppCompatActivity {
         BlockViewModel blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
         circuitCommonSpaceViewModel = new ViewModelProvider(this).get(CircuitCommonSpaceViewModel.class);
         boardCommonSpaceViewModel = new ViewModelProvider(this).get(BoardCommonSpaceViewModel.class);
-        catalogId = -1;
         blockViewModel.getBlockById(blockId, block1 -> {
                 blockName = block1.block.city + " / " + block1.block.number;
-                catalogId = block1.catalog.id;
                 runOnUiThread(() -> {
                     TextView boardTitle = findViewById(R.id.boardTitle);
                     boardTitle.setText("Rozdzielnie - " + blockName);
@@ -201,10 +198,7 @@ public class BoardCommonSpace extends AppCompatActivity {
         notesButton.setOnClickListener(v -> {
 
             Intent intent = new Intent(this, NotesActivity.class);
-            if (catalogId != -1) {
-                intent.putExtra("catalogId", catalogId);
 
-            }
             intent.putExtra("isCommonSpace", 1);
             intent.putExtra("flatId", commonSpaceFlatId);
             startActivity(intent);
@@ -214,12 +208,9 @@ public class BoardCommonSpace extends AppCompatActivity {
 
         roomsButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, RoomActivity.class);
-            if (catalogId != -1) {
-                intent.putExtra("catalogId", catalogId);
-
-            }
             intent.putExtra("isCommonSpace", 1);
             intent.putExtra("flatId", commonSpaceFlatId);
+            intent.putExtra("name", blockName);
             startActivity(intent);
         });
     }

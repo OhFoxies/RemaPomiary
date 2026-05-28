@@ -30,4 +30,13 @@ public interface OutletMeasurementDao {
     @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId")
     List<OutletMeasurement> getMeasurementsForRoomSync(int roomId);
 
+    @Query("SELECT om.rcd_name FROM outletmeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = (SELECT flatId FROM room WHERE id = :currentRoomId) " +
+            "AND om.rcd_name IS NOT NULL " +
+            "AND trim(om.rcd_name) != '' " +
+            "ORDER BY om.id DESC " +
+            "LIMIT 1")
+    String getLastRcdNameInFlat(int currentRoomId);
+
 }

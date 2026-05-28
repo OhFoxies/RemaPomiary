@@ -46,6 +46,19 @@ public class OutletMeasurement {
     @ColumnInfo(name = "note")
     public String note;
 
+    //    0 - gone, 1 - good, 2 - broken
+    @ColumnInfo(name = "rcd_status", defaultValue = "0")
+    public int rcdStatus;
+
+    @ColumnInfo(name = "rcd_time")
+    public Integer rcdTime;
+
+    @ColumnInfo(name = "rcd_name")
+    public String rcdName;
+    @ColumnInfo(name = "rcd_current")
+    public Integer rcdCurrent;
+
+
     public OutletMeasurement() {}
 
     public OutletMeasurement(int roomId, String appliance) {

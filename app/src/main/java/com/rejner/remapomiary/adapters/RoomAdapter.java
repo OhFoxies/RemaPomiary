@@ -37,11 +37,13 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private final Consumer<Integer> addMeasurementListener;
     private long newlyAddedMeasurementId = -1;
     private int catalogId;
+    private boolean isCommonSpace;
 
     public RoomAdapter(RoomViewModel roomViewModel, OutletMeasurementViewModel outletViewModel,
                        LifecycleOwner lifecycleOwner, Context context,
                        String[] applianceOptions, String[] breakerTypes, String[] noteOptions, String[] ampsOptions,
-                       Consumer<RoomInFlat> deleteListener, Consumer<Integer> addMeasurementListener, int catalogId) {
+                       Consumer<RoomInFlat> deleteListener, Consumer<Integer> addMeasurementListener, int catalogId,
+                       boolean isCommonSpace) {
         super(DIFF_CALLBACK);
         this.roomViewModel = roomViewModel;
         this.outletViewModel = outletViewModel;
@@ -54,6 +56,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         this.deleteListener = deleteListener;
         this.addMeasurementListener = addMeasurementListener;
         this.catalogId = catalogId;
+        this.isCommonSpace = isCommonSpace;
     }
 
     public void setNewlyAddedMeasurementId(long id) {
@@ -85,7 +88,15 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         }
 
         void bind(RoomInFlat room) {
-            binding.roomTitle.setText(room.name != null ? room.name : ("Pokój " + room.id));
+
+            if (isCommonSpace) {
+                binding.deleteRoomButton.setText("Usuń pomieszczenie");
+                binding.roomTitle.setText(room.name != null ? room.name : ("Pomieszczenie " + room.id));
+
+            } else {
+                binding.roomTitle.setText(room.name != null ? room.name : ("Pokój " + room.id));
+
+            }
 
             binding.deleteRoomButton.setOnClickListener(v -> deleteListener.accept(room));
 
@@ -129,7 +140,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                     breakerTypes,
                     noteOptions,
                     ampsOptions,
-                    catalogId
+                    catalogId,
+                    isCommonSpace
             );
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
