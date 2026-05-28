@@ -28,6 +28,9 @@ public class RoomViewModel extends AndroidViewModel {
     public interface idCallBack {
         void onResult(Long id);
     }
+    public interface mainRoomCallback {
+        void onResult(RoomInFlat room);
+    }
 
     public void insertWithId(RoomInFlat room, idCallBack callBack) {
         repository.insertWithId(room, callBack::onResult);
@@ -35,7 +38,12 @@ public class RoomViewModel extends AndroidViewModel {
     public LiveData<List<RoomInFlat>> getRoomsForFlat(int flatId) {
         return repository.getRoomsForFlat(flatId);
     }
-
+    public void getOrCreateMainRoom(int flatId, RoomRepository.OnRoomReadyCallback callback) {
+        repository.getOrCreateMainRoom(flatId, callback);
+    }
+    public void getMainRoom(int flatId, mainRoomCallback callback) {
+        repository.getMainRoomForCommon(flatId, callback::onResult);
+    }
     public LiveData<RoomFullData> getRoomFullData(int roomId) {
         return repository.getRoomFullData(roomId);
     }

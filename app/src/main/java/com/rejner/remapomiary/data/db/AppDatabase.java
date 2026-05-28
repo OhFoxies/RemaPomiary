@@ -17,6 +17,7 @@ import com.rejner.remapomiary.data.dao.CatalogDao;
 import com.rejner.remapomiary.data.dao.CircuitCommonSpaceDao;
 import com.rejner.remapomiary.data.dao.CircuitDao;
 import com.rejner.remapomiary.data.dao.ClientDao;
+import com.rejner.remapomiary.data.dao.CommonSpaceInfoDao;
 import com.rejner.remapomiary.data.dao.ContractorsDao;
 import com.rejner.remapomiary.data.dao.FlatDao;
 import com.rejner.remapomiary.data.dao.OutletMeasurementDao;
@@ -31,6 +32,7 @@ import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
 import com.rejner.remapomiary.data.entities.Client;
+import com.rejner.remapomiary.data.entities.CommonSpaceInfo;
 import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
@@ -43,7 +45,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 21)
+@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 22)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -65,6 +67,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract ContractorsDao contractorsDao();
 
     public abstract SignatureDao signatureDao();
+    public abstract CommonSpaceInfoDao commonSpaceInfoDao();
     static final Migration MIGRATION_14_15 = new Migration(14, 15) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
@@ -167,6 +170,22 @@ public abstract class AppDatabase extends RoomDatabase {
             // Dodanie kolumny na datę (jako INTEGER/timestamp)
         }
     };
+    static final Migration MIGRATION_21_22= new Migration(21, 22) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("    CREATE TABLE IF NOT EXISTS `common_space_info` (\n" +
+                    "            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \n" +
+                    "    `blockId` INTEGER NOT NULL,\n" +
+                    "            `switchName` TEXT,\n" +
+                    "            `breakerType` TEXT,\n" +
+                    "            `amps` REAL DEFAULT 16.0,\n" +
+                    "    FOREIGN KEY(`blockId`) REFERENCES `Block`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE);");
+
+            database.execSQL(" CREATE INDEX IF NOT EXISTS `index_common_space_info_blockId` ON `common_space_info` (`blockId`);\n");
+
+            // Dodanie kolumny na datę (jako INTEGER/timestamp)
+        }
+    };
 
 
 
@@ -176,7 +195,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
                             .build();
 
                 }

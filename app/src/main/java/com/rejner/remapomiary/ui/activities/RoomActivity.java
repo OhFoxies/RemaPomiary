@@ -22,11 +22,13 @@ import androidx.room.Room;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.RoomAdapter;
+import com.rejner.remapomiary.data.entities.CommonSpaceInfo;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.ActivityRoomBinding;
+import com.rejner.remapomiary.ui.viewmodels.CommonSpaceInfoViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
@@ -57,9 +59,12 @@ public class RoomActivity extends AppCompatActivity {
     private String lastDefaultSwitchName = null;
     private String lastDefaultBreakerType = null;
     private Double lastDefaultAmps = null;
+    private CommonSpaceInfo currentCommonSpaceInfo;
+    private boolean isUiUpdating = false;
     private int catalogId;
     private long newlyAddedMeasurementId = -1;
     private boolean isCommonSpace;
+    private CommonSpaceInfoViewModel commonSpaceInfoViewModel;
     private String blockName;
     private FlatViewModel flatViewModel;
 
@@ -76,6 +81,7 @@ public class RoomActivity extends AppCompatActivity {
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        commonSpaceInfoViewModel = new ViewModelProvider(this).get(CommonSpaceInfoViewModel.class);
 
 
         if (isCommonSpace) {
@@ -417,7 +423,107 @@ public class RoomActivity extends AppCompatActivity {
         }
         return best;
     }
+    private void setupCommonSpaceInfoLogic() {
+        if (flat == null) return;
 
+        // Inicjalizacja Spinnerów nowej sekcji
+        ArrayAdapter<String> breakerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, breakerTypes);
+        breakerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.csBreakerSpinner.setAdapter(breakerAdapter);
+
+        ArrayAdapter<String> ampsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, ampsOptions);
+        ampsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.csAmpsSpinner.setAdapter(ampsAdapter);
+
+        // Obserwowanie danych z tabeli dla konkretnego blockId
+        commonSpaceInfoViewModel.getInfoByBlockId(flat.blockId).observe(this, infoList -> {
+            if (isUiUpdating) return;
+
+            isUiUpdating = true;
+            if (infoList != null && !infoList.isEmpty()) {
+                currentCommonSpaceInfo = infoList.get(0);
+
+                // Wypełnienie pól aktualnymi danymi z bazy
+                binding.csSwitchEdit.setText(currentCommonSpaceInfo.switchName);
+
+                int breakerPos = breakerAdapter.getPosition(currentCommonSpaceInfo.breakerType);
+                if (breakerPos >= 0) binding.csBreakerSpinner.setSelection(breakerPos);
+
+                String ampStr = currentCommonSpaceInfo.amps != null ? String.valueOf(currentCommonSpaceInfo.amps.intValue()) : "16";
+                int ampsPos = ampsAdapter.getPosition(ampStr);
+                if (ampsPos >= 0) binding.csAmpsSpinner.setSelection(ampsPos);
+            } else {
+                // Brak rekordu -> tworzymy nowy obiekt bazowy (zapisze się przy pierwszej edycji)
+                currentCommonSpaceInfo = new CommonSpaceInfo();
+                currentCommonSpaceInfo.blockId = flat.blockId;
+                currentCommonSpaceInfo.amps = 16.0;
+                currentCommonSpaceInfo.breakerType = "B";
+                currentCommonSpaceInfo.switchName = "";
+            }
+            isUiUpdating = false;
+        });
+        binding.saveChanges.setOnClickListener(v -> {
+            boolean change = false;
+            String switchName = binding.csSwitchEdit.getText().toString();
+            if (!switchName.isEmpty() && !switchName.equals(currentCommonSpaceInfo.switchName)) {
+                currentCommonSpaceInfo.switchName = switchName;
+                change = true;
+            }
+            if (Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString()) != currentCommonSpaceInfo.amps) {
+                change = true;
+                currentCommonSpaceInfo.amps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
+
+            }
+            if (binding.csBreakerSpinner.getSelectedItem().toString().equals(currentCommonSpaceInfo.breakerType)) {
+                change = true;
+                currentCommonSpaceInfo.breakerType = binding.csBreakerSpinner.getSelectedItem().toString();
+            }
+
+            if (change) {
+                saveOrUpdateCommonSpaceInfo();
+            }
+        });
+
+        binding.generateButton.setOnClickListener(v -> {
+            boolean change = false;
+            String switchName = binding.csSwitchEdit.getText().toString();
+            if (!switchName.isEmpty() && !switchName.equals(currentCommonSpaceInfo.switchName)) {
+                currentCommonSpaceInfo.switchName = switchName;
+                change = true;
+            }
+            if (Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString()) != currentCommonSpaceInfo.amps) {
+                change = true;
+                currentCommonSpaceInfo.amps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
+
+            }
+            if (binding.csBreakerSpinner.getSelectedItem().toString().equals(currentCommonSpaceInfo.breakerType)) {
+                change = true;
+                currentCommonSpaceInfo.breakerType = binding.csBreakerSpinner.getSelectedItem().toString();
+            }
+
+            if (change) {
+                saveOrUpdateCommonSpaceInfo();
+            }
+        });
+
+    }
+    private void generateMeasurements() {
+        roomViewModel.getOrCreateMainRoom(flatId, room -> {
+
+        });
+    }
+    private void updateFlatsMeasurements() {
+
+    }
+    private void saveOrUpdateCommonSpaceInfo() {
+        if (currentCommonSpaceInfo.id == 0) {
+            // Brak ID oznacza, że rekord jeszcze nie istnieje w tabeli -> INSERT
+            commonSpaceInfoViewModel.insert(currentCommonSpaceInfo);
+        } else {
+            // Rekord już istnieje -> UPDATE
+            commonSpaceInfoViewModel.update(currentCommonSpaceInfo);
+        }
+    }
     public void showKeyboard(View view) {
         view.post(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);

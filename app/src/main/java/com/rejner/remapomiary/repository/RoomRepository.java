@@ -43,6 +43,39 @@ public class RoomRepository {
         });
     }
 
+    public void getMainRoomForCommon(int flatId, Consumer<RoomInFlat> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            RoomInFlat mainRoom = dao.getMainCommonSpaceRoom(flatId);
+            callback.accept(mainRoom);
+        });
+    }
+    public interface OnRoomReadyCallback {
+        void onReady(RoomInFlat room);
+    }
+
+    public void getOrCreateMainRoom(int flatId, OnRoomReadyCallback callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            // 1. Sprawdzamy synchronicznie w tle czy istnieje
+            RoomInFlat room = dao.getMainRoomSync(flatId);
+
+            // 2. Jeśli nie istnieje, tworzymy go od razu w tym samym wątku
+            if (room == null) {
+                room = new RoomInFlat();
+                room.flatId = flatId;
+                room.name = "Lokale"; // Twoja domyślna nazwa dla Main Room
+
+                long generatedId = dao.insert2(room);
+                room.id = (int) generatedId; // Przypisujemy wygenerowane ID do obiektu
+            }
+
+            // 3. Przerzucamy gotowy obiekt z powrotem do wątku głównego (UI)
+            RoomInFlat finalRoom = room;
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                callback.onReady(finalRoom);
+            });
+        });
+    }
+
     public LiveData<RoomFullData> getRoomFullData(int roomId) {
         return dao.getRoomFullData(roomId);
     }

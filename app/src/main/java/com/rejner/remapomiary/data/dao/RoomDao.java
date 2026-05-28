@@ -35,8 +35,16 @@ public interface RoomDao {
     @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY id ASC")
     List<RoomInFlat> getRoomsForFlatSync(int flatId);
 
-
+    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = 'Lokale'")
+    RoomInFlat getMainCommonSpaceRoom(int flatId);
     @Transaction
     @Query("SELECT * FROM room WHERE id = :roomId")
     LiveData<RoomFullData> getRoomFullData(int roomId);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long insert2(RoomInFlat room);
+
+    // Metoda synchroniczna (bez LiveData), potrzebna do sprawdzenia w tle
+    @Query("SELECT * FROM rooms WHERE flatId = :flatId AND name = 'Główny' LIMIT 1")
+    RoomInFlat getMainRoomSync(int flatId);
 }
