@@ -45,6 +45,6 @@ public interface RoomDao {
     long insert2(RoomInFlat room);
 
     // Metoda synchroniczna (bez LiveData), potrzebna do sprawdzenia w tle
-    @Query("SELECT * FROM rooms WHERE flatId = :flatId AND name = 'Główny' LIMIT 1")
+    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = 'Lokale' LIMIT 1")
     RoomInFlat getMainRoomSync(int flatId);
 }

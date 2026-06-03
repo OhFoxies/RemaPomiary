@@ -31,6 +31,7 @@ import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.entities.Signature;
 import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
@@ -405,9 +406,8 @@ public class NotesActivity extends AppCompatActivity {
         Button backSave = findViewById(R.id.backSave);
 
         backSave.setOnClickListener(v -> {
-            currentFlat.status = "Pomiar gotowy ✅";
-            currentFlat.edition_date = new Date();
-            flatViewModel.update(currentFlat);
+            Actions.saveAndMarkReady(currentFlat, this);
+
             Intent intent = new Intent(NotesActivity.this, FlatsActivity.class);
             intent.putExtra("blockId", currentFlat.blockId);
             startActivity(intent);

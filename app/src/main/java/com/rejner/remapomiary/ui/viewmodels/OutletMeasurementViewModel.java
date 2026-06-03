@@ -24,8 +24,12 @@ public class OutletMeasurementViewModel extends AndroidViewModel {
         void onResult(long lastId);
     }
 
+    public interface getoutletCallback {
+        void onResult(long lastId);
+    }
+
     public void insert(OutletMeasurement outletMeasurement, OutletMeasurementViewModel.outletCallback callback) {
-        repository.insert(outletMeasurement, callback::onResult);
+        repository.insert(outletMeasurement, callback != null ? callback::onResult : null);
     }
 
     public void update(OutletMeasurement outletMeasurement, Runnable onFinished) {
@@ -38,6 +42,14 @@ public class OutletMeasurementViewModel extends AndroidViewModel {
 
     public LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId) {
         return repository.getMeasurementsForRoom(roomId);
+    }
+
+    public boolean existsByApplianceSync(int roomId, String appliance) {
+        return repository.existsByApplianceSync(roomId, appliance);
+    }
+
+    public OutletMeasurement getOutletMeasurementSync(int roomId, String appliance) {
+        return repository.getOutletMeasurementSync(roomId, appliance);
     }
 
     public String getLastRCDName(int roomId) {

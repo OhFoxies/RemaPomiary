@@ -12,6 +12,7 @@ import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.repository.FlatRepository;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class FlatViewModel extends AndroidViewModel {
     private final FlatRepository repository;
@@ -24,6 +25,11 @@ public class FlatViewModel extends AndroidViewModel {
     public interface FlatCallback {
         void onResult(FlatFullData flat);
     }
+
+    public interface FlatsCallback {
+        void onResult(List<FlatFullData> flats);
+    }
+
     public interface IdCallBack {
         void onResult(Long x);
     }
@@ -61,6 +67,10 @@ public class FlatViewModel extends AndroidViewModel {
 
     public void getFlatByIdSync(int flatId, FlatCallback callback) {
         repository.getFlatByIdSync(flatId, callback::onResult);
+    }
+
+    public void getFlatsSync(int blockId, FlatsCallback callback) {
+        repository.getFlatsSync(blockId, callback::onResult);
     }
 
 
@@ -119,6 +129,10 @@ public class FlatViewModel extends AndroidViewModel {
 
     public LiveData<Flat> getCommonSpace(int blockId) {
         return repository.getCommonSpace(blockId);
+    }
+
+    public void getCommonSpace(int blockId, Consumer<Flat> callback) {
+        repository.getCommonSpace(blockId, callback);
     }
 
 

@@ -34,6 +34,16 @@ public class FlatRepository {
     public LiveData<Flat> getCommonSpace(int blockId) {
         return dao.getCommonSpace(blockId);
     }
+
+    public void getCommonSpace(int blockId, Consumer<Flat> callback) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            Flat flat = dao.getCommonSpaceSync(blockId);
+            if (callback != null) {
+                callback.accept(flat);
+            }
+        });
+    }
+
     public void insertWithId(Flat flat, Consumer<Long> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             long id = dao.insertWithId(flat);

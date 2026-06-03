@@ -42,6 +42,7 @@ import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
@@ -520,12 +521,12 @@ public class FlatsActivity extends AppCompatActivity {
             boolean isDone = flat.status.contains("gotowy");
 
             if (isDone) {
-                flat.status = "Pomiar niewykonany ❌";
+                Actions.markUnready(flat, this);
                 markBtn.setText("✅ Oznacz jako gotowy");
                 flatMain.setBackgroundResource(R.drawable.border);
             } else {
-                flat.status = "Pomiar gotowy ✅";
                 markBtn.setText("❌ Oznacz jako niewykonany");
+                Actions.saveAndMarkReady(flat, this);
                 flatMain.setBackgroundResource(R.drawable.border_done);
             }
 

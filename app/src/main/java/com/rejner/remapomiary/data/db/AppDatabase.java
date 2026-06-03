@@ -45,7 +45,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 22)
+@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 23)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -179,9 +179,16 @@ public abstract class AppDatabase extends RoomDatabase {
                     "            `switchName` TEXT,\n" +
                     "            `breakerType` TEXT,\n" +
                     "            `amps` REAL DEFAULT 16.0,\n" +
-                    "    FOREIGN KEY(`blockId`) REFERENCES `Block`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE);");
+                    "    FOREIGN KEY(`blockId`) REFERENCES `blocks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE);");
 
-            database.execSQL(" CREATE INDEX IF NOT EXISTS `index_common_space_info_blockId` ON `common_space_info` (`blockId`);\n");
+            // Dodanie kolumny na datę (jako INTEGER/timestamp)
+        }
+    };
+
+    static final Migration MIGRATION_22_23= new Migration(22, 23) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE common_space_info ADD COLUMN ohms_base DOUBLE");
 
             // Dodanie kolumny na datę (jako INTEGER/timestamp)
         }
@@ -195,7 +202,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
                             .build();
 
                 }

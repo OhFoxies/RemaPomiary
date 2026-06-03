@@ -24,11 +24,17 @@ public interface OutletMeasurementDao {
     @Delete
     void delete(OutletMeasurement measurement);
 
-    @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId")
+    @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId ORDER BY number")
     LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId);
 
     @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId")
     List<OutletMeasurement> getMeasurementsForRoomSync(int roomId);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM outletMeasurement WHERE roomId = :roomId AND appliance = :appliance)")
+    boolean existsByApplianceSync(int roomId, String appliance);
+
+    @Query("SELECT * FROM outletMeasurement WHERE roomId = :roomId AND appliance = :appliance")
+    OutletMeasurement getOutletMeasurementSync(int roomId, String appliance);
 
     @Query("SELECT om.rcd_name FROM outletmeasurement om " +
             "INNER JOIN room r ON om.roomId = r.id " +
@@ -38,5 +44,7 @@ public interface OutletMeasurementDao {
             "ORDER BY om.id DESC " +
             "LIMIT 1")
     String getLastRcdNameInFlat(int currentRoomId);
+
+
 
 }

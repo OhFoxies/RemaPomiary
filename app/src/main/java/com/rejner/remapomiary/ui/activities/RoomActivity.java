@@ -1,16 +1,20 @@
 package com.rejner.remapomiary.ui.activities;
 
+import static com.rejner.remapomiary.ui.utils.Actions.randomOhms;
+
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -24,10 +28,12 @@ import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.RoomAdapter;
 import com.rejner.remapomiary.data.entities.CommonSpaceInfo;
 import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.ActivityRoomBinding;
+import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.viewmodels.CommonSpaceInfoViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
@@ -39,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 
 public class RoomActivity extends AppCompatActivity {
 
@@ -107,6 +114,8 @@ public class RoomActivity extends AppCompatActivity {
             binding.flatTitle.setText("Pętla zwarcia - " + blockName);
             binding.customRoomEditText.setHint("Podaj nazwę pomieszczenia");
             binding.addRoomButton.setText("Dodaj pomieszczenie");
+            binding.commonSpaceInfoContainer.setVisibility(View.VISIBLE);
+            setupCommonSpaceInfoLogic();
 
         } else {
 
@@ -119,9 +128,7 @@ public class RoomActivity extends AppCompatActivity {
             binding.backSave.setVisibility(View.GONE);
         } else {
             binding.backSave.setOnClickListener(v -> {
-                flat.status = "Pomiar gotowy ✅";
-                flat.edition_date = new Date();
-                flatViewModel.update(flat);
+                Actions.saveAndMarkReady(flat, this);
                 Intent intent = new Intent(RoomActivity.this, FlatsActivity.class);
                 intent.putExtra("blockId", flat.blockId);
                 startActivity(intent);
@@ -267,6 +274,10 @@ public class RoomActivity extends AppCompatActivity {
             } else {
                 name = roomNames[pos];
             }
+            if (isCommonSpace && name.equals("Lokale")) {
+                Toast.makeText(this, "Nie możesz tak nazwać pomieszczenia", Toast.LENGTH_SHORT).show();
+                return;
+            }
             RoomInFlat room = new RoomInFlat();
             room.flatId = flatId;
             room.name = name;
@@ -350,9 +361,14 @@ public class RoomActivity extends AppCompatActivity {
         String name;
         if (isCommonSpace) {
             name = "pomieszczenie";
+            if (room.name.equals("Lokale")) {
+                Toast.makeText(this, "Nie można usunąć tego pomieszczenia", Toast.LENGTH_SHORT).show();
+                return;
+            }
         } else {
             name = "pokój";
         }
+
         new AlertDialog.Builder(this)
                 .setTitle("Usuń " + name)
                 .setMessage("Czy na pewno chcesz usunąć  " + name + room.name + " wraz ze wszystkimi pomiarami?")
@@ -426,7 +442,10 @@ public class RoomActivity extends AppCompatActivity {
     private void setupCommonSpaceInfoLogic() {
         if (flat == null) return;
 
-        // Inicjalizacja Spinnerów nowej sekcji
+        // Inicjalizacja TextWatchera
+        binding.csBaseValue.addTextChangedListener(new OhmsTextWatcher(binding.csBaseValue));
+
+        // Inicjalizacja Spinnerów
         ArrayAdapter<String> breakerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, breakerTypes);
         breakerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.csBreakerSpinner.setAdapter(breakerAdapter);
@@ -435,86 +454,165 @@ public class RoomActivity extends AppCompatActivity {
         ampsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.csAmpsSpinner.setAdapter(ampsAdapter);
 
-        // Obserwowanie danych z tabeli dla konkretnego blockId
+        // Obserwowanie danych z tabeli
         commonSpaceInfoViewModel.getInfoByBlockId(flat.blockId).observe(this, infoList -> {
-            if (isUiUpdating) return;
-
-            isUiUpdating = true;
             if (infoList != null && !infoList.isEmpty()) {
                 currentCommonSpaceInfo = infoList.get(0);
 
-                // Wypełnienie pól aktualnymi danymi z bazy
                 binding.csSwitchEdit.setText(currentCommonSpaceInfo.switchName);
 
                 int breakerPos = breakerAdapter.getPosition(currentCommonSpaceInfo.breakerType);
                 if (breakerPos >= 0) binding.csBreakerSpinner.setSelection(breakerPos);
 
+                // Formatujemy kropkę na przecinek dla polskiego formatu przed wstawieniem do pola
+                String ohmsStr = currentCommonSpaceInfo.ohmsBase != null ?
+                        String.valueOf(currentCommonSpaceInfo.ohmsBase).replace(".", ",") : "0,00";
+                binding.csBaseValue.setText(ohmsStr);
+
                 String ampStr = currentCommonSpaceInfo.amps != null ? String.valueOf(currentCommonSpaceInfo.amps.intValue()) : "16";
                 int ampsPos = ampsAdapter.getPosition(ampStr);
                 if (ampsPos >= 0) binding.csAmpsSpinner.setSelection(ampsPos);
             } else {
-                // Brak rekordu -> tworzymy nowy obiekt bazowy (zapisze się przy pierwszej edycji)
                 currentCommonSpaceInfo = new CommonSpaceInfo();
                 currentCommonSpaceInfo.blockId = flat.blockId;
                 currentCommonSpaceInfo.amps = 16.0;
                 currentCommonSpaceInfo.breakerType = "B";
                 currentCommonSpaceInfo.switchName = "";
-            }
-            isUiUpdating = false;
-        });
-        binding.saveChanges.setOnClickListener(v -> {
-            boolean change = false;
-            String switchName = binding.csSwitchEdit.getText().toString();
-            if (!switchName.isEmpty() && !switchName.equals(currentCommonSpaceInfo.switchName)) {
-                currentCommonSpaceInfo.switchName = switchName;
-                change = true;
-            }
-            if (Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString()) != currentCommonSpaceInfo.amps) {
-                change = true;
-                currentCommonSpaceInfo.amps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
-
-            }
-            if (binding.csBreakerSpinner.getSelectedItem().toString().equals(currentCommonSpaceInfo.breakerType)) {
-                change = true;
-                currentCommonSpaceInfo.breakerType = binding.csBreakerSpinner.getSelectedItem().toString();
-            }
-
-            if (change) {
-                saveOrUpdateCommonSpaceInfo();
+                currentCommonSpaceInfo.ohmsBase = 0.0;
+                binding.csBaseValue.setText("0,00");
             }
         });
 
         binding.generateButton.setOnClickListener(v -> {
             boolean change = false;
-            String switchName = binding.csSwitchEdit.getText().toString();
-            if (!switchName.isEmpty() && !switchName.equals(currentCommonSpaceInfo.switchName)) {
-                currentCommonSpaceInfo.switchName = switchName;
-                change = true;
-            }
-            if (Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString()) != currentCommonSpaceInfo.amps) {
-                change = true;
-                currentCommonSpaceInfo.amps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
+            String switchName = binding.csSwitchEdit.getText().toString().trim();
 
+            if (switchName.isEmpty()) {
+                Toast.makeText(this, "Podaj nazwę wyłącznika", Toast.LENGTH_SHORT).show();
+                return;
             }
-            if (binding.csBreakerSpinner.getSelectedItem().toString().equals(currentCommonSpaceInfo.breakerType)) {
+
+            if (!switchName.equals(currentCommonSpaceInfo.switchName)) {
+                currentCommonSpaceInfo.switchName = switchName;
+                binding.csSwitchEdit.clearFocus();
                 change = true;
-                currentCommonSpaceInfo.breakerType = binding.csBreakerSpinner.getSelectedItem().toString();
             }
+
+            // BEZPIECZNE PARSOWANIE OHMÓW
+            double enteredOhms = safeParseDouble(binding.csBaseValue.getText().toString());
+            if (enteredOhms != currentCommonSpaceInfo.ohmsBase) {
+                change = true;
+                currentCommonSpaceInfo.ohmsBase = enteredOhms;
+            }
+
+            // Bezpieczne parsowanie Amperów
+            try {
+                double enteredAmps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
+                if (enteredAmps != currentCommonSpaceInfo.amps) {
+                    change = true;
+                    currentCommonSpaceInfo.amps = enteredAmps;
+                }
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+
+            // POPRAWIONY WARUNEK: Zmiana następuje, gdy nowa wartość NIE RÓWNA SIĘ starej
+            String selectedBreaker = binding.csBreakerSpinner.getSelectedItem().toString();
+            if (!selectedBreaker.equals(currentCommonSpaceInfo.breakerType)) {
+                change = true;
+                currentCommonSpaceInfo.breakerType = selectedBreaker;
+            }
+
+            hideKeyboard();
 
             if (change) {
-                saveOrUpdateCommonSpaceInfo();
+                if (currentCommonSpaceInfo.ohmsBase != 0.0) {
+                    saveOrUpdateCommonSpaceInfo();
+                } else {
+                    Toast.makeText(this, "Podaj wartość bazową", Toast.LENGTH_SHORT).show();
+                }
             }
         });
+    }
 
+    /**
+     * Pomocnicza metoda usuwająca litery, symbole (np. Ω) i spacje przed parsowaniem do Double
+     */
+    private double safeParseDouble(String text) {
+        if (text == null || text.trim().isEmpty()) return 0.0;
+        try {
+            // Usuwa wszystko oprócz cyfr, przecinków i kropek
+            String cleanString = text.replaceAll("[^0-9,.]", "").replace(",", ".");
+            return cleanString.isEmpty() ? 0.0 : Double.parseDouble(cleanString);
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+            return 0.0;
+        }
     }
     private void generateMeasurements() {
-        roomViewModel.getOrCreateMainRoom(flatId, room -> {
+        if (flat == null || currentCommonSpaceInfo == null) return;
 
+        // Ensure we have a "Main Room" to store these measurements
+        roomViewModel.getOrCreateMainRoom(flatId, room -> {
+            // Get all flats in the block to generate measurements for them
+            flatViewModel.getFlatsSync(flat.blockId, flats -> {
+                for (FlatFullData ffd : flats) {
+                    // Skip if it's a common space (we only want measurements for actual flats)
+                    if (ffd.flat.isCommonSpace == 1) continue;
+
+                    String applianceName = "Lokal - " + ffd.flat.number;
+                    OutletMeasurement om = outletViewModel.getOutletMeasurementSync(room.id, applianceName);
+
+                    // Check if measurement already exists for this flat in this room
+                    if (om == null) {
+                        OutletMeasurement om_new = new OutletMeasurement();
+                        om_new.roomId = room.id;
+                        om_new.appliance = applianceName;
+
+                        // Use settings from currentCommonSpaceInfo
+                        om_new.switchName = currentCommonSpaceInfo.switchName;
+                        om_new.breakerType = currentCommonSpaceInfo.breakerType;
+                        om_new.amps = currentCommonSpaceInfo.amps;
+                        int number;
+
+                        try {
+                            number = Integer.parseInt(ffd.flat.number);
+                        } catch (NumberFormatException e) {
+                            number = 10;
+                        }
+                        om_new.ohms = Math.round(
+                                (((number - 1) / 20.0) * 0.05 + currentCommonSpaceInfo.ohmsBase + randomOhms())
+                                        * 100.0
+                        ) / 100.0;
+
+                        om_new.number = number;
+
+                        outletViewModel.insert(om_new, null);
+                    } else {
+                        om.switchName = currentCommonSpaceInfo.switchName;
+                        om.breakerType = currentCommonSpaceInfo.breakerType;
+                        om.amps = currentCommonSpaceInfo.amps;
+                        int number;
+
+                        try {
+                            number = Integer.parseInt(ffd.flat.number);
+                        } catch (NumberFormatException e) {
+                            number = 10;
+                        }
+                        om.ohms = Math.round(
+                                (((number - 1) / 20.0) * 0.05 + currentCommonSpaceInfo.ohmsBase + randomOhms())
+                                        * 100.0
+                        ) / 100.0;
+                        om.number = number;
+
+                        outletViewModel.update(om, null);
+                    }
+                }
+            });
         });
     }
-    private void updateFlatsMeasurements() {
 
-    }
+
     private void saveOrUpdateCommonSpaceInfo() {
         if (currentCommonSpaceInfo.id == 0) {
             // Brak ID oznacza, że rekord jeszcze nie istnieje w tabeli -> INSERT
@@ -523,6 +621,7 @@ public class RoomActivity extends AppCompatActivity {
             // Rekord już istnieje -> UPDATE
             commonSpaceInfoViewModel.update(currentCommonSpaceInfo);
         }
+        generateMeasurements();
     }
     public void showKeyboard(View view) {
         view.post(() -> {

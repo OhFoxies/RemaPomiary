@@ -20,7 +20,9 @@ public class OutletMeasurementRepository {
     public void insert(OutletMeasurement outletMeasurement, Consumer<Long> callback) {
         AppDatabase.databaseWriteExecutor.execute(() -> {
             long lastId = dao.insert(outletMeasurement);
-            callback.accept(lastId);
+            if (callback != null) {
+                callback.accept(lastId);
+            }
         });
     }
 
@@ -45,7 +47,17 @@ public class OutletMeasurementRepository {
     public LiveData<List<OutletMeasurement>> getMeasurementsForRoom(int roomId) {
         return dao.getMeasurementsForRoom(roomId);
     }
+
+    public boolean existsByApplianceSync(int roomId, String appliance) {
+        return dao.existsByApplianceSync(roomId, appliance);
+    }
+
     public String getLastRCDName(int roomId) {
         return dao.getLastRcdNameInFlat(roomId);
+    }
+
+    public OutletMeasurement getOutletMeasurementSync(int roomId, String appliance) {
+        return dao.getOutletMeasurementSync(roomId, appliance);
+
     }
 }

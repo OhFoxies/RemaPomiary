@@ -24,6 +24,8 @@ import com.rejner.remapomiary.ui.activities.RoomActivity;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHolder> {
@@ -38,6 +40,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private long newlyAddedMeasurementId = -1;
     private int catalogId;
     private boolean isCommonSpace;
+    private final Set<Integer> expandedRoomIds = new HashSet<>();
 
     public RoomAdapter(RoomViewModel roomViewModel, OutletMeasurementViewModel outletViewModel,
                        LifecycleOwner lifecycleOwner, Context context,
@@ -88,21 +91,37 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         }
 
         void bind(RoomInFlat room) {
-
             if (isCommonSpace) {
                 binding.deleteRoomButton.setText("Usuń pomieszczenie");
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pomieszczenie " + room.id));
-
             } else {
+                binding.deleteRoomButton.setText("USUŃ POKÓJ");
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pokój " + room.id));
+            }
 
+            if (isCommonSpace && "Lokale".equals(room.name)) {
+                binding.toggleMeasurementsButton.setVisibility(View.VISIBLE);
+                
+                boolean isExpanded = expandedRoomIds.contains(room.id);
+                updateExpansionUI(isExpanded);
+
+                binding.toggleMeasurementsButton.setOnClickListener(v -> {
+                    if (expandedRoomIds.contains(room.id)) {
+                        expandedRoomIds.remove(room.id);
+                    } else {
+                        expandedRoomIds.add(room.id);
+                    }
+                    updateExpansionUI(expandedRoomIds.contains(room.id));
+                });
+            } else {
+                binding.toggleMeasurementsButton.setVisibility(View.GONE);
+                updateExpansionUI(true);
             }
 
             binding.deleteRoomButton.setOnClickListener(v -> deleteListener.accept(room));
-
             binding.addMeasurementBtn.setOnClickListener(v -> addMeasurementListener.accept(room.id));
 
-            setupNestedRecyclerView(room.id);
+            setupNestedRecyclerView(room.name);
 
             outletViewModel.getMeasurementsForRoom(room.id).observe(lifecycleOwner, measurements -> {
                 if (measurements != null && !measurements.isEmpty()) {
@@ -115,16 +134,14 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 measurementAdapter.submitList(measurements);
 
                 if (newlyAddedMeasurementId != -1) {
-                    boolean found = false;
                     for (int i = 0; i < measurements.size(); i++) {
                         if (measurements.get(i).id == newlyAddedMeasurementId) {
                             int finalI = i;
                             binding.measurementsRecyclerView.post(() -> {
                                 binding.measurementsRecyclerView.smoothScrollToPosition(finalI);
                                 measurementAdapter.setFocusToMeasurementId(newlyAddedMeasurementId);
-                                newlyAddedMeasurementId = -1; // Resetuj
+                                newlyAddedMeasurementId = -1;
                             });
-                            found = true;
                             break;
                         }
                     }
@@ -132,7 +149,19 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             });
         }
 
-        private void setupNestedRecyclerView(int roomId) {
+        private void updateExpansionUI(boolean isExpanded) {
+            if (isExpanded) {
+                binding.measurementsContainer.setVisibility(View.VISIBLE);
+                binding.addMeasurementBtn.setVisibility(View.VISIBLE);
+                binding.toggleMeasurementsButton.setText("Ukryj");
+            } else {
+                binding.measurementsContainer.setVisibility(View.GONE);
+                binding.addMeasurementBtn.setVisibility(View.GONE);
+                binding.toggleMeasurementsButton.setText("Pokaż");
+            }
+        }
+
+        private void setupNestedRecyclerView(String roomName) {
             measurementAdapter = new MeasurementAdapter(
                     (RoomActivity) context,
                     outletViewModel,
@@ -141,7 +170,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                     noteOptions,
                     ampsOptions,
                     catalogId,
-                    isCommonSpace
+                    isCommonSpace,
+                    roomName
             );
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
@@ -158,7 +188,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
                 @Override
                 public boolean areContentsTheSame(@NonNull RoomInFlat oldItem, @NonNull RoomInFlat newItem) {
-                    return oldItem.name.equals(newItem.name) && oldItem.flatId == newItem.flatId;
+                    return (oldItem.name == null ? newItem.name == null : oldItem.name.equals(newItem.name)) 
+                            && oldItem.flatId == newItem.flatId;
                 }
             };
 }

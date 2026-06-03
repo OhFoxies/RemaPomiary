@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -31,15 +32,19 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     private final RoomActivity activity;
     private final OutletMeasurementViewModel outletViewModel;
-    private final String[] applianceOptions, breakerTypes, noteOptions, ampsOptions;
+    private final String[] applianceOptions;
+    private final String[] breakerTypes;
+    private String[] noteOptions;
+    private final String[] ampsOptions;
     private final int catalogId;
     private String lastRcdName;
     private final boolean isCommonSpace; // Nowe pole klasy
     private long focusToMeasurementId = -1;
+    private String roomName;
 
     public MeasurementAdapter(RoomActivity activity, OutletMeasurementViewModel outletViewModel,
                               String[] applianceOptions, String[] breakerTypes, String[] noteOptions,
-                              String[] ampsOptions, int catalogId, boolean isCommonSpace) { // Dodane do konstruktora
+                              String[] ampsOptions, int catalogId, boolean isCommonSpace, String roomName) { // Dodane do konstruktora
         super(DIFF_CALLBACK);
         this.activity = activity;
         this.outletViewModel = outletViewModel;
@@ -49,6 +54,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.ampsOptions = ampsOptions;
         this.catalogId = catalogId;
         this.isCommonSpace = isCommonSpace;
+        this.roomName = roomName;
     }
 
     public void setFocusToMeasurementId(long id) {
@@ -105,19 +111,27 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             // Zarządzanie widocznością drugiego rzędu (RCD) na podstawie isCommonSpace
             // Założyłem, że w XML-u cały drugi rząd zamkniesz w kontenerze (np. o id rcdRowContainer)
-            if (isCommonSpace) {
+            if (isCommonSpace && !roomName.equals("Lokale")) {
                 binding.rcdHeaders.setVisibility(View.VISIBLE);
                 binding.rcdRowContainer.setVisibility(View.VISIBLE);
                 setupSpinner(binding.rcdStateSpinner, rcdOptions);
                 setupRcdFields(om);
             } else {
-                binding.rcdRowContainer.setVisibility(View.GONE);
+                ViewParent parent =  binding.rcdRowContainer.getParent();
+
+                if (parent instanceof ViewGroup) {
+                    ((ViewGroup) parent).removeView(binding.rcdRowContainer);
+                }
             }
 
             setupSpinner(binding.applianceSpinner, applianceOptions);
             setupSpinner(binding.breakerSpinner, breakerTypes);
             setupSpinner(binding.ampsSpinner, ampsOptions);
-            setupSpinner(binding.noteSpinner, noteOptions);
+            if (roomName.equals("Lokale")) {
+                noteOptions = new String[]{"brak uwag", "Inne"};
+                setupSpinner(binding.noteSpinner, noteOptions);
+
+            }
 
             setupApplianceField(om);
             setupNoteField(om);

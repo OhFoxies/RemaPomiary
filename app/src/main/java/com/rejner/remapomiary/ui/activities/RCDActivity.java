@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.RCD;
+import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
 
@@ -138,9 +139,7 @@ public class RCDActivity extends AppCompatActivity {
         Button backSave = findViewById(R.id.backSave);
 
         backSave.setOnClickListener(v -> {
-            flat.status = "Pomiar gotowy ✅";
-            flat.edition_date = new Date();
-            flatViewModel.update(flat);
+            Actions.saveAndMarkReady(flat, this);
             Intent intent = new Intent(RCDActivity.this, FlatsActivity.class);
             intent.putExtra("blockId", flat.blockId);
             startActivity(intent);

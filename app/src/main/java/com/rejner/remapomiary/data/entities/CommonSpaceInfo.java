@@ -32,4 +32,7 @@ public class CommonSpaceInfo {
     @ColumnInfo(name = "amps", defaultValue = "16.0")
     public Double amps = 16.0;
 
+    @ColumnInfo(name = "ohms_base")
+    public Double ohmsBase;
+
 }
