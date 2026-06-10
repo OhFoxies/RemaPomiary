@@ -1,213 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/mainScroll"
-    android:fillViewport="true"
+    android:orientation="vertical"
     tools:context=".ui.activities.FlatsActivity">
 
+    <!-- Header bar -->
     <LinearLayout
-        android:id="@+id/main"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="#DDDDDD"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="#DDDDDD"
-            android:layout_marginBottom="20dp"
+            android:text="◀ Powrót"
+            android:gravity="center_vertical"
+            android:textSize="18sp"
+            android:layout_marginEnd="16dp" />
 
-            android:gravity="center_horizontal"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-            <Button
-                android:id="@+id/backButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="◀ Powrót"
-                android:gravity="center_vertical"
-                android:textSize="18sp"
-                android:layout_marginEnd="16dp" />
-
-            <TextView
-                android:id="@+id/flatsTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="Mieszkania w bloku - "
-                android:gravity="center_vertical"
-
-                android:textSize="24sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="500sp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="20dp"
-            android:background="@drawable/round_corners"
-            android:orientation="vertical"
-            android:padding="15dp">
-
-            <TextView
-                android:id="@+id/newBlockTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:gravity="center"
-                android:padding="6sp"
-                android:text="Dodaj nowe mieszkanie"
-                android:textSize="24sp" />
-
-
-            <TextView
-                android:id="@+id/textView3"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="15dp"
-                android:text="📍Informacje: "
-                android:textSize="20sp" />
-
-            <TextView
-                android:id="@+id/textView4"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:text="Numer mieszkania: "
-                android:textSize="18sp" />
-
-            <EditText
-                android:id="@+id/inputFlatNumber"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginBottom="15dp"
-                android:autofillHints="postalLocality"
-                android:ems="10"
-                android:hint="Numer"
-                android:inputType="number" />
-
-
-
-            <TextView
-                android:id="@+id/textView8"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:text="Szablon mieszkania: "
-                android:textSize="18sp" />
-
-            <Spinner
-                android:id="@+id/templatesSpinner"
-                android:layout_marginStart="20dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-
-            <LinearLayout
-                style="?android:attr/buttonBarStyle"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginTop="15dp"
-                android:gravity="center_horizontal"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/flatCancel"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="15dp"
-                    android:layout_weight="1"
-                    android:backgroundTint="#9D2B24"
-                    android:text="❌ Anuluj"
-                    android:textColor="@color/white" />
-
-                <Button
-                    android:id="@+id/flatAdd"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-
-                    android:layout_weight="1"
-                    android:backgroundTint="#3FAB1F"
-                    android:text="✅ Utwórz"
-
-                    android:textColor="@color/white" />
-            </LinearLayout>
-
-
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/createdClients"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="20dp"
-                android:gravity="center"
-                android:padding="6sp"
-                android:text="Utworzone mieszkania"
-                android:textSize="34sp" />
-
-            <LinearLayout
-                android:id="@+id/sortSection"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_horizontal"
-                android:orientation="horizontal">
-
-
-                <TextView
-                    android:id="@+id/sortBy"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-
-                    android:layout_marginEnd="15dp"
-                    android:layout_marginBottom="20dp"
-                    android:text="Sortowanie:"
-                    android:textSize="16sp" />
-
-                <Spinner
-                    android:id="@+id/sortBySpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
-
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/noFlats"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="15dp"
-                android:layout_marginBottom="20dp"
-                android:text="Brak mieszkań"
-                android:textSize="24sp" />
-
-
-        </LinearLayout>
-        <com.google.android.flexbox.FlexboxLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="8dp"
-            android:id="@+id/clients"
-            app:alignItems="center"
-            app:flexDirection="row"
-            app:flexWrap="wrap"
-            app:justifyContent="space_evenly">
-
-
-        </com.google.android.flexbox.FlexboxLayout>
-
+        <TextView
+            android:id="@+id/flatsTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Mieszkania w bloku - "
+            android:gravity="center_vertical"
+            android:textSize="24sp"
+            android:textStyle="bold" />
     </LinearLayout>
-</ScrollView>
+
+    <!-- Main RecyclerView for everything (Form + Header + List) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/flatsRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="8dp" />
+
+</LinearLayout>
