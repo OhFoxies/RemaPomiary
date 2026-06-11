@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/flatMain"
-    android:layout_width="350dp"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_margin="4dp"
     android:background="@drawable/border"
     android:orientation="vertical"
-    android:padding="15dp">
+    android:padding="8dp">
 
     <TextView
         android:id="@+id/flatTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="5dp"
+        android:padding="2dp"
         android:text="Mieszkanie NUMER"
-        android:textSize="24sp" />
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <EditText
         android:id="@+id/flatTitleEdit"
@@ -22,101 +23,100 @@
         android:layout_height="wrap_content"
         android:hint="Numer mieszkania"
         android:inputType="number"
-        android:textSize="24sp"
+        android:textSize="18sp"
+        android:imeOptions="actionDone"
         android:visibility="gone" />
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="5dp">
+        android:padding="2dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp"
             android:text="📅 Data utworzenia:"
-            android:textSize="18sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/flatCreationDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
+            android:layout_marginStart="8dp"
             android:text="2024-15-06"
-            android:textSize="18sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="5dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp"
-            android:text="✏️ Ostatnia edycja:"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/flatLastEdited"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
-            android:text="2024-15-06 15:00:11"
-            android:textSize="18sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="5dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp"
-            android:text="❓ Status:"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/blockLastEdited"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
-            android:text="Status"
-            android:textSize="18sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="5dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp"
-            android:text="📖 Uwagi:"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/flatNotesDesc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="25dp"
-            android:text="Brak uwag"
-            android:textSize="18sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="15dp"
+        android:orientation="vertical"
+        android:padding="2dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✏️ Ostatnia edycja:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/flatLastEdited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="2024-15-06 15:00:11"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="2dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="❓ Status:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/blockLastEdited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Status"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="2dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📖 Uwagi:"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/flatNotesDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Brak uwag"
+            android:textSize="14sp"
+            android:maxLines="2"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
@@ -125,22 +125,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="#3E902A"
-            android:text="✅ Oznacz" />
+            android:minHeight="36dp"
+            android:padding="2dp"
+            android:text="✅ Oznacz"
+            android:textSize="12sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="15dp"
+            android:layout_marginTop="4dp"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/blockDelete"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="15dp"
+                android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="#f23022"
-                android:text="🗑️ Usuń" />
+                android:minHeight="36dp"
+                android:padding="2dp"
+                android:text="🗑️ Usuń"
+                android:textSize="10sp" />
 
             <Button
                 android:id="@+id/blockEdit"
@@ -148,28 +154,36 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:backgroundTint="#3FAB1F"
-                android:text="✏️ Edytuj" />
+                android:minHeight="36dp"
+                android:padding="2dp"
+                android:text="✏️ Edytuj"
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="8dp"
         android:orientation="vertical">
 
         <EditText
             android:id="@+id/inputProtocolNumber"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Numer protokołu"
-            android:inputType="number" />
+            android:hint="Nr protokołu"
+            android:imeOptions="actionDone"
+            android:inputType="number"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/generateProtocol"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="#03A9F4"
-            android:text="Utwórz protokół" />
+            android:minHeight="36dp"
+            android:padding="2dp"
+            android:text="Utwórz protokół"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

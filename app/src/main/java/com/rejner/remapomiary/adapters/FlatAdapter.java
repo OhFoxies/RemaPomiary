@@ -13,8 +13,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.flexbox.FlexboxLayoutManager;
@@ -23,10 +21,12 @@ import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.Template;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
+// ZMIANA: Przechodzimy z ListAdapter na zwykły RecyclerView.Adapter
+public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int TYPE_HEADER = 0;
     private static final int TYPE_ITEM = 1;
@@ -39,6 +39,9 @@ public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
     private int selectedSortPosition = 0;
     private String flatCountText = "";
 
+    // ZMIANA: Ręczne trzymanie bieżącej listy
+    private List<Flat> currentList = new ArrayList<>();
+
     public interface OnFlatActionListener {
         void onFlatClick(Flat flat);
         void onFlatDelete(Flat flat);
@@ -50,8 +53,21 @@ public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
     }
 
     public FlatAdapter(OnFlatActionListener listener) {
-        super(DIFF_CALLBACK);
         this.listener = listener;
+        // ZMIANA: Ustawienie stałych ID, co całkowicie naprawia problem gubienia pozycji i skakania listy!
+        setHasStableIds(true);
+    }
+
+    // ZMIANA: Nasza własna, bezpieczniejsza metoda submitList
+    public void submitList(List<Flat> list) {
+        this.currentList = list == null ? new ArrayList<>() : new ArrayList<>(list);
+        notifyDataSetChanged(); // Natychmiastowe odświeżenie (naprawia wizualny brak kolorów i tekstu)
+    }
+
+    @Override
+    public long getItemId(int position) {
+        if (position == 0) return -1; // Unikalne ID dla nagłówka
+        return currentList.get(position - 1).id; // Pobranie ID z bazy danych dla elementu
     }
 
     public void setHeaderData(List<Template> templates, int sortPosition, String countText) {
@@ -87,13 +103,14 @@ public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
         if (holder instanceof HeaderViewHolder) {
             ((HeaderViewHolder) holder).bind();
         } else {
-            ((FlatViewHolder) holder).bind(getItem(position - 1));
+            // ZMIANA: Używamy currentList.get zamiast getItem()
+            ((FlatViewHolder) holder).bind(currentList.get(position - 1));
         }
     }
 
     @Override
     public int getItemCount() {
-        return getCurrentList().size() + 1;
+        return currentList.size() + 1;
     }
 
     class HeaderViewHolder extends RecyclerView.ViewHolder {
@@ -217,15 +234,26 @@ public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
                     title.setVisibility(View.GONE);
                     titleEdit.setVisibility(View.VISIBLE);
                     titleEdit.setText(flat.number);
+                    titleEdit.requestFocus();
                     editButton.setText("✅ Zapisz");
                     deleteButton.setText("❌ Anuluj");
                 } else {
-                    listener.onFlatEdit(flat, titleEdit.getText().toString().trim());
+                    // ZMIANA: Zdjęcie focusu PRZED schowaniem pola zapobiega zrzucaniu na dół listy
+                    titleEdit.clearFocus();
+
+                    String newNum = titleEdit.getText().toString().trim();
+                    title.setVisibility(View.VISIBLE);
+                    titleEdit.setVisibility(View.GONE);
+                    editButton.setText("✏️ Edytuj");
+                    deleteButton.setText("🗑️ Usuń");
+
+                    listener.onFlatEdit(flat, newNum);
                 }
             });
 
             deleteButton.setOnClickListener(v -> {
                 if (titleEdit.getVisibility() == View.VISIBLE) {
+                    titleEdit.clearFocus(); // ZMIANA: Usunięcie focusu także w anulowaniu
                     title.setVisibility(View.VISIBLE);
                     titleEdit.setVisibility(View.GONE);
                     editButton.setText("✏️ Edytuj");
@@ -245,20 +273,4 @@ public class FlatAdapter extends ListAdapter<Flat, RecyclerView.ViewHolder> {
             });
         }
     }
-
-    private static final DiffUtil.ItemCallback<Flat> DIFF_CALLBACK = new DiffUtil.ItemCallback<Flat>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull Flat oldItem, @NonNull Flat newItem) {
-            return oldItem.id == newItem.id;
-        }
-
-        @Override
-        public boolean areContentsTheSame(@NonNull Flat oldItem, @NonNull Flat newItem) {
-            return oldItem.number.equals(newItem.number) &&
-                    (oldItem.status != null && oldItem.status.equals(newItem.status)) &&
-                    (oldItem.edition_date != null && oldItem.edition_date.equals(newItem.edition_date)) &&
-                    (oldItem.notes != null ? oldItem.notes.equals(newItem.notes) : newItem.notes == null) &&
-                    (oldItem.circuitNotes != null ? oldItem.circuitNotes.equals(newItem.circuitNotes) : newItem.circuitNotes == null);
-        }
-    };
 }

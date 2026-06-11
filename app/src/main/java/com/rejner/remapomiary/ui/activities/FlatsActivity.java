@@ -17,15 +17,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
-import com.google.android.flexbox.FlexDirection;
-import com.google.android.flexbox.FlexWrap;
-import com.google.android.flexbox.FlexboxLayoutManager;
-import com.google.android.flexbox.JustifyContent;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.FlatAdapter;
 import com.rejner.remapomiary.data.entities.BlockFullData;
@@ -65,13 +63,15 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private OutletMeasurementViewModel outletMeasurementViewModel;
     private RoomViewModel roomViewModel;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
-    
+    private android.os.Parcelable recyclerViewState;
     private int blockId;
     private List<Flat> currentFlats;
     private CatalogViewModel catalogViewModel;
     private BlockFullData block;
     private List<Template> templatesList;
+    private FloatingActionButton scrollToTopButton;
     private TemplateViewModel templateViewModel;
+    private boolean isFirstLoad = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,17 +118,62 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
             currentFlats = flats;
             updateFlatsDisplay();
         });
+
+        scrollToTopButton = findViewById(R.id.scrollToTopButton);
+        scrollToTopButton.setOnClickListener(v -> {
+            if (recyclerView != null) {
+                recyclerView.smoothScrollToPosition(0);
+            }
+        });
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                checkScrollToTopButtonVisibility();
+            }
+        });
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (recyclerView != null && recyclerView.getLayoutManager() != null) {
+            recyclerViewState = recyclerView.getLayoutManager().onSaveInstanceState();
+
+            GridLayoutManager lm = (GridLayoutManager) recyclerView.getLayoutManager();
+            int position = lm.findFirstVisibleItemPosition();
+            if (position != RecyclerView.NO_POSITION) {
+                View v = lm.findViewByPosition(position);
+                int offset = (v == null) ? 0 : v.getTop();
+                getSharedPreferences("settings", MODE_PRIVATE).edit()
+                        .putInt("scroll_pos_" + blockId, position)
+                        .putInt("scroll_offset_" + blockId, offset)
+                        .apply();
+            }
+        }
     }
 
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.flatsRecyclerView);
-        FlexboxLayoutManager layoutManager = new FlexboxLayoutManager(this);
-        layoutManager.setFlexDirection(FlexDirection.ROW);
-        layoutManager.setFlexWrap(FlexWrap.WRAP); // Now items will correctly move to next row
-        layoutManager.setJustifyContent(JustifyContent.SPACE_EVENLY);
+
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 3);
+        layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+            @Override
+            public int getSpanSize(int position) {
+                return position == 0 ? 3 : 1;
+            }
+        });
+
         recyclerView.setLayoutManager(layoutManager);
-        
+        recyclerView.setHasFixedSize(false);
+        recyclerView.setItemViewCacheSize(20);
+        recyclerView.setDrawingCacheEnabled(true);
+        recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+
         flatAdapter = new FlatAdapter(this);
+        flatAdapter.setHasStableIds(true);
+        flatAdapter.setStateRestorationPolicy(RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY);
+
         recyclerView.setAdapter(flatAdapter);
     }
 
@@ -139,7 +184,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                 Template empty = new Template();
                 empty.name = "Brak szablonu";
                 empty.id = -1;
-                templatesList.add(0, empty);
+                templatesList.add(empty);
                 updateFlatsDisplay();
             });
         });
@@ -269,38 +314,44 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
 
     private void updateFlatsDisplay() {
         if (currentFlats == null) return;
+
+        final android.os.Parcelable localScroll = (recyclerView != null && recyclerView.getLayoutManager() != null && !isFirstLoad && recyclerViewState == null) ?
+                recyclerView.getLayoutManager().onSaveInstanceState() : null;
+
         List<Flat> sortedFlats = new ArrayList<>(currentFlats);
-        
+
         int readyCount = 0;
         for (Flat f : sortedFlats) if (f.status != null && f.status.contains("gotowy")) readyCount++;
-        String countText = sortedFlats.isEmpty() ? "Brak mieszkań" : "Znaleziono " + sortedFlats.size() + " mieszkań (gotowe: " + readyCount + "/" + sortedFlats.size() + ")";
+        String countText = sortedFlats.isEmpty()
+                ? "Brak mieszkań"
+                : "Znaleziono " + sortedFlats.size() + " mieszkań (gotowe: " + readyCount + "/" + sortedFlats.size() + ")";
 
         int sortPos = getSharedPreferences("settings", MODE_PRIVATE).getInt("sort_option", 0);
-        
+
         switch (sortPos) {
-            case 0: // Numer mieszkania
+            case 0:
                 Collections.sort(sortedFlats, Comparator.comparingInt(f -> {
-                    try { return Integer.parseInt(f.number.replaceAll("\\s+", "")); } 
+                    try { return Integer.parseInt(f.number.replaceAll("\\s+", "")); }
                     catch (NumberFormatException e) { return 0; }
                 }));
                 break;
-            case 1: // Data utworzenia \/
+            case 1:
                 Collections.sort(sortedFlats, (f1, f2) -> f2.creation_date.compareTo(f1.creation_date));
                 break;
-            case 2: // Data utworzenia /\
+            case 2:
                 Collections.sort(sortedFlats, (f1, f2) -> f1.creation_date.compareTo(f2.creation_date));
                 break;
-            case 3: // Data edycji
+            case 3:
                 Collections.sort(sortedFlats, (f1, f2) -> f2.edition_date.compareTo(f1.edition_date));
                 break;
-            case 4: // Status
+            case 4:
                 Collections.sort(sortedFlats, (f1, f2) -> {
                     boolean done1 = f1.status != null && f1.status.contains("gotowy");
                     boolean done2 = f2.status != null && f2.status.contains("gotowy");
                     return Boolean.compare(done1, done2);
                 });
                 break;
-            case 5: // Uwagi na początku
+            case 5:
                 Collections.sort(sortedFlats, (f1, f2) -> {
                     boolean f1HasNotes = (f1.notes != null && !f1.notes.trim().isEmpty()) || (f1.circuitNotes != null && !f1.circuitNotes.trim().isEmpty());
                     boolean f2HasNotes = (f2.notes != null && !f2.notes.trim().isEmpty()) || (f2.circuitNotes != null && !f2.circuitNotes.trim().isEmpty());
@@ -310,52 +361,144 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                 });
                 break;
         }
-        
+
         flatAdapter.setHeaderData(templatesList, sortPos, countText);
-        flatAdapter.submitList(sortedFlats);
+        flatAdapter.submitList(new ArrayList<>(sortedFlats));
+
+        if (recyclerView != null) {
+            recyclerView.post(() -> {
+                if (recyclerView.getLayoutManager() == null) return;
+                GridLayoutManager lm = (GridLayoutManager) recyclerView.getLayoutManager();
+
+                if (this.recyclerViewState != null) {
+                    lm.onRestoreInstanceState(this.recyclerViewState);
+                    this.recyclerViewState = null;
+                    isFirstLoad = false;
+                } else if (isFirstLoad && flatAdapter.getItemCount() > 1) {
+                    SharedPreferences prefs = getSharedPreferences("settings", MODE_PRIVATE);
+                    int savedPos = prefs.getInt("scroll_pos_" + blockId, -1);
+                    if (savedPos != -1) {
+                        int savedOffset = prefs.getInt("scroll_offset_" + blockId, 0);
+                        lm.scrollToPositionWithOffset(savedPos, savedOffset);
+
+                        // ZABEZPIECZENIE 1: Skoro wiemy z pamięci, że byliśmy zjechani w dół,
+                        // możemy wymusić pokazanie przycisku zanim lista w ogóle to przetworzy!
+                        if (savedPos > 0 && scrollToTopButton != null) {
+                            scrollToTopButton.setVisibility(View.VISIBLE);
+                            scrollToTopButton.setScaleX(1f);
+                            scrollToTopButton.setScaleY(1f);
+                            scrollToTopButton.setAlpha(1f);
+                        }
+                    }
+                    isFirstLoad = false;
+                } else if (localScroll != null) {
+                    lm.onRestoreInstanceState(localScroll);
+                }
+
+                // ZABEZPIECZENIE 2: Czekamy aż lista faktycznie ułoży widoki (child count > 0)
+                recyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                    @Override
+                    public void onGlobalLayout() {
+                        // Odpal to tylko wtedy, kiedy RecyclerView stworzył już na ekranie widoki kafelków
+                        if (recyclerView.getChildCount() > 0) {
+                            recyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            checkScrollToTopButtonVisibility();
+                        }
+                    }
+                });
+            });
+        }
     }
 
-    @Override public void onFlatClick(Flat flat) {
+    private void checkScrollToTopButtonVisibility() {
+        if (recyclerView == null || scrollToTopButton == null) return;
+
+        // Najpewniejsza metoda na Androidzie do sprawdzania, czy da się przewinąć w górę
+        boolean isScrolledDown = recyclerView.canScrollVertically(-1) || recyclerView.computeVerticalScrollOffset() > 150;
+
+        if (isScrolledDown) {
+            if (scrollToTopButton.getVisibility() != View.VISIBLE) {
+                scrollToTopButton.setVisibility(View.VISIBLE);
+                // Obejście wbudowanego błędu animacji FAB - wymuszenie 100% wielkości
+                scrollToTopButton.setScaleX(1f);
+                scrollToTopButton.setScaleY(1f);
+                scrollToTopButton.setAlpha(1f);
+            }
+        } else {
+            if (scrollToTopButton.getVisibility() != View.GONE) {
+                scrollToTopButton.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    @Override
+    public void onFlatClick(Flat flat) {
         startActivity(new Intent(this, BoardActivity.class).putExtra("flatId", flat.id));
     }
 
-    @Override public void onFlatDelete(Flat flat) {
-        new AlertDialog.Builder(this).setTitle("Potwierdzenie").setMessage("Usunąć mieszkanie?")
-                .setPositiveButton("Tak", (d, w) -> { flatViewModel.delete(flat); updateMetadata(); })
-                .setNegativeButton("Nie", null).show();
+    @Override
+    public void onFlatDelete(Flat flat) {
+        new AlertDialog.Builder(this)
+                .setTitle("Potwierdzenie")
+                .setMessage("Usunąć mieszkanie?")
+                .setPositiveButton("Tak", (d, w) -> {
+                    flatViewModel.delete(flat);
+                    updateMetadata();
+                })
+                .setNegativeButton("Nie", null)
+                .show();
     }
 
-    @Override public void onFlatEdit(Flat flat, String newNumber) {
+    @Override
+    public void onFlatEdit(Flat flat, String newNumber) {
         if (newNumber.isEmpty()) return;
         flat.number = newNumber;
         flat.edition_date = new Date();
         flatViewModel.update(flat);
         updateMetadata();
+        hideKeyboard();
     }
 
-    @Override public void onFlatMark(Flat flat) {
-        if (flat.status != null && flat.status.contains("gotowy")) Actions.markUnready(flat, this);
-        else Actions.saveAndMarkReady(flat, this);
-        flat.edition_date = new Date();
-        flatViewModel.update(flat);
+    @Override
+    public void onFlatMark(Flat flat) {
+        if (flat.status != null && flat.status.contains("gotowy")) {
+            Actions.markUnready(flat, this);
+        } else {
+            Actions.saveAndMarkReady(flat, this);
+        }
         updateMetadata();
     }
 
-    @Override public void onGenerateProtocol(Flat flat, int protocolNumber) {
-        new AlertDialog.Builder(this).setTitle("Potwierdzenie").setMessage("Generować protokół?")
+    @Override
+    public void onGenerateProtocol(Flat flat, int protocolNumber) {
+        new AlertDialog.Builder(this)
+                .setTitle("Potwierdzenie")
+                .setMessage("Generować protokół?")
                 .setPositiveButton("Tak", (d, w) -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                            && ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                REQUEST_NOTIFICATION_PERMISSION);
+                        hideKeyboard();
                         return;
                     }
                     startProtocolWorker(blockId, block.catalog.id, flat.id, protocolNumber);
+                    hideKeyboard();
                 })
-                .setNegativeButton("Nie", null).show();
+                .setNegativeButton("Nie", null)
+                .show();
     }
 
     private void startProtocolWorker(int b, int c, int f, int p) {
-        Data data = new Data.Builder().putInt("blockId", b).putInt("catalogId", c).putInt("flatId", f).putInt("protocolNumber", p).build();
-        WorkManager.getInstance(getApplicationContext()).enqueue(new OneTimeWorkRequest.Builder(ProtocolWorker.class).setInputData(data).build());
+        Data data = new Data.Builder()
+                .putInt("blockId", b)
+                .putInt("catalogId", c)
+                .putInt("flatId", f)
+                .putInt("protocolNumber", p)
+                .build();
+        WorkManager.getInstance(getApplicationContext())
+                .enqueue(new OneTimeWorkRequest.Builder(ProtocolWorker.class).setInputData(data).build());
         Toast.makeText(this, "🔄 Rozpoczęto generowanie.", Toast.LENGTH_SHORT).show();
     }
 
