@@ -1,7 +1,9 @@
+// RoomAdapter.java
 package com.rejner.remapomiary.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -30,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHolder> {
-    private final RecyclerView.RecycledViewPool sharedViewPool = new RecyclerView.RecycledViewPool();
     private final RoomViewModel roomViewModel;
     private final OutletMeasurementViewModel outletViewModel;
     private final LifecycleOwner lifecycleOwner;
@@ -39,8 +40,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private final Consumer<RoomInFlat> deleteListener;
     private final Consumer<Integer> addMeasurementListener;
     private long newlyAddedMeasurementId = -1;
-    private int catalogId;
-    private boolean isCommonSpace;
+    private final int catalogId;
+    private final boolean isCommonSpace;
     private final Set<Integer> expandedRoomIds = new HashSet<>();
     private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
 
@@ -109,6 +110,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 currentLiveData.removeObserver(currentObserver);
             }
 
+            boolean isLokale = "Lokale".equalsIgnoreCase(room.name);
+
             if (isCommonSpace) {
                 binding.deleteRoomButton.setText("Usuń pomieszczenie");
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pomieszczenie " + room.id));
@@ -117,7 +120,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pokój " + room.id));
             }
 
-            if (isCommonSpace && "Lokale".equals(room.name)) {
+            if (isCommonSpace && isLokale) {
                 binding.toggleMeasurementsButton.setVisibility(View.VISIBLE);
 
                 boolean isExpanded = expandedRoomIds.contains(room.id);
@@ -129,6 +132,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                         cancelChunkedLoading();
                         updateExpansionUI(false);
                         measurementAdapter.submitList(null);
+                        adjustRecyclerViewHeight(0);
                         return;
                     }
 
@@ -142,6 +146,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                         updateExpansionUI(false);
                         cancelChunkedLoading();
                         measurementAdapter.submitList(null);
+                        adjustRecyclerViewHeight(0);
                         isFullyLoaded = false;
                     }
                 });
@@ -167,36 +172,57 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                     binding.emptyMeasurementsText.setVisibility(View.VISIBLE);
                 }
 
-                if (expandedRoomIds.contains(room.id) || !isCommonSpace || !"Lokale".equals(room.name)) {
-                    if (isCommonSpace && "Lokale".equals(room.name)) {
+                final long currentFocusId = newlyAddedMeasurementId;
+                if (currentFocusId != -1) {
+                    measurementAdapter.setFocusToMeasurementId(currentFocusId);
+                }
+
+                Runnable handleFocusAfterSubmit = () -> {
+                    if (currentFocusId != -1 && measurements != null) {
+                        for (int i = 0; i < measurements.size(); i++) {
+                            if (measurements.get(i).id == currentFocusId) {
+                                int finalI = i;
+                                binding.measurementsRecyclerView.post(() -> binding.measurementsRecyclerView.scrollToPosition(finalI));
+                                if (newlyAddedMeasurementId == currentFocusId) {
+                                    newlyAddedMeasurementId = -1;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                };
+
+                if (expandedRoomIds.contains(room.id) || !isCommonSpace || !isLokale) {
+                    if (isCommonSpace && isLokale) {
                         if (isFullyLoaded && !isLoadingChunks) {
-                            measurementAdapter.submitList(new ArrayList<>(measurements));
+                            measurementAdapter.submitList(new ArrayList<>(measurements), handleFocusAfterSubmit);
+                            adjustRecyclerViewHeight(measurements.size());
                         } else if (!isLoadingChunks) {
                             startChunkedLoading();
                         }
                     } else {
-                        measurementAdapter.submitList(measurements);
+                        measurementAdapter.submitList(measurements, handleFocusAfterSubmit);
+                        adjustRecyclerViewHeight(measurements != null ? measurements.size() : 0);
                     }
                 } else {
                     cancelChunkedLoading();
                     measurementAdapter.submitList(null);
-                }
-
-                if (newlyAddedMeasurementId != -1 && measurements != null) {
-                    for (int i = 0; i < measurements.size(); i++) {
-                        if (measurements.get(i).id == newlyAddedMeasurementId) {
-                            int finalI = i;
-                            binding.measurementsRecyclerView.post(() -> {
-                                binding.measurementsRecyclerView.smoothScrollToPosition(finalI);
-                                measurementAdapter.setFocusToMeasurementId(newlyAddedMeasurementId);
-                                newlyAddedMeasurementId = -1;
-                            });
-                            break;
-                        }
-                    }
+                    adjustRecyclerViewHeight(0);
                 }
             };
             currentLiveData.observe(lifecycleOwner, currentObserver);
+        }
+
+        private void adjustRecyclerViewHeight(int itemCount) {
+            ViewGroup.LayoutParams params = binding.measurementsRecyclerView.getLayoutParams();
+            if (itemCount > 7) {
+                params.height = (int) (350 * context.getResources().getDisplayMetrics().density);
+                binding.measurementsRecyclerView.setNestedScrollingEnabled(true);
+            } else {
+                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+                binding.measurementsRecyclerView.setNestedScrollingEnabled(false);
+            }
+            binding.measurementsRecyclerView.setLayoutParams(params);
         }
 
         private void startChunkedLoading() {
@@ -204,6 +230,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             if (currentMeasurements == null || currentMeasurements.isEmpty()) {
                 binding.toggleMeasurementsButton.setText("Ukryj");
                 measurementAdapter.submitList(null);
+                adjustRecyclerViewHeight(0);
                 return;
             }
 
@@ -218,6 +245,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 binding.progressBar.setMax(currentMeasurements.size());
                 binding.progressBar.setProgress(0);
             }
+
+            adjustRecyclerViewHeight(currentMeasurements.size());
 
             loadNextChunk();
         }
@@ -244,12 +273,30 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                 mainHandler.post(() -> {
                     if (!isLoadingChunks) return;
 
+                    final long currentFocusId = newlyAddedMeasurementId;
+                    if (currentFocusId != -1) {
+                        measurementAdapter.setFocusToMeasurementId(currentFocusId);
+                    }
+
                     measurementAdapter.submitList(newListToSubmit, () -> {
                         if (!isLoadingChunks) return;
 
                         currentChunkIndex++;
                         if (binding.progressBar != null) {
                             binding.progressBar.setProgress(Math.min(currentChunkIndex * CHUNK_SIZE, currentMeasurements.size()));
+                        }
+
+                        if (currentFocusId != -1) {
+                            for (int i = 0; i < newListToSubmit.size(); i++) {
+                                if (newListToSubmit.get(i).id == currentFocusId) {
+                                    int finalI = i;
+                                    binding.measurementsRecyclerView.post(() -> binding.measurementsRecyclerView.scrollToPosition(finalI));
+                                    if (newlyAddedMeasurementId == currentFocusId) {
+                                        newlyAddedMeasurementId = -1;
+                                    }
+                                    break;
+                                }
+                            }
                         }
 
                         loadNextChunk();
@@ -302,8 +349,16 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             );
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
-            binding.measurementsRecyclerView.setNestedScrollingEnabled(false);
-            binding.measurementsRecyclerView.setRecycledViewPool(sharedViewPool);
+
+            binding.measurementsRecyclerView.setOnTouchListener((v, event) -> {
+                if (v.isNestedScrollingEnabled()) {
+                    int action = event.getAction();
+                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                        v.getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                }
+                return false;
+            });
         }
     }
 

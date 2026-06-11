@@ -1,272 +1,265 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
+    android:orientation="vertical"
+    android:background="#FFFFFF"
     tools:context=".ui.activities.RoomActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#DDDDDD"
+        android:gravity="center_horizontal">
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp"
-            android:background="#DDDDDD"
-            android:gravity="center_horizontal">
-            <Button
-                android:id="@+id/backButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:gravity="center_vertical"
-                android:text="◀ Powrót"
-                android:textSize="18sp" />
-            <TextView
-                android:id="@+id/flatTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:text="Mieszkanie petla zwracia - "
-                android:textSize="24sp"
-                android:textStyle="bold" />
-            <Button
-                android:id="@+id/backSave"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="✅  Oznacz jako wykonane"
-                android:backgroundTint="#3E902A"
-                android:gravity="center_vertical"
-                android:textSize="18sp"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:orientation="horizontal"
-            android:padding="20dp">
-            <Button
-                android:id="@+id/notesButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Podsumowanie"
-                android:textSize="18sp" />
-            <Button
-                android:id="@+id/boardButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Rozdzielnia"
-                android:textSize="18sp" />
-            <Button
-                android:id="@+id/RCDButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Różnicówka"
-                android:textSize="18sp" />
-            <Button
-                android:id="@+id/roomsButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Pętla zwarcia"
-                android:textSize="18sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/commonSpaceInfoContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone"
-            android:padding="14dp"
-            android:background="@drawable/round_corners">
+            android:gravity="center_vertical"
+            android:text="◀ Powrót"
+            android:textSize="18sp" />
+        <TextView
+            android:id="@+id/flatTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:text="Mieszkanie petla zwracia - "
+            android:textSize="24sp"
+            android:textStyle="bold" />
+        <Button
+            android:id="@+id/backSave"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✅  Oznacz jako wykonane"
+            android:backgroundTint="#3E902A"
+            android:gravity="center_vertical"
+            android:textSize="18sp"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="Rozdzielnia główna mieszkań"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="10dp"
-                android:textColor="#333333" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Wymagane informacje do wygenerowania pętli zwarcia dla mieszkań. Uzupełnij je i kliknij przycisk zapisz i zostaną dodane pomiary dla wszystkich mieszkań z statusem 'wykonane'. Mieszkania, których status zostanie zmieniony po wygenerowaniu zostaną dodane automatycznie. \n Zmiana danych i zapisanie zmiań przyciskiem zapisz spowoduje zmiane informacji o bezpieczniku w każdym mieszkaniu."
-
-                android:textSize="14sp"
-                android:layout_marginBottom="10dp"
-                android:textColor="#333333" />
-
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="20dp">
-                <TextView
-                    style="@style/MeasurementHeader"
-                    android:layout_weight="2"
-                    android:text="Urządzenie" />
-
-                <TextView
-                    style="@style/MeasurementHeader"
-                    android:layout_weight="1"
-                    android:text="Typ" />
-
-                <TextView
-                    style="@style/MeasurementHeader"
-                    android:layout_weight="1"
-                    android:text="Wartośc [A]" />
-                <TextView
-                    style="@style/MeasurementHeader"
-                    android:layout_weight="1"
-                    android:text="Wart. Bazowa [Ω]" />
-
-
-            </LinearLayout>
+        <com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            app:elevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/white"
-                android:padding="8dp"
-                android:gravity="center_vertical">
+                android:orientation="vertical"
+                app:layout_scrollFlags="scroll|enterAlwaysCollapsed">
 
-                <EditText
-                    android:id="@+id/csSwitchEdit"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="2"
-                    android:hint="Wyłącznik (producent)"
-                    android:singleLine="true"
-                    android:imeOptions="actionDone"
-                    android:background="@drawable/input"
-                    android:padding="12dp"
-                    android:layout_marginEnd="8dp"/>
+                    android:gravity="center_horizontal"
+                    android:orientation="horizontal"
+                    android:padding="20dp">
+                    <Button
+                        android:id="@+id/notesButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="40dp"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal"
+                        android:paddingTop="15dp"
+                        android:paddingBottom="15dp"
+                        android:text="Podsumowanie"
+                        android:textSize="18sp" />
+                    <Button
+                        android:id="@+id/boardButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="40dp"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal"
+                        android:paddingTop="15dp"
+                        android:paddingBottom="15dp"
+                        android:text="Rozdzielnia"
+                        android:textSize="18sp" />
+                    <Button
+                        android:id="@+id/RCDButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="40dp"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal"
+                        android:paddingTop="15dp"
+                        android:paddingBottom="15dp"
+                        android:text="Różnicówka"
+                        android:textSize="18sp" />
+                    <Button
+                        android:id="@+id/roomsButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_horizontal"
+                        android:paddingTop="15dp"
+                        android:paddingBottom="15dp"
+                        android:text="Pętla zwarcia"
+                        android:textSize="18sp" />
+                </LinearLayout>
 
-                <Spinner
-                    android:id="@+id/csBreakerSpinner"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:id="@+id/commonSpaceInfoContainer"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"/>
+                    android:orientation="vertical"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:layout_marginBottom="12dp"
+                    android:visibility="gone"
+                    android:padding="14dp"
+                    android:background="@drawable/round_corners"
+                    tools:visibility="visible">
 
-                <Spinner
-                    android:id="@+id/csAmpsSpinner"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-                <EditText
-                    android:id="@+id/csBaseValue"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:inputType="numberDecimal"
-                    android:hint="Pomiar baz. [Ω]"
-                    android:singleLine="true"
-                    android:imeOptions="actionDone"
-                    android:background="@drawable/input"
-                    android:padding="12dp"
-                    android:layout_marginEnd="8dp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="Rozdzielnia główna mieszkań"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="10dp"
+                        android:textColor="#333333" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Wymagane informacje do wygenerowania pętli zwarcia dla mieszkań. Uzupełnij je i kliknij przycisk zapisz i zostaną dodane pomiary dla wszystkich mieszkań z statusem 'wykonane'. Mieszkania, których status zostanie zmieniony po wygenerowaniu zostaną dodane automatycznie. \n Zmiana danych i zapisanie zmiań przyciskiem zapisz spowoduje zmiane informacji o bezpieczniku w każdym mieszkaniu."
+                        android:textSize="14sp"
+                        android:layout_marginBottom="10dp"
+                        android:textColor="#333333" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="20dp">
+                        <TextView style="@style/MeasurementHeader" android:layout_weight="2" android:text="Urządzenie" />
+                        <TextView style="@style/MeasurementHeader" android:layout_weight="1" android:text="Typ" />
+                        <TextView style="@style/MeasurementHeader" android:layout_weight="1" android:text="Wartośc [A]" />
+                        <TextView style="@style/MeasurementHeader" android:layout_weight="1" android:text="Wart. Bazowa [Ω]" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@color/white"
+                        android:padding="8dp"
+                        android:gravity="center_vertical">
+                        <EditText
+                            android:id="@+id/csSwitchEdit"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:hint="Wyłącznik (producent)"
+                            android:singleLine="true"
+                            android:imeOptions="actionDone"
+                            android:background="@drawable/input"
+                            android:padding="12dp"
+                            android:layout_marginEnd="8dp"/>
+                        <Spinner
+                            android:id="@+id/csBreakerSpinner"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="8dp"/>
+                        <Spinner
+                            android:id="@+id/csAmpsSpinner"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+                        <EditText
+                            android:id="@+id/csBaseValue"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:inputType="numberDecimal"
+                            android:hint="Pomiar baz. [Ω]"
+                            android:singleLine="true"
+                            android:imeOptions="actionDone"
+                            android:background="@drawable/input"
+                            android:padding="12dp"
+                            android:layout_marginEnd="8dp"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="10dp"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <Button
+                            android:id="@+id/generateButton"
+                            android:layout_width="wrap_content"
+                            style="@style/Widget.MaterialComponents.Button"
+                            android:backgroundTint="#3FAB1F"
+                            android:layout_height="wrap_content"
+                            android:text="Zapisz" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="10dp"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <Button
-                    android:id="@+id/generateButton"
-                    android:layout_width="wrap_content"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:backgroundTint="#3FAB1F"
-
-                    android:layout_height="wrap_content"
-                    android:text="Zapisz" />
-            </LinearLayout>
-
-
-
-        </LinearLayout>
+        </com.google.android.material.appbar.AppBarLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/roomRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:nestedScrollingEnabled="false"
+            android:layout_height="match_parent"
             android:padding="16dp"
+            android:clipToPadding="false"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/room_card_item" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="#F6F3F3"
+        android:gravity="center_horizontal">
+
+        <Spinner
+            android:id="@+id/roomSpinner"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="#F6F3F3"
-            android:gravity="center_horizontal">
+            android:layout_marginEnd="20dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="10dp"/>
 
-            <Spinner
-                android:id="@+id/roomSpinner"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="20dp"
-                android:layout_weight="1"
-                android:layout_marginBottom="10dp"/>
+        <EditText
+            android:id="@+id/customRoomEditText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="text"
+            android:hint="Wpisz nazwę pokoju"
+            android:visibility="visible"
+            android:imeOptions="actionDone"
+            android:maxLines="1"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="10dp"/>
 
-            <EditText
-                android:id="@+id/customRoomEditText"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:inputType="text"
-                android:hint="Wpisz nazwę pokoju"
-                android:visibility="visible"
-                android:imeOptions="actionDone"
-                android:maxLines="1"
-                android:layout_marginEnd="20dp"
-                android:layout_marginBottom="10dp"/>
-
-            <Button
-                android:id="@+id/addRoomButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                style="@style/Widget.MaterialComponents.Button"
-                android:text="Dodaj pokój" />
-        </LinearLayout>
-
+        <Button
+            android:id="@+id/addRoomButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            style="@style/Widget.MaterialComponents.Button"
+            android:text="Dodaj pokój" />
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

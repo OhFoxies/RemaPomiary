@@ -1,6 +1,8 @@
+// MeasurementAdapter.java
 package com.rejner.remapomiary.adapters;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,9 +34,8 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     private final int catalogId;
     private final boolean isCommonSpace;
     private long focusToMeasurementId = -1;
-    private String roomName;
+    private final String roomName;
 
-    // Współdzielone adaptery dla spinnerów
     private final ArrayAdapter<String> rcdStateAdapter;
     private final ArrayAdapter<String> applianceSpinnerAdapter;
     private final ArrayAdapter<String> breakerSpinnerAdapter;
@@ -55,11 +56,10 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.isCommonSpace = isCommonSpace;
         this.roomName = roomName;
 
-        if ("Lokale".equals(roomName)) {
+        if ("Lokale".equalsIgnoreCase(roomName)) {
             this.noteOptions = new String[]{"brak uwag", "Inne"};
         }
 
-        // Inicjalizacja adapterów tylko raz dla całej listy
         this.rcdStateAdapter = createSpinnerAdapter(new String[]{"Brak różnicówki", "Różnicówka sprawna", "Różnicówka niesprawna"});
         this.applianceSpinnerAdapter = createSpinnerAdapter(this.applianceOptions);
         this.breakerSpinnerAdapter = createSpinnerAdapter(this.breakerTypes);
@@ -75,7 +75,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     public void setFocusToMeasurementId(long id) {
         this.focusToMeasurementId = id;
-        notifyDataSetChanged();
     }
 
     @NonNull
@@ -96,6 +95,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     class MeasurementViewHolder extends RecyclerView.ViewHolder {
         private final MeasurementRowItemBinding binding;
         private OutletMeasurement currentItem;
+        private final RoomActivity.OhmsTextWatcher ohmsWatcher;
 
         private int currentAppliancePos = -1;
         private int currentBreakerPos = -1;
@@ -109,18 +109,21 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             super(binding.getRoot());
             this.binding = binding;
 
-            binding.ohmsEdit.addTextChangedListener(new RoomActivity.OhmsTextWatcher(binding.ohmsEdit));
+            this.ohmsWatcher = new RoomActivity.OhmsTextWatcher(binding.ohmsEdit);
 
-            // Ustawienie współdzielonych adapterów
-            if (isCommonSpace && !"Lokale".equals(roomName)) {
-                binding.rcdStateSpinner.setAdapter(MeasurementAdapter.this.rcdStateAdapter);
-            }
+            binding.rcdStateSpinner.setAdapter(MeasurementAdapter.this.rcdStateAdapter);
             binding.applianceSpinner.setAdapter(MeasurementAdapter.this.applianceSpinnerAdapter);
             binding.breakerSpinner.setAdapter(MeasurementAdapter.this.breakerSpinnerAdapter);
             binding.ampsSpinner.setAdapter(MeasurementAdapter.this.ampsSpinnerAdapter);
             binding.noteSpinner.setAdapter(MeasurementAdapter.this.noteSpinnerAdapter);
 
             initAllListeners();
+        }
+
+        private void scrollToView(View view) {
+            view.postDelayed(() -> {
+                view.requestRectangleOnScreen(new Rect(0, 0, view.getWidth(), view.getHeight() + (int)(200 * activity.getResources().getDisplayMetrics().density)), true);
+            }, 300);
         }
 
         private void initAllListeners() {
@@ -160,6 +163,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.rcdNameEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.rcdNameSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
             binding.rcdNameEdit.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -182,6 +186,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.rcdTimeEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.rcdTimeSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
             binding.rcdTimeEdit.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -204,6 +209,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.rcdCurrentEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.rcdCurrentSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
             binding.rcdCurrentEdit.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -249,6 +255,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 toggleFieldExpansion(binding.applianceContainer, binding.switchContainer, hasFocus, 2f, 2f);
                 binding.customApplianceSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
                 binding.customApplianceClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
 
             binding.customApplianceSaveBtn.setOnClickListener(v -> {
@@ -273,6 +280,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.switchEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.switchSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
 
             binding.switchEdit.setOnEditorActionListener((v, actionId, event) -> {
@@ -337,8 +345,12 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             binding.ohmsEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.ohmsSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
                 toggleFieldExpansion(binding.ohmsContainer, binding.noteSpinner, hasFocus, 1f, 2f);
-                if (hasFocus) binding.customNoteContainer.setVisibility(View.GONE);
-                else if (currentItem != null) setupNoteField(currentItem);
+                if (hasFocus) {
+                    binding.customNoteContainer.setVisibility(View.GONE);
+                    scrollToView(v);
+                } else if (currentItem != null) {
+                    setupNoteField(currentItem);
+                }
             });
 
             binding.ohmsSaveBtn.setOnClickListener(v -> {
@@ -378,6 +390,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 toggleFieldExpansion(binding.customNoteContainer, binding.switchContainer, hasFocus, 2f, 2f);
                 binding.customNoteSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
                 binding.customNoteClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                if (hasFocus) scrollToView(v);
             });
 
             binding.customNoteEdit.setOnEditorActionListener((v, actionId, event) -> {
@@ -410,6 +423,11 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.deleteBtn.setOnClickListener(v -> {
                 if (currentItem != null) {
+                    View focused = activity.getCurrentFocus();
+                    if (focused != null) {
+                        focused.clearFocus();
+                        activity.hideKeyboard();
+                    }
                     outletViewModel.delete(currentItem, null);
                 }
             });
@@ -419,12 +437,14 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             this.currentItem = om;
             isBinding = true;
 
+            binding.ohmsEdit.removeTextChangedListener(ohmsWatcher);
+
             if (catalogId != -1) {
                 binding.noteSpinner.setEnabled(false);
                 binding.ohmsEdit.setEnabled(false);
             }
 
-            if (isCommonSpace && !"Lokale".equals(roomName)) {
+            if (isCommonSpace && !"Lokale".equalsIgnoreCase(roomName)) {
                 binding.rcdHeaders.setVisibility(View.VISIBLE);
                 binding.rcdRowContainer.setVisibility(View.VISIBLE);
                 setupRcdFields(om);
@@ -448,11 +468,16 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             binding.ohmsEdit.setText(String.format(Locale.GERMANY, "%.2f", om.ohms != null ? om.ohms : 0.0));
 
             if (focusToMeasurementId != -1 && om.id == focusToMeasurementId) {
-                binding.ohmsEdit.requestFocus();
-                binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
-                activity.showKeyboard(binding.ohmsEdit);
                 focusToMeasurementId = -1;
+                binding.ohmsEdit.postDelayed(() -> {
+                    binding.ohmsEdit.requestFocus();
+                    binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
+                    activity.showKeyboard(binding.ohmsEdit);
+                    scrollToView(binding.ohmsEdit);
+                }, 150);
             }
+
+            binding.ohmsEdit.addTextChangedListener(ohmsWatcher);
 
             isBinding = false;
         }
