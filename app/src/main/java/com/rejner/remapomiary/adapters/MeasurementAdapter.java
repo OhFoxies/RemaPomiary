@@ -4,24 +4,17 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
-import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.MeasurementRowItemBinding;
 import com.rejner.remapomiary.ui.activities.RoomActivity;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
@@ -37,14 +30,20 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     private String[] noteOptions;
     private final String[] ampsOptions;
     private final int catalogId;
-    private String lastRcdName;
-    private final boolean isCommonSpace; // Nowe pole klasy
+    private final boolean isCommonSpace;
     private long focusToMeasurementId = -1;
     private String roomName;
 
+    // Współdzielone adaptery dla spinnerów
+    private final ArrayAdapter<String> rcdStateAdapter;
+    private final ArrayAdapter<String> applianceSpinnerAdapter;
+    private final ArrayAdapter<String> breakerSpinnerAdapter;
+    private final ArrayAdapter<String> noteSpinnerAdapter;
+    private final ArrayAdapter<String> ampsSpinnerAdapter;
+
     public MeasurementAdapter(RoomActivity activity, OutletMeasurementViewModel outletViewModel,
                               String[] applianceOptions, String[] breakerTypes, String[] noteOptions,
-                              String[] ampsOptions, int catalogId, boolean isCommonSpace, String roomName) { // Dodane do konstruktora
+                              String[] ampsOptions, int catalogId, boolean isCommonSpace, String roomName) {
         super(DIFF_CALLBACK);
         this.activity = activity;
         this.outletViewModel = outletViewModel;
@@ -55,6 +54,23 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.catalogId = catalogId;
         this.isCommonSpace = isCommonSpace;
         this.roomName = roomName;
+
+        if ("Lokale".equals(roomName)) {
+            this.noteOptions = new String[]{"brak uwag", "Inne"};
+        }
+
+        // Inicjalizacja adapterów tylko raz dla całej listy
+        this.rcdStateAdapter = createSpinnerAdapter(new String[]{"Brak różnicówki", "Różnicówka sprawna", "Różnicówka niesprawna"});
+        this.applianceSpinnerAdapter = createSpinnerAdapter(this.applianceOptions);
+        this.breakerSpinnerAdapter = createSpinnerAdapter(this.breakerTypes);
+        this.noteSpinnerAdapter = createSpinnerAdapter(this.noteOptions);
+        this.ampsSpinnerAdapter = createSpinnerAdapter(this.ampsOptions);
+    }
+
+    private ArrayAdapter<String> createSpinnerAdapter(String[] options) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        return adapter;
     }
 
     public void setFocusToMeasurementId(long id) {
@@ -79,58 +95,342 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     class MeasurementViewHolder extends RecyclerView.ViewHolder {
         private final MeasurementRowItemBinding binding;
+        private OutletMeasurement currentItem;
 
         private int currentAppliancePos = -1;
         private int currentBreakerPos = -1;
         private int currentAmpsPos = -1;
         private int currentNotePos = -1;
-        private int currentRcdStatePos = -1; // Stan różnicówki
+        private int currentRcdStatePos = -1;
 
-        // Opcje dla spinnera różnicówki
-        private final String[] rcdOptions = new String[]{"Brak różnicówki", "Różnicówka sprawna", "Różnicówka niesprawna"};
+        private boolean isBinding = false;
 
         MeasurementViewHolder(MeasurementRowItemBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
 
             binding.ohmsEdit.addTextChangedListener(new RoomActivity.OhmsTextWatcher(binding.ohmsEdit));
+
+            // Ustawienie współdzielonych adapterów
+            if (isCommonSpace && !"Lokale".equals(roomName)) {
+                binding.rcdStateSpinner.setAdapter(MeasurementAdapter.this.rcdStateAdapter);
+            }
+            binding.applianceSpinner.setAdapter(MeasurementAdapter.this.applianceSpinnerAdapter);
+            binding.breakerSpinner.setAdapter(MeasurementAdapter.this.breakerSpinnerAdapter);
+            binding.ampsSpinner.setAdapter(MeasurementAdapter.this.ampsSpinnerAdapter);
+            binding.noteSpinner.setAdapter(MeasurementAdapter.this.noteSpinnerAdapter);
+
+            initAllListeners();
+        }
+
+        private void initAllListeners() {
+            binding.rcdStateSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (isBinding || currentItem == null) return;
+                    if (position == currentRcdStatePos) return;
+                    currentRcdStatePos = position;
+                    currentItem.rcdStatus = currentRcdStatePos;
+
+                    if (position == 0) {
+                        currentItem.rcdName = "";
+                        binding.rcdNameEdit.setText("");
+                        outletViewModel.update(currentItem, null);
+                    } else {
+                        if (currentItem.rcdName == null || currentItem.rcdName.trim().isEmpty()) {
+                            java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+                                String fetchedName = outletViewModel.getLastRCDName(currentItem.roomId);
+                                final String finalName = (fetchedName != null) ? fetchedName : "";
+
+                                activity.runOnUiThread(() -> {
+                                    if (currentItem != null) {
+                                        currentItem.rcdName = finalName;
+                                        binding.rcdNameEdit.setText(finalName);
+                                        outletViewModel.update(currentItem, null);
+                                    }
+                                });
+                            });
+                        } else {
+                            outletViewModel.update(currentItem, null);
+                        }
+                    }
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
+
+            binding.rcdNameEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                binding.rcdNameSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+            binding.rcdNameEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.rcdNameSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+            binding.rcdNameSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String nameText = binding.rcdNameEdit.getText().toString().trim();
+                if (nameText.equals(currentItem.rcdName) || nameText.isEmpty()) {
+                    return;
+                }
+                currentItem.rcdName = nameText;
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.rcdNameEdit.clearFocus();
+            });
+
+            binding.rcdTimeEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                binding.rcdTimeSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+            binding.rcdTimeEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.rcdTimeSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+            binding.rcdTimeSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String timeText = binding.rcdTimeEdit.getText().toString().trim();
+                if (timeText.isEmpty()) {
+                    return;
+                }
+                currentItem.rcdTime = Integer.parseInt(timeText);
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.rcdTimeEdit.clearFocus();
+            });
+
+            binding.rcdCurrentEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                binding.rcdCurrentSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+            binding.rcdCurrentEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.rcdCurrentSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+            binding.rcdCurrentSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String currentText = binding.rcdCurrentEdit.getText().toString().trim();
+                if (currentText.isEmpty()) {
+                    return;
+                }
+                currentItem.rcdCurrent = Integer.parseInt(currentText);
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.rcdCurrentEdit.clearFocus();
+            });
+
+            binding.applianceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (isBinding || currentItem == null) return;
+                    if (position == currentAppliancePos) return;
+                    currentAppliancePos = position;
+
+                    String selected = applianceOptions[position];
+                    if ("Inne".equals(selected)) {
+                        binding.applianceSpinner.setVisibility(View.GONE);
+                        binding.customApplianceContainer.setVisibility(View.VISIBLE);
+                        binding.customApplianceEdit.requestFocus();
+                        activity.showKeyboard(binding.customApplianceEdit);
+                    } else if (!selected.equals(currentItem.appliance)) {
+                        currentItem.appliance = selected;
+                        outletViewModel.update(currentItem, null);
+                    }
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
+
+            binding.customApplianceEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                toggleFieldExpansion(binding.applianceContainer, binding.switchContainer, hasFocus, 2f, 2f);
+                binding.customApplianceSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                binding.customApplianceClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+
+            binding.customApplianceSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String txt = binding.customApplianceEdit.getText().toString().trim();
+                currentItem.appliance = txt.isEmpty() ? applianceOptions[0] : txt;
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.customApplianceEdit.clearFocus();
+                if (txt.isEmpty()) setupApplianceField(currentItem);
+            });
+
+            binding.customApplianceClearBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                binding.customApplianceEdit.setText("");
+                currentItem.appliance = applianceOptions[0];
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.customApplianceEdit.clearFocus();
+                setupApplianceField(currentItem);
+            });
+
+            binding.switchEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                binding.switchSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+
+            binding.switchEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.switchSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+
+            binding.switchSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String newSwitch = binding.switchEdit.getText().toString().trim();
+                if (!newSwitch.equals(currentItem.switchName)) {
+                    currentItem.switchName = newSwitch;
+                    outletViewModel.update(currentItem, null);
+                }
+                activity.hideKeyboard();
+                binding.switchEdit.clearFocus();
+            });
+
+            binding.breakerSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                    if (isBinding || currentItem == null) return;
+                    if (pos == currentBreakerPos) return;
+                    currentBreakerPos = pos;
+
+                    String sel = breakerTypes[pos];
+                    if (!sel.equalsIgnoreCase(currentItem.breakerType)) {
+                        currentItem.breakerType = sel;
+                        outletViewModel.update(currentItem, null);
+                    }
+                }
+                @Override public void onNothingSelected(AdapterView<?> p) { }
+            });
+
+            binding.ampsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                    if (isBinding || currentItem == null) return;
+                    if (pos == currentAmpsPos) return;
+                    currentAmpsPos = pos;
+
+                    try {
+                        Double dVal = Double.parseDouble(ampsOptions[pos]);
+                        if (currentItem.amps == null || !currentItem.amps.equals(dVal)) {
+                            currentItem.amps = dVal;
+                            outletViewModel.update(currentItem, null);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                @Override public void onNothingSelected(AdapterView<?> p) { }
+            });
+
+            binding.ohmsEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.ohmsSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+
+            binding.ohmsEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                binding.ohmsSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                toggleFieldExpansion(binding.ohmsContainer, binding.noteSpinner, hasFocus, 1f, 2f);
+                if (hasFocus) binding.customNoteContainer.setVisibility(View.GONE);
+                else if (currentItem != null) setupNoteField(currentItem);
+            });
+
+            binding.ohmsSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String txt = binding.ohmsEdit.getText().toString().replace(',', '.');
+                Double val = null;
+                try { if (!txt.isEmpty()) val = Double.parseDouble(txt); } catch (Exception ignored) {}
+                if ((val == null && currentItem.ohms != null) || (val != null && !val.equals(currentItem.ohms))) {
+                    currentItem.ohms = val;
+                    outletViewModel.update(currentItem, null);
+                }
+                activity.hideKeyboard();
+                binding.ohmsEdit.clearFocus();
+            });
+
+            binding.noteSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                    if (isBinding || currentItem == null) return;
+                    if (pos == currentNotePos) return;
+                    currentNotePos = pos;
+
+                    String sel = noteOptions[pos];
+                    if ("Inne".equalsIgnoreCase(sel)) {
+                        binding.noteSpinner.setVisibility(View.GONE);
+                        binding.customNoteContainer.setVisibility(View.VISIBLE);
+                        binding.customNoteEdit.requestFocus();
+                        activity.showKeyboard(binding.customNoteEdit);
+                    } else if (!sel.equals(currentItem.note)) {
+                        currentItem.note = sel;
+                        outletViewModel.update(currentItem, null);
+                    }
+                }
+                @Override public void onNothingSelected(AdapterView<?> p) { }
+            });
+
+            binding.customNoteEdit.setOnFocusChangeListener((v, hasFocus) -> {
+                toggleFieldExpansion(binding.customNoteContainer, binding.switchContainer, hasFocus, 2f, 2f);
+                binding.customNoteSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+                binding.customNoteClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+            });
+
+            binding.customNoteEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    binding.customNoteSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+
+            binding.customNoteSaveBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                String txt = binding.customNoteEdit.getText().toString().trim();
+                currentItem.note = txt.isEmpty() ? noteOptions[0] : txt;
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.customNoteEdit.clearFocus();
+                if (txt.isEmpty()) setupNoteField(currentItem);
+            });
+
+            binding.customNoteClearBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                binding.customNoteEdit.setText("");
+                currentItem.note = noteOptions[0];
+                outletViewModel.update(currentItem, null);
+                activity.hideKeyboard();
+                binding.customNoteEdit.clearFocus();
+                setupNoteField(currentItem);
+            });
+
+            binding.deleteBtn.setOnClickListener(v -> {
+                if (currentItem != null) {
+                    outletViewModel.delete(currentItem, null);
+                }
+            });
         }
 
         void bind(OutletMeasurement om) {
-            // Odpinamy wszystkie listenery (również nowe)
-            binding.applianceSpinner.setOnItemSelectedListener(null);
-            binding.breakerSpinner.setOnItemSelectedListener(null);
-            binding.ampsSpinner.setOnItemSelectedListener(null);
-            binding.noteSpinner.setOnItemSelectedListener(null);
-            binding.rcdStateSpinner.setOnItemSelectedListener(null);
+            this.currentItem = om;
+            isBinding = true;
 
             if (catalogId != -1) {
                 binding.noteSpinner.setEnabled(false);
                 binding.ohmsEdit.setEnabled(false);
             }
 
-            // Zarządzanie widocznością drugiego rzędu (RCD) na podstawie isCommonSpace
-            // Założyłem, że w XML-u cały drugi rząd zamkniesz w kontenerze (np. o id rcdRowContainer)
-            if (isCommonSpace && !roomName.equals("Lokale")) {
+            if (isCommonSpace && !"Lokale".equals(roomName)) {
                 binding.rcdHeaders.setVisibility(View.VISIBLE);
                 binding.rcdRowContainer.setVisibility(View.VISIBLE);
-                setupSpinner(binding.rcdStateSpinner, rcdOptions);
                 setupRcdFields(om);
             } else {
-                ViewParent parent =  binding.rcdRowContainer.getParent();
-
-                if (parent instanceof ViewGroup) {
-                    ((ViewGroup) parent).removeView(binding.rcdRowContainer);
-                }
-            }
-
-            setupSpinner(binding.applianceSpinner, applianceOptions);
-            setupSpinner(binding.breakerSpinner, breakerTypes);
-            setupSpinner(binding.ampsSpinner, ampsOptions);
-            if (roomName.equals("Lokale")) {
-                noteOptions = new String[]{"brak uwag", "Inne"};
-                setupSpinner(binding.noteSpinner, noteOptions);
-
+                binding.rcdHeaders.setVisibility(View.GONE);
+                binding.rcdRowContainer.setVisibility(View.GONE);
             }
 
             setupApplianceField(om);
@@ -147,31 +447,14 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.ohmsEdit.setText(String.format(Locale.GERMANY, "%.2f", om.ohms != null ? om.ohms : 0.0));
 
-            // Podpięcie wszystkich listenerów
-            setupApplianceListeners(om);
-            setupSwitchListeners(om);
-            setupBreakerListener(om);
-            setupAmpsListener(om);
-            setupOhmsListeners(om);
-            setupNoteListeners(om);
-            setupDeleteListener(om);
-
-            if (isCommonSpace) {
-                setupRcdListeners(om);
-            }
-
             if (focusToMeasurementId != -1 && om.id == focusToMeasurementId) {
                 binding.ohmsEdit.requestFocus();
                 binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
                 activity.showKeyboard(binding.ohmsEdit);
                 focusToMeasurementId = -1;
             }
-        }
 
-        private void setupSpinner(android.widget.Spinner spinner, String[] options) {
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(activity, android.R.layout.simple_spinner_item, options);
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinner.setAdapter(adapter);
+            isBinding = false;
         }
 
         private int findSpinnerIndex(String[] options, String value) {
@@ -226,319 +509,12 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             }
         }
 
-        // Wypełnianie pól RCD danymi z bazy (gdy już dodasz tam pola)
         private void setupRcdFields(OutletMeasurement om) {
-            int dbRcdState = om.rcdStatus;
-            String dbRcdName = om.rcdName != null ? om.rcdName : "";
-            String dbRcdTime = om.rcdTime != null ? om.rcdTime.toString() : "";
-            String dbRcdCurrent = om.rcdCurrent != null ? om.rcdCurrent.toString() : "";
-
-//            currentRcdStatePos = findSpinnerIndex(rcdOptions, dbRcdState);
-            currentRcdStatePos = dbRcdState;
+            currentRcdStatePos = om.rcdStatus;
             binding.rcdStateSpinner.setSelection(currentRcdStatePos, false);
-
-            binding.rcdNameEdit.setText(dbRcdName);
-            binding.rcdTimeEdit.setText(dbRcdTime);
-            binding.rcdCurrentEdit.setText(dbRcdCurrent);
-        }
-
-        private void setupRcdListeners(OutletMeasurement om) {
-
-            // Spinner Stanu RCD
-            binding.rcdStateSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (position == currentRcdStatePos) return;
-                    currentRcdStatePos = position;
-                    om.rcdStatus = currentRcdStatePos;
-
-                    if (position == 0) {
-                        om.rcdName = "";
-                        binding.rcdNameEdit.setText("");
-                        outletViewModel.update(om, null);
-                    } else {
-                        if (om.rcdName == null || om.rcdName.trim().isEmpty()) {
-                            // Odpalamy zapytanie do bazy w tle, żeby nie zablokować UI
-                            java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
-                                String fetchedName = outletViewModel.getLastRCDName(om.roomId);
-                                final String finalName = (fetchedName != null) ? fetchedName : "";
-
-                                // Wracamy na główny wątek, by zaktualizować interfejs
-                                activity.runOnUiThread(() -> {
-                                    om.rcdName = finalName;
-                                    binding.rcdNameEdit.setText(finalName);
-                                    outletViewModel.update(om, null);
-                                });
-                            });
-                        } else {
-                            // Jeśli pole nie było puste, tylko aktualizujemy stan różnicówki
-                            outletViewModel.update(om, null);
-                        }
-                    }
-                }
-                @Override public void onNothingSelected(AdapterView<?> parent) {}
-            });
-
-            // Pole: Nazwa Różnicówki
-            binding.rcdNameEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                binding.rcdNameSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-            binding.rcdNameEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.rcdNameSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-            binding.rcdNameSaveBtn.setOnClickListener(v -> {
-                String nameText = binding.rcdNameEdit.getText().toString().trim();
-                if (nameText.equals(om.rcdName) || nameText.isEmpty()) {
-                    return;
-                }
-                om.rcdName = nameText;
-
-                // Zapis do bazy danych następuje tutaj
-                outletViewModel.update(om, null);
-
-                activity.hideKeyboard();
-                binding.rcdNameEdit.clearFocus();
-            });
-
-            // Pole: Czas w ms
-            binding.rcdTimeEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                binding.rcdTimeSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-            binding.rcdTimeEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.rcdTimeSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-            binding.rcdTimeSaveBtn.setOnClickListener(v -> {
-                String timeText = binding.rcdTimeEdit.getText().toString().trim();
-                if (timeText.isEmpty()) {
-                    return;
-                }
-                om.rcdTime = Integer.parseInt(timeText);
-                outletViewModel.update(om, null);
-
-                activity.hideKeyboard();
-                binding.rcdTimeEdit.clearFocus();
-            });
-
-            // Pole: Prąd w mA
-            binding.rcdCurrentEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                binding.rcdCurrentSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-            binding.rcdCurrentEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.rcdCurrentSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-            binding.rcdCurrentSaveBtn.setOnClickListener(v -> {
-                String currentText = binding.rcdCurrentEdit.getText().toString().trim();
-                if (currentText.isEmpty()) {
-                    return;
-                }
-                om.rcdCurrent = Integer.parseInt(currentText);
-                outletViewModel.update(om, null);
-
-                activity.hideKeyboard();
-                binding.rcdCurrentEdit.clearFocus();
-            });
-        }
-
-        private void setupApplianceListeners(OutletMeasurement om) {
-            binding.applianceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (position == currentAppliancePos) return;
-                    currentAppliancePos = position;
-
-                    String selected = applianceOptions[position];
-                    if ("Inne".equals(selected)) {
-                        binding.applianceSpinner.setVisibility(View.GONE);
-                        binding.customApplianceContainer.setVisibility(View.VISIBLE);
-                        binding.customApplianceEdit.requestFocus();
-                        activity.showKeyboard(binding.customApplianceEdit);
-                    } else if (om.appliance == null || !om.appliance.equals(selected)) {
-                        om.appliance = selected;
-                        outletViewModel.update(om, null);
-                    }
-                }
-                @Override public void onNothingSelected(AdapterView<?> parent) {}
-            });
-
-            binding.customApplianceEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                toggleFieldExpansion(binding.applianceContainer, binding.switchContainer, hasFocus, 2f, 2f);
-                binding.customApplianceSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-                binding.customApplianceClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-
-            binding.customApplianceSaveBtn.setOnClickListener(v -> {
-                String txt = binding.customApplianceEdit.getText().toString().trim();
-                om.appliance = txt.isEmpty() ? applianceOptions[0] : txt;
-                outletViewModel.update(om, null);
-                activity.hideKeyboard();
-                binding.customApplianceEdit.clearFocus();
-                if (txt.isEmpty()) setupApplianceField(om);
-            });
-
-            binding.customApplianceClearBtn.setOnClickListener(v -> {
-                binding.customApplianceEdit.setText("");
-                om.appliance = applianceOptions[0];
-                outletViewModel.update(om, null);
-                activity.hideKeyboard();
-                binding.customApplianceEdit.clearFocus();
-                setupApplianceField(om);
-            });
-        }
-
-        private void setupSwitchListeners(OutletMeasurement om) {
-            binding.switchEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                binding.switchSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-
-            binding.switchEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.switchSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-
-            binding.switchSaveBtn.setOnClickListener(v -> {
-                String newSwitch = binding.switchEdit.getText().toString().trim();
-                if (!newSwitch.equals(om.switchName)) {
-                    om.switchName = newSwitch;
-                    outletViewModel.update(om, null);
-                }
-                activity.hideKeyboard();
-                binding.switchEdit.clearFocus();
-            });
-        }
-
-        private void setupBreakerListener(OutletMeasurement om) {
-            binding.breakerSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    if (pos == currentBreakerPos) return;
-                    currentBreakerPos = pos;
-
-                    String sel = breakerTypes[pos];
-                    if (!sel.equalsIgnoreCase(om.breakerType)) {
-                        om.breakerType = sel;
-                        outletViewModel.update(om, null);
-                    }
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) { }
-            });
-        }
-
-        private void setupAmpsListener(OutletMeasurement om) {
-            binding.ampsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    if (pos == currentAmpsPos) return;
-                    currentAmpsPos = pos;
-
-                    try {
-                        Double dVal = Double.parseDouble(ampsOptions[pos]);
-                        if (om.amps == null || !om.amps.equals(dVal)) {
-                            om.amps = dVal;
-                            outletViewModel.update(om, null);
-                        }
-                    } catch (Exception ignored) {}
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) { }
-            });
-        }
-
-        private void setupOhmsListeners(OutletMeasurement om) {
-            binding.ohmsEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.ohmsSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-
-            binding.ohmsEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                binding.ohmsSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-                toggleFieldExpansion(binding.ohmsContainer, binding.noteSpinner, hasFocus, 1f, 2f);
-                if (hasFocus) binding.customNoteContainer.setVisibility(View.GONE);
-                else setupNoteField(om);
-            });
-
-            binding.ohmsSaveBtn.setOnClickListener(v -> {
-                String txt = binding.ohmsEdit.getText().toString().replace(',', '.');
-                Double val = null;
-                try { if (!txt.isEmpty()) val = Double.parseDouble(txt); } catch (Exception ignored) {}
-                if ((val == null && om.ohms != null) || (val != null && !val.equals(om.ohms))) {
-                    om.ohms = val;
-                    outletViewModel.update(om, null);
-                }
-                activity.hideKeyboard();
-                binding.ohmsEdit.clearFocus();
-            });
-        }
-
-        private void setupNoteListeners(OutletMeasurement om) {
-            binding.noteSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
-                    if (pos == currentNotePos) return;
-                    currentNotePos = pos;
-
-                    String sel = noteOptions[pos];
-                    if ("Inne".equalsIgnoreCase(sel)) {
-                        binding.noteSpinner.setVisibility(View.GONE);
-                        binding.customNoteContainer.setVisibility(View.VISIBLE);
-                        binding.customNoteEdit.requestFocus();
-                        activity.showKeyboard(binding.customNoteEdit);
-                    } else if (om.note == null || !om.note.equals(sel)) {
-                        om.note = sel;
-                        outletViewModel.update(om, null);
-                    }
-                }
-                @Override public void onNothingSelected(AdapterView<?> p) { }
-            });
-
-            binding.customNoteEdit.setOnFocusChangeListener((v, hasFocus) -> {
-                toggleFieldExpansion(binding.customNoteContainer, binding.switchContainer, hasFocus, 2f, 2f);
-                binding.customNoteSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-                binding.customNoteClearBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-            });
-
-            binding.customNoteEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
-                    binding.customNoteSaveBtn.performClick();
-                    return true;
-                }
-                return false;
-            });
-
-            binding.customNoteSaveBtn.setOnClickListener(v -> {
-                String txt = binding.customNoteEdit.getText().toString().trim();
-                om.note = txt.isEmpty() ? noteOptions[0] : txt;
-                outletViewModel.update(om, null);
-                activity.hideKeyboard();
-                binding.customNoteEdit.clearFocus();
-                if (txt.isEmpty()) setupNoteField(om);
-            });
-
-            binding.customNoteClearBtn.setOnClickListener(v -> {
-                binding.customNoteEdit.setText("");
-                om.note = noteOptions[0];
-                outletViewModel.update(om, null);
-                activity.hideKeyboard();
-                binding.customNoteEdit.clearFocus();
-                setupNoteField(om);
-            });
-        }
-
-        private void setupDeleteListener(OutletMeasurement om) {
-            binding.deleteBtn.setOnClickListener(v -> outletViewModel.delete(om, null));
+            binding.rcdNameEdit.setText(om.rcdName != null ? om.rcdName : "");
+            binding.rcdTimeEdit.setText(om.rcdTime != null ? om.rcdTime.toString() : "");
+            binding.rcdCurrentEdit.setText(om.rcdCurrent != null ? om.rcdCurrent.toString() : "");
         }
 
         private void toggleFieldExpansion(View fieldToExpand, View fieldToHide, boolean expand,

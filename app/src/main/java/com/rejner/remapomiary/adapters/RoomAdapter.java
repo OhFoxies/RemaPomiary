@@ -1,35 +1,36 @@
 package com.rejner.remapomiary.adapters;
 
 import android.content.Context;
-import android.graphics.Typeface;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.rejner.remapomiary.R;
+import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.databinding.RoomCardItemBinding;
 import com.rejner.remapomiary.ui.activities.RoomActivity;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHolder> {
-
+    private final RecyclerView.RecycledViewPool sharedViewPool = new RecyclerView.RecycledViewPool();
     private final RoomViewModel roomViewModel;
     private final OutletMeasurementViewModel outletViewModel;
     private final LifecycleOwner lifecycleOwner;
@@ -41,6 +42,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private int catalogId;
     private boolean isCommonSpace;
     private final Set<Integer> expandedRoomIds = new HashSet<>();
+    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
 
     public RoomAdapter(RoomViewModel roomViewModel, OutletMeasurementViewModel outletViewModel,
                        LifecycleOwner lifecycleOwner, Context context,
@@ -85,12 +87,28 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         private final RoomCardItemBinding binding;
         private MeasurementAdapter measurementAdapter;
 
+        private LiveData<List<OutletMeasurement>> currentLiveData;
+        private Observer<List<OutletMeasurement>> currentObserver;
+        private List<OutletMeasurement> currentMeasurements = null;
+
+        private boolean isLoadingChunks = false;
+        private boolean isFullyLoaded = false;
+        private int currentChunkIndex = 0;
+        private static final int CHUNK_SIZE = 25;
+        private final List<OutletMeasurement> loadedChunksList = new ArrayList<>();
+        private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
         RoomViewHolder(RoomCardItemBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
         }
 
         void bind(RoomInFlat room) {
+            cancelChunkedLoading();
+            if (currentLiveData != null && currentObserver != null) {
+                currentLiveData.removeObserver(currentObserver);
+            }
+
             if (isCommonSpace) {
                 binding.deleteRoomButton.setText("Usuń pomieszczenie");
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pomieszczenie " + room.id));
@@ -101,17 +119,31 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
             if (isCommonSpace && "Lokale".equals(room.name)) {
                 binding.toggleMeasurementsButton.setVisibility(View.VISIBLE);
-                
+
                 boolean isExpanded = expandedRoomIds.contains(room.id);
                 updateExpansionUI(isExpanded);
 
                 binding.toggleMeasurementsButton.setOnClickListener(v -> {
-                    if (expandedRoomIds.contains(room.id)) {
+                    if (isLoadingChunks) {
                         expandedRoomIds.remove(room.id);
-                    } else {
-                        expandedRoomIds.add(room.id);
+                        cancelChunkedLoading();
+                        updateExpansionUI(false);
+                        measurementAdapter.submitList(null);
+                        return;
                     }
-                    updateExpansionUI(expandedRoomIds.contains(room.id));
+
+                    boolean isNowExpanded = !expandedRoomIds.contains(room.id);
+                    if (isNowExpanded) {
+                        expandedRoomIds.add(room.id);
+                        updateExpansionUI(true);
+                        startChunkedLoading();
+                    } else {
+                        expandedRoomIds.remove(room.id);
+                        updateExpansionUI(false);
+                        cancelChunkedLoading();
+                        measurementAdapter.submitList(null);
+                        isFullyLoaded = false;
+                    }
                 });
             } else {
                 binding.toggleMeasurementsButton.setVisibility(View.GONE);
@@ -123,7 +155,10 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
             setupNestedRecyclerView(room.name);
 
-            outletViewModel.getMeasurementsForRoom(room.id).observe(lifecycleOwner, measurements -> {
+            currentLiveData = outletViewModel.getMeasurementsForRoom(room.id);
+            currentObserver = measurements -> {
+                this.currentMeasurements = measurements;
+
                 if (measurements != null && !measurements.isEmpty()) {
                     binding.measurementsHeader.setVisibility(View.VISIBLE);
                     binding.emptyMeasurementsText.setVisibility(View.GONE);
@@ -131,9 +166,23 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                     binding.measurementsHeader.setVisibility(View.GONE);
                     binding.emptyMeasurementsText.setVisibility(View.VISIBLE);
                 }
-                measurementAdapter.submitList(measurements);
 
-                if (newlyAddedMeasurementId != -1) {
+                if (expandedRoomIds.contains(room.id) || !isCommonSpace || !"Lokale".equals(room.name)) {
+                    if (isCommonSpace && "Lokale".equals(room.name)) {
+                        if (isFullyLoaded && !isLoadingChunks) {
+                            measurementAdapter.submitList(new ArrayList<>(measurements));
+                        } else if (!isLoadingChunks) {
+                            startChunkedLoading();
+                        }
+                    } else {
+                        measurementAdapter.submitList(measurements);
+                    }
+                } else {
+                    cancelChunkedLoading();
+                    measurementAdapter.submitList(null);
+                }
+
+                if (newlyAddedMeasurementId != -1 && measurements != null) {
                     for (int i = 0; i < measurements.size(); i++) {
                         if (measurements.get(i).id == newlyAddedMeasurementId) {
                             int finalI = i;
@@ -146,14 +195,92 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                         }
                     }
                 }
+            };
+            currentLiveData.observe(lifecycleOwner, currentObserver);
+        }
+
+        private void startChunkedLoading() {
+            cancelChunkedLoading();
+            if (currentMeasurements == null || currentMeasurements.isEmpty()) {
+                binding.toggleMeasurementsButton.setText("Ukryj");
+                measurementAdapter.submitList(null);
+                return;
+            }
+
+            isLoadingChunks = true;
+            isFullyLoaded = false;
+            currentChunkIndex = 0;
+            loadedChunksList.clear();
+
+            binding.toggleMeasurementsButton.setText("⏳ Anuluj...");
+            if (binding.progressBar != null) {
+                binding.progressBar.setVisibility(View.VISIBLE);
+                binding.progressBar.setMax(currentMeasurements.size());
+                binding.progressBar.setProgress(0);
+            }
+
+            loadNextChunk();
+        }
+
+        private void loadNextChunk() {
+            if (!isLoadingChunks || currentMeasurements == null) return;
+
+            int start = currentChunkIndex * CHUNK_SIZE;
+            if (start >= currentMeasurements.size()) {
+                finishChunkLoading();
+                return;
+            }
+
+            int end = Math.min(start + CHUNK_SIZE, currentMeasurements.size());
+
+            backgroundExecutor.execute(() -> {
+                if (!isLoadingChunks) return;
+                List<OutletMeasurement> nextChunk = currentMeasurements.subList(start, end);
+
+                List<OutletMeasurement> newListToSubmit = new ArrayList<>(loadedChunksList);
+                newListToSubmit.addAll(nextChunk);
+                loadedChunksList.addAll(nextChunk);
+
+                mainHandler.post(() -> {
+                    if (!isLoadingChunks) return;
+
+                    measurementAdapter.submitList(newListToSubmit, () -> {
+                        if (!isLoadingChunks) return;
+
+                        currentChunkIndex++;
+                        if (binding.progressBar != null) {
+                            binding.progressBar.setProgress(Math.min(currentChunkIndex * CHUNK_SIZE, currentMeasurements.size()));
+                        }
+
+                        loadNextChunk();
+                    });
+                });
             });
+        }
+
+        private void finishChunkLoading() {
+            isLoadingChunks = false;
+            isFullyLoaded = true;
+            binding.toggleMeasurementsButton.setText("Ukryj");
+            if (binding.progressBar != null) {
+                binding.progressBar.setVisibility(View.GONE);
+            }
+        }
+
+        private void cancelChunkedLoading() {
+            isLoadingChunks = false;
+            if (binding.progressBar != null) {
+                binding.progressBar.setVisibility(View.GONE);
+            }
         }
 
         private void updateExpansionUI(boolean isExpanded) {
             if (isExpanded) {
                 binding.measurementsContainer.setVisibility(View.VISIBLE);
                 binding.addMeasurementBtn.setVisibility(View.VISIBLE);
-                binding.toggleMeasurementsButton.setText("Ukryj");
+                if (!isLoadingChunks && isFullyLoaded) {
+                    binding.toggleMeasurementsButton.setText("Ukryj");
+                }
             } else {
                 binding.measurementsContainer.setVisibility(View.GONE);
                 binding.addMeasurementBtn.setVisibility(View.GONE);
@@ -176,6 +303,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
             binding.measurementsRecyclerView.setNestedScrollingEnabled(false);
+            binding.measurementsRecyclerView.setRecycledViewPool(sharedViewPool);
         }
     }
 
@@ -188,7 +316,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
                 @Override
                 public boolean areContentsTheSame(@NonNull RoomInFlat oldItem, @NonNull RoomInFlat newItem) {
-                    return (oldItem.name == null ? newItem.name == null : oldItem.name.equals(newItem.name)) 
+                    return (oldItem.name == null ? newItem.name == null : oldItem.name.equals(newItem.name))
                             && oldItem.flatId == newItem.flatId;
                 }
             };
