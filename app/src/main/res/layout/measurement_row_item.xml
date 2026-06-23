@@ -17,6 +17,17 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
+        <TextView
+            android:id="@+id/scrollHandle"
+            android:layout_width="32dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="⋮⋮"
+            android:textSize="22sp"
+            android:textColor="#999999"
+            android:layout_marginEnd="6dp"
+            android:importantForAccessibility="no" />
+
         <LinearLayout
             android:id="@+id/applianceContainer"
             android:layout_width="0dp"
@@ -46,7 +57,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:hint="Inne urządzenie..."
-                    android:singleLine="true"
+                    android:maxLines="1"
+                    android:inputType="text"
                     android:imeOptions="actionDone"
                     android:background="@drawable/input"
                     android:padding="12dp" />
@@ -57,8 +69,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Lokal"
-                    android:visibility="gone"
-                     />
+                    android:visibility="gone" />
 
                 <Button
                     android:id="@+id/customApplianceSaveBtn"
@@ -70,7 +81,8 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginStart="8dp"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    android:contentDescription="Zapisz urządzenie" />
 
                 <Button
                     android:id="@+id/customApplianceClearBtn"
@@ -82,7 +94,8 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginStart="8dp"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    android:contentDescription="Anuluj" />
             </LinearLayout>
         </LinearLayout>
 
@@ -100,7 +113,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="wyłącznik"
-                android:singleLine="true"
+                android:maxLines="1"
+                android:inputType="text"
                 android:imeOptions="actionDone"
                 android:background="@drawable/input"
                 android:padding="12dp" />
@@ -116,7 +130,8 @@
                 android:layout_height="48dp"
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz wyłącznik" />
         </LinearLayout>
 
         <Spinner
@@ -161,7 +176,8 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginStart="8dp"
                 android:layout_marginEnd="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz rezystancję" />
         </LinearLayout>
 
         <Spinner
@@ -191,7 +207,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="Inne..."
-                android:singleLine="true"
+                android:maxLines="1"
+                android:inputType="text"
                 android:imeOptions="actionDone"
                 android:background="@drawable/input"
                 android:padding="12dp" />
@@ -205,7 +222,8 @@
                 android:text="✔"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz uwagę" />
 
             <Button
                 android:id="@+id/customNoteClearBtn"
@@ -216,7 +234,8 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Anuluj uwagę" />
         </LinearLayout>
 
         <Button
@@ -231,7 +250,8 @@
             android:layout_marginEnd="10dp"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_gravity="center_horizontal"
-            android:minHeight="0dp" />
+            android:minHeight="0dp"
+            android:contentDescription="Usuń pomiar" />
 
         <Button
             android:id="@+id/photoBtn"
@@ -244,11 +264,10 @@
             android:minWidth="0dp"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_gravity="center_horizontal"
-            android:minHeight="0dp" />
+            android:minHeight="0dp"
+            android:contentDescription="Zrób zdjęcie" />
 
     </LinearLayout>
-
-
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -257,30 +276,24 @@
         android:visibility="gone"
         android:id="@+id/rcdHeaders"
         android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        >
+        android:layout_marginBottom="8dp">
+        <Space android:layout_width="38dp" android:layout_height="wrap_content" />
         <TextView
             style="@style/MeasurementHeader"
-
             android:layout_weight="1.5"
             android:text="Status" />
         <TextView
             style="@style/MeasurementHeader"
-
             android:layout_weight="2"
             android:text="Producent" />
         <TextView
             style="@style/MeasurementHeader"
-
             android:layout_weight="1"
             android:text="Czas [Ms]" />
         <TextView
             style="@style/MeasurementHeader"
-
             android:layout_weight="1"
             android:text="Prąd [mA]" />
-
-
     </LinearLayout>
 
     <LinearLayout
@@ -291,6 +304,8 @@
         android:visibility="gone"
         android:gravity="center_vertical"
         android:layout_marginTop="8dp">
+
+        <Space android:layout_width="38dp" android:layout_height="wrap_content" />
 
         <Spinner
             android:id="@+id/rcdStateSpinner"
@@ -314,7 +329,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="Nazwa różnicówki"
-                android:singleLine="true"
+                android:maxLines="1"
+                android:inputType="text"
                 android:imeOptions="actionDone"
                 android:background="@drawable/input"
                 android:padding="12dp" />
@@ -329,7 +345,8 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz producenta RCD" />
         </LinearLayout>
 
         <LinearLayout
@@ -348,6 +365,7 @@
                 android:layout_weight="1"
                 android:hint="Czas (ms)"
                 android:inputType="number"
+                android:maxLines="1"
                 android:imeOptions="actionDone"
                 android:background="@drawable/input"
                 android:padding="12dp" />
@@ -362,7 +380,8 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz czas RCD" />
         </LinearLayout>
 
         <LinearLayout
@@ -380,6 +399,7 @@
                 android:layout_weight="1"
                 android:hint="Prąd (mA)"
                 android:inputType="number"
+                android:maxLines="1"
                 android:imeOptions="actionDone"
                 android:background="@drawable/input"
                 android:padding="12dp" />
@@ -394,7 +414,8 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:contentDescription="Zapisz prąd RCD" />
         </LinearLayout>
 
         <Space
@@ -402,5 +423,4 @@
             android:layout_height="match_parent"/>
 
     </LinearLayout>
-
 </LinearLayout>

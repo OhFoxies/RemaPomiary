@@ -2,27 +2,26 @@ package com.rejner.remapomiary.ui.activities;
 
 import static com.rejner.remapomiary.ui.utils.Actions.randomOhms;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.room.Room;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.RoomAdapter;
@@ -41,12 +40,11 @@ import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 public class RoomActivity extends AppCompatActivity {
@@ -57,6 +55,7 @@ public class RoomActivity extends AppCompatActivity {
     private RoomAdapter roomAdapter;
     private int flatId;
     private Flat flat;
+    private com.google.android.material.floatingactionbutton.FloatingActionButton scrollToTopButton;
 
     public String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
     public String[] applianceOptions = {"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Inne"};
@@ -65,13 +64,16 @@ public class RoomActivity extends AppCompatActivity {
     public final String[] ampsOptions = {"3", "6", "10", "16", "20", "25", "32", "40"};
 
     private final Map<Integer, List<OutletMeasurement>> roomMeasurementsMap = new HashMap<>();
+
+    // OPTYMALIZACJA: Mapy do śledzenia aktywnych obiektów LiveData i ich obserwatorów (zapobieganie leakom)
+    private final Map<Integer, LiveData<List<OutletMeasurement>>> observedRoomLiveData = new HashMap<>();
+    private final Map<Integer, Observer<List<OutletMeasurement>>> roomObserversMap = new HashMap<>();
+
     private String lastDefaultSwitchName = null;
     private String lastDefaultBreakerType = null;
     private Double lastDefaultAmps = null;
     private CommonSpaceInfo currentCommonSpaceInfo;
-    private boolean isUiUpdating = false;
     private int catalogId;
-    private long newlyAddedMeasurementId = -1;
     private boolean isCommonSpace;
     private CommonSpaceInfoViewModel commonSpaceInfoViewModel;
     private String blockName;
@@ -93,7 +95,6 @@ public class RoomActivity extends AppCompatActivity {
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
         commonSpaceInfoViewModel = new ViewModelProvider(this).get(CommonSpaceInfoViewModel.class);
 
-
         if (isCommonSpace) {
             roomNames = new String[]{"Korytarz", "Garaż", "Piwnica", "Rowerownia", "Pralnia", "Piętro -", "Inne"};
             applianceOptions = new String[]{"Gniazdko", "Brama garażowa", "Inne"};
@@ -101,17 +102,34 @@ public class RoomActivity extends AppCompatActivity {
         LiveDataUtil.observeOnce(flatViewModel.getFlatById(flatId), this, flat1 -> {
             flat = flat1;
             runOnUiThread(this::setupUIElements);
-
         });
 
         setupAddRoomUi();
         setupRecyclerView();
+        setupScrollToTop();
         observeRooms();
-        observeAllMeasurements();
+    }
+
+    private void setupScrollToTop() {
+        scrollToTopButton = findViewById(R.id.scrollToTopButton);
+        scrollToTopButton.setOnClickListener(v -> {
+            binding.roomRecyclerView.smoothScrollToPosition(0);
+            binding.appBarLayout.setExpanded(true, true);
+        });
+
+        binding.roomRecyclerView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull androidx.recyclerview.widget.RecyclerView recyclerView, int dx, int dy) {
+                if (recyclerView.computeVerticalScrollOffset() > 150) {
+                    scrollToTopButton.show();
+                } else {
+                    scrollToTopButton.hide();
+                }
+            }
+        });
     }
 
     private void setupUIElements() {
-
         if (flat == null) return;
         if (isCommonSpace) {
             binding.flatTitle.setText("Pętla zwarcia - " + blockName);
@@ -119,9 +137,7 @@ public class RoomActivity extends AppCompatActivity {
             binding.addRoomButton.setText("Dodaj pomieszczenie");
             binding.commonSpaceInfoContainer.setVisibility(View.VISIBLE);
             setupCommonSpaceInfoLogic();
-
         } else {
-
             binding.flatTitle.setText("Mieszkanie numer - " + flat.number + " pętla zwarcia");
         }
         if (catalogId != -1) {
@@ -138,28 +154,21 @@ public class RoomActivity extends AppCompatActivity {
             });
         }
 
-
-
         binding.boardButton.setOnClickListener(v -> {
             if (isCommonSpace) {
                 Intent intent = new Intent(RoomActivity.this, BoardCommonSpace.class);
                 intent.putExtra("flatId", flatId);
                 intent.putExtra("blockId", flat.blockId);
-
                 intent.putExtra("commonSpace", 1);
-
                 startActivity(intent);
             } else {
                 Intent intent = new Intent(RoomActivity.this, BoardActivity.class);
                 if (catalogId != -1) {
                     intent.putExtra("catalogId", catalogId);
-
                 }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
             }
-
-
         });
 
         binding.notesButton.setOnClickListener(v -> {
@@ -168,15 +177,12 @@ public class RoomActivity extends AppCompatActivity {
                 intent.putExtra("flatId", flatId);
                 intent.putExtra("blockId", flat.blockId);
                 intent.putExtra("name", blockName);
-
                 intent.putExtra("commonSpace", 1);
-
                 startActivity(intent);
             } else {
                 Intent intent = new Intent(RoomActivity.this, NotesActivity.class);
                 if (catalogId != -1) {
                     intent.putExtra("catalogId", catalogId);
-
                 }
                 intent.putExtra("flatId", flat.id);
                 startActivity(intent);
@@ -195,16 +201,13 @@ public class RoomActivity extends AppCompatActivity {
             });
         }
 
-
         binding.backButton.setOnClickListener(v -> {
             if (flat == null) return;
-
-            else if (isCommonSpace) {
+            if (isCommonSpace) {
                 Intent intent = new Intent(RoomActivity.this, BlockActivity.class);
                 intent.putExtra("blockId", flat.blockId);
                 startActivity(intent);
-            }
-            else if (catalogId != -1) {
+            } else if (catalogId != -1) {
                 Intent intent = new Intent(RoomActivity.this, TemplatesActivity.class);
                 intent.putExtra("catalogId", catalogId);
                 startActivity(intent);
@@ -233,18 +236,13 @@ public class RoomActivity extends AppCompatActivity {
                     binding.customRoomEditText.setVisibility(View.VISIBLE);
                     binding.customRoomEditText.requestFocus();
                     showKeyboard(binding.customRoomEditText);
-
                 } else if ("Piętro -".equals(sel)) {
                     binding.customRoomEditText.setVisibility(View.VISIBLE);
                     binding.customRoomEditText.setText("Piętro ");
-
-                    // DODANE: Przesunięcie kursora na koniec tekstu
                     binding.customRoomEditText.setSelection(binding.customRoomEditText.getText().length());
-
                     binding.customRoomEditText.requestFocus();
                     showKeyboard(binding.customRoomEditText);
-                }
-                else {
+                } else {
                     hideKeyboard();
                     binding.customRoomEditText.setVisibility(View.GONE);
                 }
@@ -269,14 +267,11 @@ public class RoomActivity extends AppCompatActivity {
             if (pos >= 0 && pos < roomNames.length && "Inne".equals(roomNames[pos])) {
                 name = binding.customRoomEditText.getText() != null ? binding.customRoomEditText.getText().toString().trim() : "";
                 if (name.isEmpty()) {
-                    if (isCommonSpace ) {
+                    if (isCommonSpace) {
                         binding.customRoomEditText.setError("Wpisz nazwę pomieszczenia");
                         Toast.makeText(this, "Podaj nazwe pomieszczenia", Toast.LENGTH_SHORT).show();
-
-
                     } else {
                         Toast.makeText(this, "Podaj nazwe pokoju", Toast.LENGTH_SHORT).show();
-
                         binding.customRoomEditText.setError("Wpisz nazwę pokoju");
                     }
                     binding.customRoomEditText.requestFocus();
@@ -304,8 +299,8 @@ public class RoomActivity extends AppCompatActivity {
         roomAdapter = new RoomAdapter(
                 roomViewModel,
                 outletViewModel,
-                this, // LifecycleOwner
-                this, // Context
+                this,
+                this,
                 applianceOptions,
                 breakerTypes,
                 noteOptions,
@@ -321,11 +316,33 @@ public class RoomActivity extends AppCompatActivity {
 
     private void observeRooms() {
         roomViewModel.getRoomsForFlat(flatId).observe(this, rooms -> {
-            roomMeasurementsMap.clear();
+            Set<Integer> currentRoomIds = new HashSet<>();
+            if (rooms != null) {
+                for (RoomInFlat r : rooms) currentRoomIds.add(r.id);
+            }
+
+            // OPTYMALIZACJA: Wyczyszczenie obserwatorów dla usuniętych pokoi
+            List<Integer> idsToRemove = new ArrayList<>();
+            for (Integer oldId : roomObserversMap.keySet()) {
+                if (!currentRoomIds.contains(oldId)) {
+                    idsToRemove.add(oldId);
+                }
+            }
+            for (Integer id : idsToRemove) {
+                LiveData<List<OutletMeasurement>> ld = observedRoomLiveData.remove(id);
+                Observer<List<OutletMeasurement>> obs = roomObserversMap.remove(id);
+                if (ld != null && obs != null) {
+                    ld.removeObserver(obs);
+                }
+                roomMeasurementsMap.remove(id);
+            }
+
             if (rooms != null) {
                 roomAdapter.submitList(rooms);
                 for (RoomInFlat room : rooms) {
-                    observeMeasurementsForRoom(room.id);
+                    if (!roomObserversMap.containsKey(room.id)) {
+                        observeMeasurementsForRoom(room.id);
+                    }
                 }
             } else {
                 roomAdapter.submitList(new ArrayList<>());
@@ -334,10 +351,14 @@ public class RoomActivity extends AppCompatActivity {
     }
 
     private void observeMeasurementsForRoom(int roomId) {
-        outletViewModel.getMeasurementsForRoom(roomId).observe(this, measurements -> {
+        LiveData<List<OutletMeasurement>> liveData = outletViewModel.getMeasurementsForRoom(roomId);
+        Observer<List<OutletMeasurement>> observer = measurements -> {
             roomMeasurementsMap.put(roomId, measurements != null ? new ArrayList<>(measurements) : new ArrayList<>());
             recomputeGlobalDefaults();
-        });
+        };
+        observedRoomLiveData.put(roomId, liveData);
+        roomObserversMap.put(roomId, observer);
+        liveData.observe(this, observer);
     }
 
     private void onAddMeasurementClicked(int roomId) {
@@ -382,15 +403,10 @@ public class RoomActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setTitle("Usuń " + name)
-                .setMessage("Czy na pewno chcesz usunąć  " + name + room.name + " wraz ze wszystkimi pomiarami?")
+                .setMessage("Czy na pewno chcesz usunąć  " + name + " " + room.name + " wraz ze wszystkimi pomiarami?")
                 .setPositiveButton("Usuń", (dialog, which) -> roomViewModel.delete(room))
                 .setNegativeButton("Anuluj", null)
                 .show();
-    }
-
-
-    private void observeAllMeasurements() {
-
     }
 
     private void recomputeGlobalDefaults() {
@@ -450,13 +466,12 @@ public class RoomActivity extends AppCompatActivity {
         }
         return best;
     }
+
     private void setupCommonSpaceInfoLogic() {
         if (flat == null) return;
 
-        // Inicjalizacja TextWatchera
         binding.csBaseValue.addTextChangedListener(new OhmsTextWatcher(binding.csBaseValue));
 
-        // ZAPEWNIENIE WIDOCZNOŚCI POLA PO KLIKNIĘCIU (Rozwinięcie AppBarLayout)
         View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
             if (hasFocus) {
                 binding.appBarLayout.setExpanded(true, true);
@@ -465,7 +480,6 @@ public class RoomActivity extends AppCompatActivity {
         binding.csSwitchEdit.setOnFocusChangeListener(focusChangeListener);
         binding.csBaseValue.setOnFocusChangeListener(focusChangeListener);
 
-        // Inicjalizacja Spinnerów
         ArrayAdapter<String> breakerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, breakerTypes);
         breakerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.csBreakerSpinner.setAdapter(breakerAdapter);
@@ -474,7 +488,6 @@ public class RoomActivity extends AppCompatActivity {
         ampsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.csAmpsSpinner.setAdapter(ampsAdapter);
 
-        // Obserwowanie danych z tabeli
         commonSpaceInfoViewModel.getInfoByBlockId(flat.blockId).observe(this, infoList -> {
             if (infoList != null && !infoList.isEmpty()) {
                 currentCommonSpaceInfo = infoList.get(0);
@@ -548,14 +561,12 @@ public class RoomActivity extends AppCompatActivity {
                 if (currentCommonSpaceInfo.ohmsBase != 0.0) {
                     saveOrUpdateCommonSpaceInfo();
                     Toast.makeText(this, "Dane pętli zwarcia zostały zaktualizowane", Toast.LENGTH_SHORT).show();
-
                 } else {
                     binding.csBaseValue.setError("Podaj wartość bazową omów");
                     Toast.makeText(this, "Podaj wartość bazową", Toast.LENGTH_SHORT).show();
                 }
             } else {
                 Toast.makeText(this, "Brak zmian, brak efektu", Toast.LENGTH_SHORT).show();
-
             }
         });
     }
@@ -570,6 +581,7 @@ public class RoomActivity extends AppCompatActivity {
             return 0.0;
         }
     }
+
     private void generateMeasurements() {
         if (flat == null || currentCommonSpaceInfo == null) return;
 
@@ -585,13 +597,11 @@ public class RoomActivity extends AppCompatActivity {
                         OutletMeasurement om_new = new OutletMeasurement();
                         om_new.roomId = room.id;
                         om_new.appliance = applianceName;
-
                         om_new.switchName = currentCommonSpaceInfo.switchName;
                         om_new.breakerType = currentCommonSpaceInfo.breakerType;
                         om_new.amps = currentCommonSpaceInfo.amps;
 
                         int number;
-
                         try {
                             number = Integer.parseInt(ffd.flat.number);
                         } catch (NumberFormatException e) {
@@ -604,7 +614,6 @@ public class RoomActivity extends AppCompatActivity {
 
                         if (ffd.flat.status.equals(Settings.measurementDone)) {
                             om_new.note = Settings.noNotes;
-
                         } else {
                             om_new.note = Settings.flatNoAccess;
                             om_new.ohms = 0.0;
@@ -618,7 +627,6 @@ public class RoomActivity extends AppCompatActivity {
                         om.amps = currentCommonSpaceInfo.amps;
 
                         int number;
-
                         try {
                             number = Integer.parseInt(ffd.flat.number);
                         } catch (NumberFormatException e) {
@@ -643,7 +651,6 @@ public class RoomActivity extends AppCompatActivity {
         });
     }
 
-
     private void saveOrUpdateCommonSpaceInfo() {
         if (currentCommonSpaceInfo.id == 0) {
             commonSpaceInfoViewModel.insert(currentCommonSpaceInfo);
@@ -652,16 +659,15 @@ public class RoomActivity extends AppCompatActivity {
         }
         generateMeasurements();
     }
+
     public void showKeyboard(View view) {
-        // Używamy postDelayed, aby dać UI czas na zmianę stanu z GONE na VISIBLE
         view.postDelayed(() -> {
-            view.requestFocus(); // Upewniamy się, że widok ma focus w momencie wywołania klawiatury
+            view.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
             if (imm != null) {
-                // Użycie 0 jest często skuteczniejsze niż SHOW_IMPLICIT po programowej zmianie widoczności
                 imm.showSoftInput(view, 0);
             }
-        }, 100); // 100 milisekund opóźnienia w zupełności wystarczy
+        }, 100);
     }
 
     public void hideKeyboard() {

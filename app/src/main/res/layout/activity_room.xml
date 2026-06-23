@@ -15,20 +15,18 @@
         android:orientation="horizontal"
         android:padding="8dp"
         android:background="#DDDDDD"
-        android:gravity="center_horizontal">
+        android:gravity="center">
         <Button
             android:id="@+id/backButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:gravity="center_vertical"
             android:text="◀ Powrót"
             android:textSize="18sp" />
         <TextView
             android:id="@+id/flatTitle"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
+            android:layout_height="wrap_content"
             android:text="Mieszkanie petla zwracia - "
             android:textSize="24sp"
             android:textStyle="bold" />
@@ -38,7 +36,6 @@
             android:layout_height="wrap_content"
             android:text="✅  Oznacz jako wykonane"
             android:backgroundTint="#3E902A"
-            android:gravity="center_vertical"
             android:textSize="18sp"
             android:layout_marginStart="16dp" />
     </LinearLayout>
@@ -59,7 +56,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                app:layout_scrollFlags="scroll|enterAlwaysCollapsed">
+                app:layout_scrollFlags="scroll">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -73,7 +70,6 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="40dp"
                         android:layout_weight="1"
-                        android:gravity="center_horizontal"
                         android:paddingTop="15dp"
                         android:paddingBottom="15dp"
                         android:text="Podsumowanie"
@@ -84,7 +80,6 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="40dp"
                         android:layout_weight="1"
-                        android:gravity="center_horizontal"
                         android:paddingTop="15dp"
                         android:paddingBottom="15dp"
                         android:text="Rozdzielnia"
@@ -95,7 +90,6 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="40dp"
                         android:layout_weight="1"
-                        android:gravity="center_horizontal"
                         android:paddingTop="15dp"
                         android:paddingBottom="15dp"
                         android:text="Różnicówka"
@@ -105,7 +99,6 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="center_horizontal"
                         android:paddingTop="15dp"
                         android:paddingBottom="15dp"
                         android:text="Pętla zwarcia"
@@ -127,8 +120,7 @@
 
                     <TextView
                         android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
+                        android:layout_height="wrap_content"
                         android:text="Pętla zwarcia mieszkań"
                         android:textSize="22sp"
                         android:textStyle="bold"
@@ -166,7 +158,8 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="2"
                             android:hint="Wyłącznik (producent)"
-                            android:singleLine="true"
+                            android:maxLines="1"
+                            android:inputType="text"
                             android:imeOptions="actionDone"
                             android:background="@drawable/input"
                             android:padding="12dp"
@@ -189,7 +182,7 @@
                             android:layout_weight="1"
                             android:inputType="numberDecimal"
                             android:hint="Pomiar baz. [Ω]"
-                            android:singleLine="true"
+                            android:maxLines="1"
                             android:imeOptions="actionDone"
                             android:background="@drawable/input"
                             android:padding="12dp"
@@ -224,6 +217,18 @@
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/room_card_item" />
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/scrollToTopButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="24dp"
+            android:contentDescription="Przewiń do góry"
+            android:visibility="gone"
+            app:backgroundTint="#2196F3"
+            app:srcCompat="@android:drawable/stat_sys_upload"
+            app:tint="@android:color/white" />
+
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <LinearLayout
@@ -232,15 +237,14 @@
         android:orientation="horizontal"
         android:padding="16dp"
         android:background="#F6F3F3"
-        android:gravity="center_horizontal">
+        android:gravity="center_vertical">
 
         <Spinner
             android:id="@+id/roomSpinner"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="20dp"
-            android:layout_weight="1"
-            android:layout_marginBottom="10dp"/>
+            android:layout_weight="1" />
 
         <EditText
             android:id="@+id/customRoomEditText"
@@ -252,8 +256,7 @@
             android:visibility="visible"
             android:imeOptions="actionDone"
             android:maxLines="1"
-            android:layout_marginEnd="20dp"
-            android:layout_marginBottom="10dp"/>
+            android:layout_marginEnd="20dp"/>
 
         <Button
             android:id="@+id/addRoomButton"
@@ -262,5 +265,4 @@
             style="@style/Widget.MaterialComponents.Button"
             android:text="Dodaj pokój" />
     </LinearLayout>
-
 </LinearLayout>

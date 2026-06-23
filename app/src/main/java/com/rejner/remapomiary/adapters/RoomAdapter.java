@@ -85,6 +85,12 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         }
     }
 
+    @Override
+    public void onViewRecycled(@NonNull RoomViewHolder holder) {
+        super.onViewRecycled(holder);
+        holder.unbind();
+    }
+
     @NonNull
     @Override
     public RoomViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -121,25 +127,28 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             this.binding = binding;
         }
 
+        void unbind() {
+            cancelChunkedLoading();
+            if (currentLiveData != null && currentObserver != null) {
+                currentLiveData.removeObserver(currentObserver);
+            }
+            currentMeasurements = null;
+            currentRoomId = -1;
+            loadedChunksList.clear();
+            isFullyLoaded = false;
+            isLoadingChunks = false;
+        }
+
         void bind(RoomInFlat room) {
             boolean roomChanged = (this.currentRoomId != room.id);
 
             if (roomChanged) {
+                unbind();
                 this.currentRoomId = room.id;
-                cancelChunkedLoading();
-                isFullyLoaded = false;
-                isLoadingChunks = false;
-                loadedChunksList.clear();
-                currentMeasurements = null;
-
-                if (currentLiveData != null && currentObserver != null) {
-                    currentLiveData.removeObserver(currentObserver);
-                }
-
                 setupNestedRecyclerView(room.name);
             }
 
-            boolean isLokale =  Settings.mainRoomName.equalsIgnoreCase(room.name);
+            boolean isLokale = Settings.mainRoomName.equalsIgnoreCase(room.name);
 
             if (isCommonSpace) {
                 binding.deleteRoomButton.setText("Usuń pomieszczenie");
@@ -385,9 +394,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             binding.measurementsRecyclerView.setOnTouchListener((v, event) -> {
                 int action = event.getAction();
                 if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-                    if (v.canScrollVertically(1) || v.canScrollVertically(-1)) {
-                        v.getParent().requestDisallowInterceptTouchEvent(true);
-                    }
+                    v.getParent().requestDisallowInterceptTouchEvent(true);
                 } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                     v.getParent().requestDisallowInterceptTouchEvent(false);
                 }

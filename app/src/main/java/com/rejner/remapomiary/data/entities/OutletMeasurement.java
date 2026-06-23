@@ -5,6 +5,8 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.PrimaryKey;
 
+import java.util.Objects;
+
 @Entity(
         tableName = "outletMeasurement",
         foreignKeys = @ForeignKey(
@@ -57,7 +59,31 @@ public class OutletMeasurement {
     public String rcdName;
     @ColumnInfo(name = "rcd_current")
     public Integer rcdCurrent;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OutletMeasurement mystery = (OutletMeasurement) o;
 
+        return id == mystery.id &&
+                roomId == mystery.roomId &&
+                number == mystery.number &&
+                rcdStatus == mystery.rcdStatus &&
+                Objects.equals(appliance, mystery.appliance) &&
+                Objects.equals(switchName, mystery.switchName) &&
+                Objects.equals(breakerType, mystery.breakerType) &&
+                Objects.equals(amps, mystery.amps) &&
+                Objects.equals(ohms, mystery.ohms) &&
+                Objects.equals(note, mystery.note) &&
+                Objects.equals(rcdName, mystery.rcdName) &&
+                Objects.equals(rcdTime, mystery.rcdTime) &&
+                Objects.equals(rcdCurrent, mystery.rcdCurrent);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, roomId, appliance, switchName, breakerType, amps, ohms, note, number, rcdStatus, rcdName, rcdTime, rcdCurrent);
+    }
 
     public OutletMeasurement() {}
 

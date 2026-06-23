@@ -1,62 +1,148 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://tools.android.com/tools"
-    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    >
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:orientation="vertical"
+    tools:context=".ui.activities.BoardCommonSpace">
 
     <LinearLayout
-        android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:fillViewport="true"
-        >
+        android:layout_height="wrap_content"
+        android:background="#DDDDDD"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:padding="8dp">
 
-        <LinearLayout
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:text="◀ Powrót"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/boardTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rozdzielnie - "
+            android:textSize="24sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBarLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#DDDDDD"
-            android:gravity="center_horizontal"
-            android:orientation="horizontal"
-            android:padding="8dp">
+            android:background="#FFFFFF"
+            app:elevation="0dp">
 
-            <Button
-                android:id="@+id/backButton"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="◀ Powrót"
-                android:gravity="center_vertical"
-                android:textSize="18sp"
-                android:layout_marginEnd="16dp" />
+                android:gravity="center_horizontal"
+                android:orientation="horizontal"
+                android:padding="20dp"
+                app:layout_scrollFlags="scroll">
 
-            <TextView
-                android:id="@+id/boardTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:text="Mieszkanie - numer"
-                android:gravity="center_vertical"
+                <Button
+                    android:id="@+id/notesButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="40dp"
+                    android:layout_weight="1"
+                    android:paddingTop="15dp"
+                    android:paddingBottom="15dp"
+                    android:text="Podsumowanie"
+                    android:textSize="18sp" />
 
-                android:textSize="24sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+                <Button
+                    android:id="@+id/boardButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="40dp"
+                    android:layout_weight="1"
+                    android:paddingTop="15dp"
+                    android:paddingBottom="15dp"
+                    android:text="Rozdzielnia"
+                    android:textSize="18sp" />
 
+                <Button
+                    android:id="@+id/roomsButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingTop="15dp"
+                    android:paddingBottom="15dp"
+                    android:text="Pętla zwarcia"
+                    android:textSize="18sp" />
+            </LinearLayout>
+        </com.google.android.material.appbar.AppBarLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/boardsRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:paddingEnd="16dp"
-            android:paddingStart="16dp"
-            android:paddingBottom="16dp"
-            android:nestedScrollingEnabled="false"
-
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="16dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:listitem="@layout/board_common_space" />
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/scrollToTopButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="24dp"
+            android:contentDescription="Przewiń do góry"
+            android:visibility="gone"
+            app:backgroundTint="#2196F3"
+            app:srcCompat="@android:drawable/stat_sys_upload"
+            app:tint="@android:color/white" />
 
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#F6F3F3"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <Spinner
+            android:id="@+id/boardNameSpinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
+            android:layout_weight="1" />
+
+        <EditText
+            android:id="@+id/boardNameInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
+            android:layout_weight="1"
+            android:hint="Wpisz nazwę rozdzielni"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:maxLines="1"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/addNewBoard"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#669900"
+            android:text="Dodaj" />
     </LinearLayout>
 </LinearLayout>

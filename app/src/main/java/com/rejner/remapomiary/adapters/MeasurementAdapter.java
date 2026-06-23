@@ -23,6 +23,8 @@ import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MeasurementAdapter extends ListAdapter<OutletMeasurement, MeasurementAdapter.MeasurementViewHolder> {
 
@@ -42,6 +44,9 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     private final ArrayAdapter<String> breakerSpinnerAdapter;
     private final ArrayAdapter<String> noteSpinnerAdapter;
     private final ArrayAdapter<String> ampsSpinnerAdapter;
+
+    // Jedna współdzielona pula wątków zamiast tworzenia nowej przy każdym kliknięciu spinnera
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     public MeasurementAdapter(RoomActivity activity, OutletMeasurementViewModel outletViewModel,
                               String[] applianceOptions, String[] breakerTypes, String[] noteOptions,
@@ -123,7 +128,9 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
         private void scrollToView(View view) {
             view.postDelayed(() -> {
-                view.requestRectangleOnScreen(new Rect(0, 0, view.getWidth(), view.getHeight() + (int)(200 * activity.getResources().getDisplayMetrics().density)), true);
+                if (itemView.isAttachedToWindow()) {
+                    view.requestRectangleOnScreen(new Rect(0, 0, view.getWidth(), view.getHeight() + (int)(200 * activity.getResources().getDisplayMetrics().density)), true);
+                }
             }, 300);
         }
 
@@ -142,7 +149,8 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                         outletViewModel.update(currentItem, null);
                     } else {
                         if (currentItem.rcdName == null || currentItem.rcdName.trim().isEmpty()) {
-                            java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+                            // OPTYMALIZACJA: Użycie stałego dbExecutor zamiast ciągłego tworzenia nowego wątku
+                            dbExecutor.execute(() -> {
                                 String fetchedName = outletViewModel.getLastRCDName(currentItem.roomId);
                                 final String finalName = (fetchedName != null) ? fetchedName : "";
 
@@ -458,7 +466,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.ohmsEdit.removeTextChangedListener(ohmsWatcher);
 
-            // === ROZWIĄZANIE PROBLEMU: Resetowanie stanów komponentów przed sprawdzeniem warunków ===
             binding.customApplianceEdit.setEnabled(true);
             binding.customApplianceEdit.setVisibility(View.VISIBLE);
             binding.flatNumberTextView.setVisibility(View.GONE);
@@ -470,7 +477,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 binding.noteSpinner.setEnabled(true);
                 binding.ohmsEdit.setEnabled(true);
             }
-            // =======================================================================================
 
             if (isCommonSpace && Settings.mainRoomName.equalsIgnoreCase(roomName) && om.appliance.toLowerCase().contains("lokal")) {
                 binding.customApplianceEdit.setEnabled(false);
@@ -505,10 +511,12 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             if (focusToMeasurementId != -1 && om.id == focusToMeasurementId) {
                 focusToMeasurementId = -1;
                 binding.ohmsEdit.postDelayed(() -> {
-                    binding.ohmsEdit.requestFocus();
-                    binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
-                    activity.showKeyboard(binding.ohmsEdit);
-                    scrollToView(binding.ohmsEdit);
+                    if (itemView.isAttachedToWindow()) {
+                        binding.ohmsEdit.requestFocus();
+                        binding.ohmsEdit.setSelection(binding.ohmsEdit.getText().length());
+                        activity.showKeyboard(binding.ohmsEdit);
+                        scrollToView(binding.ohmsEdit);
+                    }
                 }, 150);
             }
 

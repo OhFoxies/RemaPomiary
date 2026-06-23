@@ -1,21 +1,28 @@
 package com.rejner.remapomiary.ui.activities;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.BoardAdapter;
-import com.rejner.remapomiary.adapters.BoardHeaderAdapter;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.BoardsFullData;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
@@ -26,7 +33,6 @@ import com.rejner.remapomiary.ui.viewmodels.BoardCommonSpaceViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitCommonSpaceViewModel;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -34,8 +40,13 @@ public class BoardCommonSpace extends AppCompatActivity {
 
     private RecyclerView boardsRecyclerView;
     private BoardAdapter boardAdapter;
-    private BoardHeaderAdapter headerAdapter;
     private Button backButton;
+    private FloatingActionButton scrollToTopButton;
+
+    private Spinner boardNameSpinner;
+    private EditText boardNameInput;
+    private Button addNewBoard;
+    private Button notesButton, boardButton, roomsButton;
 
     private int blockId;
     private int commonSpaceFlatId;
@@ -68,6 +79,7 @@ public class BoardCommonSpace extends AppCompatActivity {
         initViews();
         setupRecyclerView();
         setupNavigationButtons();
+        setupAddBoardUi();
         observeDatabase();
         ensureMainBoardExists();
     }
@@ -90,6 +102,15 @@ public class BoardCommonSpace extends AppCompatActivity {
     private void initViews() {
         boardsRecyclerView = findViewById(R.id.boardsRecyclerView);
         backButton = findViewById(R.id.backButton);
+        scrollToTopButton = findViewById(R.id.scrollToTopButton);
+
+        boardNameSpinner = findViewById(R.id.boardNameSpinner);
+        boardNameInput = findViewById(R.id.boardNameInput);
+        addNewBoard = findViewById(R.id.addNewBoard);
+
+        notesButton = findViewById(R.id.notesButton);
+        boardButton = findViewById(R.id.boardButton);
+        roomsButton = findViewById(R.id.roomsButton);
     }
 
     private void setupRecyclerView() {
@@ -236,44 +257,26 @@ public class BoardCommonSpace extends AppCompatActivity {
             }
         });
 
-        headerAdapter = new BoardHeaderAdapter(new BoardHeaderAdapter.HeaderListener() {
+        boardsRecyclerView.setAdapter(boardAdapter);
+
+        boardsRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onAddNewBoard(String boardName) {
-                if (boardName.equals(Settings.mainBoardName)) {
-                    Toast.makeText(BoardCommonSpace.this, "Nie możesz użyć tej nazwy!", Toast.LENGTH_SHORT).show();
-                    return;
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (recyclerView.computeVerticalScrollOffset() > 150) {
+                    scrollToTopButton.show();
+                } else {
+                    scrollToTopButton.hide();
                 }
-                lastAddedBoardName = boardName;
-                com.rejner.remapomiary.data.entities.BoardCommonSpace boardCommonSpace = new com.rejner.remapomiary.data.entities.BoardCommonSpace();
-                boardCommonSpace.name = boardName;
-                boardCommonSpace.flatId = commonSpaceFlatId;
-                boardCommonSpace.creation_date = new Date();
-                boardCommonSpaceViewModel.insert(boardCommonSpace);
-
-                Toast.makeText(BoardCommonSpace.this, "Dodano rozdzielnie", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onNotesButtonClicked() {
-                Intent intent = new Intent(BoardCommonSpace.this, NotesActivity.class);
-                intent.putExtra("isCommonSpace", 1);
-                intent.putExtra("flatId", commonSpaceFlatId);
-                intent.putExtra("name", blockName);
-                startActivity(intent);
-            }
-
-            @Override
-            public void onRoomsButtonClicked() {
-                Intent intent = new Intent(BoardCommonSpace.this, RoomActivity.class);
-                intent.putExtra("isCommonSpace", 1);
-                intent.putExtra("flatId", commonSpaceFlatId);
-                intent.putExtra("name", blockName);
-                startActivity(intent);
             }
         });
 
-        ConcatAdapter concatAdapter = new ConcatAdapter(headerAdapter, boardAdapter);
-        boardsRecyclerView.setAdapter(concatAdapter);
+        scrollToTopButton.setOnClickListener(v -> {
+            boardsRecyclerView.smoothScrollToPosition(0);
+            com.google.android.material.appbar.AppBarLayout appBarLayout = findViewById(R.id.appBarLayout);
+            if (appBarLayout != null) {
+                appBarLayout.setExpanded(true, true);
+            }
+        });
     }
 
     private void setupNavigationButtons() {
@@ -282,6 +285,106 @@ public class BoardCommonSpace extends AppCompatActivity {
             intent.putExtra("blockId", blockId);
             startActivity(intent);
         });
+
+        notesButton.setOnClickListener(v -> {
+            Intent intent = new Intent(BoardCommonSpace.this, NotesActivity.class);
+            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("flatId", commonSpaceFlatId);
+            intent.putExtra("name", blockName);
+            startActivity(intent);
+        });
+
+        roomsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(BoardCommonSpace.this, RoomActivity.class);
+            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("flatId", commonSpaceFlatId);
+            intent.putExtra("name", blockName);
+            startActivity(intent);
+        });
+    }
+
+    private void setupAddBoardUi() {
+        String[] options = new String[]{"Rozdzielnia Główna", "Rozdzielnia Piętro", "Rozdzielnia Garaż", "Rozdzielnia -", "inne"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        boardNameSpinner.setAdapter(adapter);
+
+        boardNameSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selected = parent.getItemAtPosition(position).toString();
+                if ("inne".equalsIgnoreCase(selected) || "Rozdzielnia -".equalsIgnoreCase(selected)) {
+                    boardNameInput.setVisibility(View.VISIBLE);
+                    if ("Rozdzielnia -".equalsIgnoreCase(selected)) {
+                        boardNameInput.setText("Rozdzielnia ");
+                    } else {
+                        boardNameInput.setText("");
+                    }
+                    boardNameInput.postDelayed(() -> {
+                        if (boardNameInput.requestFocus()) {
+                            boardNameInput.setSelection(boardNameInput.getText().length());
+                            showKeyboard(boardNameInput);
+                        }
+                    }, 150);
+                } else {
+                    boardNameInput.setVisibility(View.GONE);
+                    hideKeyboard();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        addNewBoard.setOnClickListener(v -> {
+            String boardName;
+            String selectedSpinnerItem = boardNameSpinner.getSelectedItem().toString();
+
+            if ("inne".equalsIgnoreCase(selectedSpinnerItem) || "Rozdzielnia -".equalsIgnoreCase(selectedSpinnerItem)) {
+                boardName = boardNameInput.getText().toString().trim();
+                if (boardName.isEmpty()) {
+                    Toast.makeText(this, "Podaj nazwę rozdzielni", Toast.LENGTH_SHORT).show();
+                    boardNameInput.setError("Podaj nazwę!");
+                    return;
+                }
+            } else {
+                boardName = selectedSpinnerItem;
+            }
+
+            if (boardName.equals(Settings.mainBoardName)) {
+                Toast.makeText(BoardCommonSpace.this, "Nie możesz użyć tej nazwy!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            lastAddedBoardName = boardName;
+            com.rejner.remapomiary.data.entities.BoardCommonSpace boardCommonSpace = new com.rejner.remapomiary.data.entities.BoardCommonSpace();
+            boardCommonSpace.name = boardName;
+            boardCommonSpace.flatId = commonSpaceFlatId;
+            boardCommonSpace.creation_date = new Date();
+            boardCommonSpaceViewModel.insert(boardCommonSpace);
+
+            Toast.makeText(BoardCommonSpace.this, "Dodano rozdzielnie", Toast.LENGTH_SHORT).show();
+            
+            boardNameInput.setText("");
+            boardNameInput.setVisibility(View.GONE);
+            boardNameSpinner.setSelection(0);
+            hideKeyboard();
+        });
+    }
+
+    private void showKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.showSoftInput(view, 0);
+        }
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        View focused = getCurrentFocus();
+        if (imm != null && focused != null) {
+            imm.hideSoftInputFromWindow(focused.getWindowToken(), 0);
+        }
     }
 
     private void observeDatabase() {
@@ -326,7 +429,7 @@ public class BoardCommonSpace extends AppCompatActivity {
             if (lastAddedBoardName != null && boardsList != null) {
                 for (int i = 0; i < boardsList.size(); i++) {
                     if (boardsList.get(i).board != null && lastAddedBoardName.equals(boardsList.get(i).board.name)) {
-                        int finalPosition = i + 1;
+                        int finalPosition = i;
                         boardsRecyclerView.postDelayed(() -> {
                             boardsRecyclerView.smoothScrollToPosition(finalPosition);
                         }, 300);
