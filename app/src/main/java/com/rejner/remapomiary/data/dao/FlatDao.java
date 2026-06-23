@@ -11,6 +11,7 @@ import androidx.room.Update;
 
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.FlatFullData;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 
 import java.util.List;
@@ -70,7 +71,7 @@ public interface FlatDao {
             "INNER JOIN room ON outletMeasurement.roomId = room.id " +
             "WHERE room.flatId = :flatId " +
             "AND outletMeasurement.note IS NOT NULL " +
-            "AND outletMeasurement.note != 'brak uwag' " +
+            "AND outletMeasurement.note != '" + Settings.noNotes  + "' " +
             "UNION ALL " +
             "SELECT 1 FROM rcd " +
             "WHERE rcd.flatId = :flatId " +
@@ -80,7 +81,12 @@ public interface FlatDao {
             "SELECT 1 FROM flat " +
             "WHERE flat.id = :flatId " +
             "AND flat.circuitNotes IS NOT NULL " +
-            "AND flat.circuitNotes != ''" +
+            "AND flat.circuitNotes != '' " +
+            "UNION ALL " +
+            "SELECT 1 FROM flat " +
+            "WHERE flat.id = :flatId " +
+            "AND flat.notesProtocol IS NOT NULL " +
+            "AND flat.notesProtocol != ''" +
             ")")
     LiveData<Boolean> shouldSetGradeToOne(int flatId);
     @Query("SELECT EXISTS (" +
@@ -88,7 +94,7 @@ public interface FlatDao {
             "INNER JOIN room ON outletMeasurement.roomId = room.id " +
             "WHERE room.flatId = :flatId " +
             "AND outletMeasurement.note IS NOT NULL " +
-            "AND outletMeasurement.note != 'brak uwag' " +
+            "AND outletMeasurement.note != '" + Settings.noNotes  + "' " +
             "UNION ALL " +
             "SELECT 1 FROM rcd " +
             "WHERE rcd.flatId = :flatId " +
@@ -98,9 +104,14 @@ public interface FlatDao {
             "SELECT 1 FROM flat " +
             "WHERE flat.id = :flatId " +
             "AND flat.circuitNotes IS NOT NULL " +
-            "AND flat.circuitNotes != ''" +
+            "AND flat.circuitNotes != '' " +
+            "UNION ALL " +
+            "SELECT 1 FROM flat " +
+            "WHERE flat.id = :flatId " +
+            "AND flat.notesProtocol IS NOT NULL " +
+            "AND flat.notesProtocol != ''" +
             ")")
     boolean shouldSetGradeToOneSync(int flatId);
-    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date ASC")
+    @Query("SELECT * FROM flat WHERE blockId = :blockId AND istemplate = 0 ORDER BY creation_date, isCommonSpace ASC")
     List<FlatFullData> getFlatsSync(int blockId);
 }

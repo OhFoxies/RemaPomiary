@@ -51,6 +51,15 @@
                     android:background="@drawable/input"
                     android:padding="12dp" />
 
+                <TextView
+                    android:id="@+id/flatNumberTextView"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Lokal"
+                    android:visibility="gone"
+                     />
+
                 <Button
                     android:id="@+id/customApplianceSaveBtn"
                     android:text="✔"
@@ -105,6 +114,7 @@
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:visibility="gone" />
         </LinearLayout>
@@ -217,6 +227,20 @@
             android:textSize="18sp"
             android:textColor="@android:color/white"
             android:backgroundTint="@android:color/holo_red_dark"
+            android:minWidth="0dp"
+            android:layout_marginEnd="10dp"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_gravity="center_horizontal"
+            android:minHeight="0dp" />
+
+        <Button
+            android:id="@+id/photoBtn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="📷"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            android:backgroundTint="#8C8C8C"
             android:minWidth="0dp"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_gravity="center_horizontal"

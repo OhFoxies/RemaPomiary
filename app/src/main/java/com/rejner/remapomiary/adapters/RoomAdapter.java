@@ -20,6 +20,7 @@ import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.databinding.RoomCardItemBinding;
 import com.rejner.remapomiary.ui.activities.RoomActivity;
+import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
@@ -44,6 +45,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private final boolean isCommonSpace;
     private final Set<Integer> expandedRoomIds = new HashSet<>();
     private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private RecyclerView parentRecyclerView;
 
     public RoomAdapter(RoomViewModel roomViewModel, OutletMeasurementViewModel outletViewModel,
                        LifecycleOwner lifecycleOwner, Context context,
@@ -67,6 +69,20 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
     public void setNewlyAddedMeasurementId(long id) {
         this.newlyAddedMeasurementId = id;
+    }
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        this.parentRecyclerView = recyclerView;
+    }
+
+    @Override
+    public void onCurrentListChanged(@NonNull List<RoomInFlat> previousList, @NonNull List<RoomInFlat> currentList) {
+        super.onCurrentListChanged(previousList, currentList);
+        if (currentList.size() > previousList.size() && parentRecyclerView != null) {
+            parentRecyclerView.post(() -> parentRecyclerView.smoothScrollToPosition(currentList.size() - 1));
+        }
     }
 
     @NonNull
@@ -98,6 +114,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         private static final int CHUNK_SIZE = 25;
         private final List<OutletMeasurement> loadedChunksList = new ArrayList<>();
         private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        private int currentRoomId = -1;
 
         RoomViewHolder(RoomCardItemBinding binding) {
             super(binding.getRoot());
@@ -105,15 +122,30 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         }
 
         void bind(RoomInFlat room) {
-            cancelChunkedLoading();
-            if (currentLiveData != null && currentObserver != null) {
-                currentLiveData.removeObserver(currentObserver);
+            boolean roomChanged = (this.currentRoomId != room.id);
+
+            if (roomChanged) {
+                this.currentRoomId = room.id;
+                cancelChunkedLoading();
+                isFullyLoaded = false;
+                isLoadingChunks = false;
+                loadedChunksList.clear();
+                currentMeasurements = null;
+
+                if (currentLiveData != null && currentObserver != null) {
+                    currentLiveData.removeObserver(currentObserver);
+                }
+
+                setupNestedRecyclerView(room.name);
             }
 
-            boolean isLokale = "Lokale".equalsIgnoreCase(room.name);
+            boolean isLokale =  Settings.mainRoomName.equalsIgnoreCase(room.name);
 
             if (isCommonSpace) {
                 binding.deleteRoomButton.setText("Usuń pomieszczenie");
+                if (room.name.equals(Settings.mainRoomName)) {
+                    binding.deleteRoomButton.setVisibility(View.GONE);
+                }
                 binding.roomTitle.setText(room.name != null ? room.name : ("Pomieszczenie " + room.id));
             } else {
                 binding.deleteRoomButton.setText("USUŃ POKÓJ");
@@ -158,59 +190,59 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             binding.deleteRoomButton.setOnClickListener(v -> deleteListener.accept(room));
             binding.addMeasurementBtn.setOnClickListener(v -> addMeasurementListener.accept(room.id));
 
-            setupNestedRecyclerView(room.name);
+            if (roomChanged) {
+                currentLiveData = outletViewModel.getMeasurementsForRoom(room.id);
+                currentObserver = measurements -> {
+                    this.currentMeasurements = measurements;
 
-            currentLiveData = outletViewModel.getMeasurementsForRoom(room.id);
-            currentObserver = measurements -> {
-                this.currentMeasurements = measurements;
+                    if (measurements != null && !measurements.isEmpty()) {
+                        binding.measurementsHeader.setVisibility(View.VISIBLE);
+                        binding.emptyMeasurementsText.setVisibility(View.GONE);
+                    } else {
+                        binding.measurementsHeader.setVisibility(View.GONE);
+                        binding.emptyMeasurementsText.setVisibility(View.VISIBLE);
+                    }
 
-                if (measurements != null && !measurements.isEmpty()) {
-                    binding.measurementsHeader.setVisibility(View.VISIBLE);
-                    binding.emptyMeasurementsText.setVisibility(View.GONE);
-                } else {
-                    binding.measurementsHeader.setVisibility(View.GONE);
-                    binding.emptyMeasurementsText.setVisibility(View.VISIBLE);
-                }
+                    final long currentFocusId = newlyAddedMeasurementId;
+                    if (currentFocusId != -1) {
+                        measurementAdapter.setFocusToMeasurementId(currentFocusId);
+                    }
 
-                final long currentFocusId = newlyAddedMeasurementId;
-                if (currentFocusId != -1) {
-                    measurementAdapter.setFocusToMeasurementId(currentFocusId);
-                }
-
-                Runnable handleFocusAfterSubmit = () -> {
-                    if (currentFocusId != -1 && measurements != null) {
-                        for (int i = 0; i < measurements.size(); i++) {
-                            if (measurements.get(i).id == currentFocusId) {
-                                int finalI = i;
-                                binding.measurementsRecyclerView.post(() -> binding.measurementsRecyclerView.scrollToPosition(finalI));
-                                if (newlyAddedMeasurementId == currentFocusId) {
-                                    newlyAddedMeasurementId = -1;
+                    Runnable handleFocusAfterSubmit = () -> {
+                        if (currentFocusId != -1 && measurements != null) {
+                            for (int i = 0; i < measurements.size(); i++) {
+                                if (measurements.get(i).id == currentFocusId) {
+                                    int finalI = i;
+                                    binding.measurementsRecyclerView.post(() -> binding.measurementsRecyclerView.scrollToPosition(finalI));
+                                    if (newlyAddedMeasurementId == currentFocusId) {
+                                        newlyAddedMeasurementId = -1;
+                                    }
+                                    break;
                                 }
-                                break;
                             }
                         }
-                    }
-                };
+                    };
 
-                if (expandedRoomIds.contains(room.id) || !isCommonSpace || !isLokale) {
-                    if (isCommonSpace && isLokale) {
-                        if (isFullyLoaded && !isLoadingChunks) {
-                            measurementAdapter.submitList(new ArrayList<>(measurements), handleFocusAfterSubmit);
-                            adjustRecyclerViewHeight(measurements.size());
-                        } else if (!isLoadingChunks) {
-                            startChunkedLoading();
+                    if (expandedRoomIds.contains(room.id) || !isCommonSpace || !isLokale) {
+                        if (isCommonSpace && isLokale) {
+                            if (isFullyLoaded && !isLoadingChunks) {
+                                measurementAdapter.submitList(new ArrayList<>(measurements), handleFocusAfterSubmit);
+                                adjustRecyclerViewHeight(measurements.size());
+                            } else if (!isLoadingChunks) {
+                                startChunkedLoading();
+                            }
+                        } else {
+                            measurementAdapter.submitList(measurements, handleFocusAfterSubmit);
+                            adjustRecyclerViewHeight(measurements != null ? measurements.size() : 0);
                         }
                     } else {
-                        measurementAdapter.submitList(measurements, handleFocusAfterSubmit);
-                        adjustRecyclerViewHeight(measurements != null ? measurements.size() : 0);
+                        cancelChunkedLoading();
+                        measurementAdapter.submitList(null);
+                        adjustRecyclerViewHeight(0);
                     }
-                } else {
-                    cancelChunkedLoading();
-                    measurementAdapter.submitList(null);
-                    adjustRecyclerViewHeight(0);
-                }
-            };
-            currentLiveData.observe(lifecycleOwner, currentObserver);
+                };
+                currentLiveData.observe(lifecycleOwner, currentObserver);
+            }
         }
 
         private void adjustRecyclerViewHeight(int itemCount) {
@@ -351,11 +383,13 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);
 
             binding.measurementsRecyclerView.setOnTouchListener((v, event) -> {
-                if (v.isNestedScrollingEnabled()) {
-                    int action = event.getAction();
-                    if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                int action = event.getAction();
+                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                    if (v.canScrollVertically(1) || v.canScrollVertically(-1)) {
                         v.getParent().requestDisallowInterceptTouchEvent(true);
                     }
+                } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    v.getParent().requestDisallowInterceptTouchEvent(false);
                 }
                 return false;
             });

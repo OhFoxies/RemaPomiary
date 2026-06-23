@@ -13,12 +13,14 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.flexbox.FlexboxLayoutManager;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.Template;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -50,6 +52,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         void onGenerateProtocol(Flat flat, int protocolNumber);
         void onCreateFlat(String number, Template template);
         void onSortSelected(int position);
+        void onHideKeyboard(); // Nowa metoda w interfejsie
     }
 
     public FlatAdapter(OnFlatActionListener listener) {
@@ -129,6 +132,18 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             noFlatsText = itemView.findViewById(R.id.noFlats);
 
             setupSortSpinner();
+
+            // ZMIANA: Precyzyjne scrollowanie (offset 0 przypina element do samej góry)
+            inputFlatNumber.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    v.postDelayed(() -> {
+                        RecyclerView rv = (RecyclerView) itemView.getParent();
+                        if (rv != null && rv.getLayoutManager() instanceof LinearLayoutManager) {
+                            ((LinearLayoutManager) rv.getLayoutManager()).scrollToPositionWithOffset(0, 0);
+                        }
+                    }, 400);
+                }
+            });
         }
 
         void bind() {
@@ -149,11 +164,11 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
 
             flatCancelButton.setOnClickListener(v -> {
+                listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę, potem czyścimy focus
                 inputFlatNumber.setText("");
                 inputFlatNumber.clearFocus();
             });
         }
-
         private void setupSortSpinner() {
             String[] sortOptions = {"Numer mieszkania", "Data utworzenia \\/", "Data utworzenia /\\", "Data edycji", "Status", "Uwagi na początku"};
             ArrayAdapter<String> adapter = new ArrayAdapter<>(itemView.getContext(), android.R.layout.simple_spinner_item, sortOptions);
@@ -191,6 +206,23 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             createProtocolButton = itemView.findViewById(R.id.generateProtocol);
             protocolNumber = itemView.findViewById(R.id.inputProtocolNumber);
             flatMain = itemView.findViewById(R.id.flatMain);
+
+            // ZMIANA: Precyzyjne scrollowanie (offset 0 przypina element do samej góry po resize)
+            View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+                if (hasFocus) {
+                    v.postDelayed(() -> {
+                        int pos = getBindingAdapterPosition();
+                        RecyclerView rv = (RecyclerView) itemView.getParent();
+                        if (pos != RecyclerView.NO_POSITION && rv != null) {
+                            if (rv.getLayoutManager() instanceof LinearLayoutManager) {
+                                ((LinearLayoutManager) rv.getLayoutManager()).scrollToPositionWithOffset(pos, 0);
+                            }
+                        }
+                    }, 400);
+                }
+            };
+            protocolNumber.setOnFocusChangeListener(focusListener);
+            titleEdit.setOnFocusChangeListener(focusListener);
         }
 
         void bind(Flat flat) {
@@ -205,10 +237,10 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (flat.circuitNotes != null && !flat.circuitNotes.isEmpty()) sb.append("Notatki rozdzielnia:\n").append(flat.circuitNotes);
                 notes.setText(sb.toString());
             } else {
-                notes.setText("Brak uwag");
+                notes.setText(Settings.noNotes);
             }
 
-            if (flat.status != null && flat.status.contains("gotowy")) {
+            if (flat.status != null && flat.status.contains(Settings.measurementDone)) {
                 markButton.setText("❌ Oznacz jako niewykonany");
                 flatMain.setBackgroundResource(R.drawable.border_done);
                 markButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FF0000")));
@@ -238,22 +270,21 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     editButton.setText("✅ Zapisz");
                     deleteButton.setText("❌ Anuluj");
                 } else {
-                    // ZMIANA: Zdjęcie focusu PRZED schowaniem pola zapobiega zrzucaniu na dół listy
+                    listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
                     titleEdit.clearFocus();
-
                     String newNum = titleEdit.getText().toString().trim();
                     title.setVisibility(View.VISIBLE);
                     titleEdit.setVisibility(View.GONE);
                     editButton.setText("✏️ Edytuj");
                     deleteButton.setText("🗑️ Usuń");
-
                     listener.onFlatEdit(flat, newNum);
                 }
             });
 
             deleteButton.setOnClickListener(v -> {
                 if (titleEdit.getVisibility() == View.VISIBLE) {
-                    titleEdit.clearFocus(); // ZMIANA: Usunięcie focusu także w anulowaniu
+                    listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
+                    titleEdit.clearFocus();
                     title.setVisibility(View.VISIBLE);
                     titleEdit.setVisibility(View.GONE);
                     editButton.setText("✏️ Edytuj");
@@ -264,6 +295,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
 
             createProtocolButton.setOnClickListener(v -> {
+                listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
                 int pNum = -1;
                 try {
                     String pStr = protocolNumber.getText().toString();

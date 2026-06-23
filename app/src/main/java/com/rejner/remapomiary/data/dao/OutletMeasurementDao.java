@@ -7,7 +7,6 @@ import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Update;
 
-
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 
 import java.util.List;
@@ -45,6 +44,13 @@ public interface OutletMeasurementDao {
             "LIMIT 1")
     String getLastRcdNameInFlat(int currentRoomId);
 
+    @Query("SELECT EXISTS(SELECT 1 FROM outletMeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = :flatId AND (om.rcd_status = 1 OR om.rcd_status = 2))")
+    boolean hasAnyCommonSpaceRcdSync(int flatId);
 
-
+    @Query("SELECT EXISTS(SELECT 1 FROM outletMeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = :flatId AND (om.rcd_status = 1 OR om.rcd_status = 2))")
+    LiveData<Boolean> hasAnyCommonSpaceRcd(int flatId);
 }

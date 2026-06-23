@@ -40,6 +40,7 @@
         </LinearLayout>
 
         <!-- Main RecyclerView -->
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/flatsRecyclerView"
             android:layout_width="match_parent"

@@ -243,16 +243,41 @@
                         android:padding="8dp"
                         android:layout_marginTop="20dp"
                         >
+                        <LinearLayout
+                            android:gravity="center"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            >
+                            <TextView
+                                android:id="@+id/notesTitle"
+                                android:layout_width="0dp"
+                                android:layout_weight="2"
+                                android:layout_height="wrap_content"
+                                android:paddingBottom="8dp"
+                                android:text="Uwagi do mieszkania (niewidoczne w protokole)"
+                                android:textSize="22sp"
+                                android:textStyle="bold" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/notesSave"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="end"
+                                android:text="✔ Zapisz"
+                                style="@style/Widget.MaterialComponents.Button"
+
+                                android:backgroundTint="#ff0099cc"
+                                android:textSize="16sp" />
+                        </LinearLayout>
 
                         <TextView
-                            android:id="@+id/notesTitle"
+                            android:id="@+id/descNotes"
                             android:layout_width="wrap_content"
-                            android:gravity="center_horizontal"
                             android:layout_height="wrap_content"
                             android:paddingBottom="8dp"
-                            android:text="Uwagi do mieszkania"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
+                            android:text="Tu informacje o ewentualnej dacie wykonania przeglądu, czy godzinie powrotu do mieszkania danego dnia. Możesz wpisać tu cokolwiek - te dane nie są widoczne w protokole"
+                            android:textSize="18sp"
+                            />
                         <EditText
                             android:id="@+id/notedEditText"
                             android:layout_width="match_parent"
@@ -269,17 +294,72 @@
                             android:background="@drawable/input"
                            />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/notesSave"
+
+
+                    </LinearLayout>
+
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:id="@+id/notes2"
+                        android:background="@drawable/border_red_white_bg"
+                        android:gravity="center_vertical"
+                        android:padding="16dp"
+                        android:layout_marginTop="20dp"
+                        >
+                        <LinearLayout
+                            android:gravity="center"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            >
+                            <TextView
+                                android:id="@+id/notes2Title"
+                                android:layout_width="0dp"
+                                android:layout_weight="2"
+                                android:layout_height="wrap_content"
+                                android:paddingBottom="8dp"
+                                android:text="Uwagi do mieszkania (WIDOCZNE W PROTOKOLE)"
+                                android:textSize="22sp"
+                                android:textStyle="bold" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/notes2Save"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_gravity="end"
+                                android:text="✔ Zapisz"
+                                style="@style/Widget.MaterialComponents.Button"
+
+                                android:backgroundTint="#ff0099cc"
+                                android:textSize="16sp" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/descNotes2"
+
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:layout_gravity="end"
-                            android:text="✔ Zapisz"
-                            style="@style/Widget.MaterialComponents.Button"
-
-                            android:backgroundTint="#ff0099cc"
-                            android:textSize="16sp" />
+                            android:paddingBottom="8dp"
+                            android:text="Tu wpisz swoje uwagi i wnioski dotyczące instalacji, czy bezpieczeństwa. To co tutaj wpiszesz będzie widoczne w protokole"
+                            android:textSize="18sp"
+                            />
+                        <EditText
+                            android:id="@+id/notes2EditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Wpisz uwagi..."
+                            android:paddingLeft="20dp"
+                            android:paddingBottom="16dp"
+                            android:paddingEnd="20dp"
+                            android:paddingTop="16dp"
+                            android:inputType="textMultiLine"
+                            android:singleLine="false"
+                            android:imeOptions="actionNone"
+                            android:layout_weight="2"
+                            android:background="@drawable/input"
+                            />
 
                     </LinearLayout>
                     <LinearLayout

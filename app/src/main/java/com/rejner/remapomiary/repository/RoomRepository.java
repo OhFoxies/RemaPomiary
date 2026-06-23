@@ -8,6 +8,7 @@ import com.rejner.remapomiary.data.dao.RoomDao;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.RoomFullData;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -62,7 +63,7 @@ public class RoomRepository {
             if (room == null) {
                 room = new RoomInFlat();
                 room.flatId = flatId;
-                room.name = "Lokale"; // Twoja domyślna nazwa dla Main Room
+                room.name = Settings.mainRoomName; // Twoja domyślna nazwa dla Main Room
 
                 long generatedId = dao.insert2(room);
                 room.id = (int) generatedId; // Przypisujemy wygenerowane ID do obiektu

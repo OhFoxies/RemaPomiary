@@ -1,22 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_height="wrap_content"
+    xmlns:tools="http://tools.android.com/tools"
+    android:layout_height="match_parent"
     android:layout_width="match_parent"
     >
 
     <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-
-
-
         android:fillViewport="true"
-        tools:context=".ui.activities.BoardActivity">
+        >
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -46,154 +43,20 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:orientation="horizontal"
-            android:padding="20dp">
-
-            <Button
-                android:id="@+id/notesButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Podsumowanie"
-
-
-                android:textSize="18sp" />
-
-            <Button
-                android:id="@+id/boardButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="40dp"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-                android:paddingBottom="15dp"
-                android:text="Rozdzielnia"
-
-                android:textSize="18sp" />
-
-            <Button
-                android:id="@+id/roomsButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:paddingTop="15dp"
-
-                android:paddingBottom="15dp"
-                android:text="Pętla zwarcia"
-                android:textSize="18sp" />
-
-
-        </LinearLayout>
-
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:background="@drawable/round_corners"
-            android:padding="16dp">
-
-            <TextView
-                android:id="@+id/textView16"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Dodaj rozdzielnie"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:layout_constraintTop_toBottomOf="@id/textView16"
-
-                android:orientation="horizontal"
-   >
-
-                <Spinner
-                    android:id="@+id/boardNameSpinner"
-                    android:layout_width="0dp"
-                    android:layout_marginEnd="20dp"
-                    android:layout_height="wrap_content"
-
-                    android:layout_weight="2"
-                    />
-
-                <EditText
-                    android:id="@+id/boardNameInput"
-                    android:layout_width="100dp"
-                    android:layout_height="wrap_content"
-                    android:textSize="18sp"
-                    android:layout_weight="3"
-                    android:visibility="gone"
-                    android:layout_marginEnd="10dp"
-                    android:padding="8dp"
-                  />
-                <Button
-                    android:id="@+id/confirmBoardName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="10dp"
-                    android:visibility="gone"
-
-                    style="@style/Widget.MaterialComponents.Button"
-
-                    android:text="✔️" />
-
-                <Button
-                    android:id="@+id/cancelBoardName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="20dp"
-                    android:visibility="gone"
-
-                    style="@style/Widget.MaterialComponents.Button"
-
-                    android:text="❌" />
-
-
-                <Button
-                    android:id="@+id/addNewBoard"
-                    android:layout_width="80dp"
-                    android:layout_height="wrap_content"
-                    android:text="➕ Dodaj"
-                    android:layout_weight="1"
-                    android:backgroundTint="#669900"
-                    style="@style/Widget.MaterialComponents.Button"
-
-                    android:padding="4dp" />
-
-
-
-            </LinearLayout>
-
-
-
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/boardsRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingEnd="16dp"
+            android:paddingStart="16dp"
+            android:paddingBottom="16dp"
             android:nestedScrollingEnabled="false"
-            android:padding="16dp"
+
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/board_common_space"/>
+            tools:listitem="@layout/board_common_space" />
 
 
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</LinearLayout>

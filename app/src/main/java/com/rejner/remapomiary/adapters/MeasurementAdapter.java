@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.databinding.MeasurementRowItemBinding;
 import com.rejner.remapomiary.ui.activities.RoomActivity;
+import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 
 import java.util.Locale;
@@ -56,8 +57,8 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.isCommonSpace = isCommonSpace;
         this.roomName = roomName;
 
-        if ("Lokale".equalsIgnoreCase(roomName)) {
-            this.noteOptions = new String[]{"brak uwag", "Inne"};
+        if (Settings.mainRoomName.equalsIgnoreCase(roomName)) {
+            this.noteOptions = new String[]{Settings.noNotes, "Inne"};
         }
 
         this.rcdStateAdapter = createSpinnerAdapter(new String[]{"Brak różnicówki", "Różnicówka sprawna", "Różnicówka niesprawna"});
@@ -165,6 +166,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 binding.rcdNameSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
                 if (hasFocus) scrollToView(v);
             });
+
             binding.rcdNameEdit.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     binding.rcdNameSaveBtn.performClick();
@@ -280,6 +282,23 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.switchEdit.setOnFocusChangeListener((v, hasFocus) -> {
                 binding.switchSaveBtn.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) binding.switchContainer.getLayoutParams();
+                if (hasFocus) {
+                    params.weight = 3.5f;
+                    binding.breakerSpinner.setVisibility(View.GONE);
+                    binding.ampsSpinner.setVisibility(View.GONE);
+                } else {
+                    params.weight = 1.5f;
+                    binding.breakerSpinner.setVisibility(View.VISIBLE);
+                    binding.ampsSpinner.setVisibility(View.VISIBLE);
+                }
+                binding.switchContainer.setLayoutParams(params);
+
+                LinearLayout.LayoutParams editParams = (LinearLayout.LayoutParams) binding.switchEdit.getLayoutParams();
+                editParams.weight = 1.0f;
+                binding.switchEdit.setLayoutParams(editParams);
+
                 if (hasFocus) scrollToView(v);
             });
 
@@ -439,12 +458,28 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.ohmsEdit.removeTextChangedListener(ohmsWatcher);
 
+            // === ROZWIĄZANIE PROBLEMU: Resetowanie stanów komponentów przed sprawdzeniem warunków ===
+            binding.customApplianceEdit.setEnabled(true);
+            binding.customApplianceEdit.setVisibility(View.VISIBLE);
+            binding.flatNumberTextView.setVisibility(View.GONE);
+
             if (catalogId != -1) {
                 binding.noteSpinner.setEnabled(false);
                 binding.ohmsEdit.setEnabled(false);
+            } else {
+                binding.noteSpinner.setEnabled(true);
+                binding.ohmsEdit.setEnabled(true);
             }
+            // =======================================================================================
 
-            if (isCommonSpace && !"Lokale".equalsIgnoreCase(roomName)) {
+            if (isCommonSpace && Settings.mainRoomName.equalsIgnoreCase(roomName) && om.appliance.toLowerCase().contains("lokal")) {
+                binding.customApplianceEdit.setEnabled(false);
+
+                binding.flatNumberTextView.setVisibility(View.VISIBLE);
+                binding.flatNumberTextView.setText(om.appliance);
+                binding.customApplianceEdit.setVisibility(View.GONE);
+            }
+            if (isCommonSpace && !Settings.mainRoomName.equalsIgnoreCase(roomName)) {
                 binding.rcdHeaders.setVisibility(View.VISIBLE);
                 binding.rcdRowContainer.setVisibility(View.VISIBLE);
                 setupRcdFields(om);

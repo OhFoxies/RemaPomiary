@@ -42,6 +42,8 @@ import com.rejner.remapomiary.ui.viewmodels.TemplateViewModel;
 import com.rejner.remapomiary.ui.viewmodels.SignatureViewModel; // NOWE
 import com.rejner.remapomiary.ui.activities.SignatureView; // NOWE
 
+import org.w3c.dom.Text;
+
 import java.io.ByteArrayOutputStream;
 import java.util.Date;
 
@@ -64,8 +66,10 @@ public class NotesActivity extends AppCompatActivity {
     private RadioButton radioDopuszczonaUsterki;
     private RadioButton radioNiedopuszczona;
     private EditText notesEditText;
+    private EditText notes2EditText;
     private TextView currentMode;
     private Button saveButton;
+    private Button notes2Save;
     private Button blockGrade;
     private EditText templateName;
     private Button templateSave;
@@ -87,6 +91,8 @@ public class NotesActivity extends AppCompatActivity {
     private Button btnShowTermsPostSign;
     private Button btnDeleteSignature;
     private TextView tvSavedSignatureInfo;
+    private int isCommonSpace;
+    private String blockName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +101,8 @@ public class NotesActivity extends AppCompatActivity {
 
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
+        isCommonSpace = getIntent().getIntExtra("isCommonSpace", 0);
+        blockName = getIntent().getStringExtra("name");
         if (flatId == -1) {
             Toast.makeText(this, "Nieprawidłowe ID mieszkania", Toast.LENGTH_SHORT).show();
             finish();
@@ -106,7 +114,9 @@ public class NotesActivity extends AppCompatActivity {
         radioDopuszczonaUsterki = findViewById(R.id.radio_dopuszczona_usterki);
         radioNiedopuszczona = findViewById(R.id.radio_niedopuszczona);
         notesEditText = findViewById(R.id.notedEditText);
+        notes2EditText = findViewById(R.id.notes2EditText);
         saveButton = findViewById(R.id.notesSave);
+        notes2Save = findViewById(R.id.notes2Save);
         blockGrade = findViewById(R.id.blockGrade);
         currentMode = findViewById(R.id.currentMode);
         templateSave = findViewById(R.id.templateSave);
@@ -135,7 +145,9 @@ public class NotesActivity extends AppCompatActivity {
             radioDopuszczonaUsterki.setEnabled(false);
             radioNiedopuszczona.setEnabled(false);
             notesEditText.setEnabled(false);
+            notes2EditText.setEnabled(false);
             saveButton.setEnabled(false);
+            notes2Save.setEnabled(false);
             blockGrade.setEnabled(false);
             templateName.setEnabled(false);
             templateSave.setEnabled(false);
@@ -149,11 +161,26 @@ public class NotesActivity extends AppCompatActivity {
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
         signatureViewModel = new ViewModelProvider(this).get(SignatureViewModel.class); // INICJALIZACJA
+        if (isCommonSpace == 1) {
+            termsContainer.setVisibility(View.GONE);
+            findViewById(R.id.other).setVisibility(View.GONE);
+            signaturePadContainer.setVisibility(View.GONE);
+            savedSignatureContainer.setVisibility(View.GONE);
 
+
+            ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do części wspólnej (niewidoczne w protokole)");
+            ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do części wspólnej (WIDOCZNE W PROTOKOLE)");
+
+            ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
+
+            findViewById(R.id.other).setVisibility(View.GONE);
+
+        }
         flatViewModel.getCombinedFlat(flatId).observe(this, flat -> {
             if (flat != null) {
                 currentFlat = flat;
                 notesEditText.setText(flat.notes);
+                notes2EditText.setText(flat.notesProtocol);
                 setGradeSelection();
                 gradeButtonState();
             }
@@ -164,7 +191,10 @@ public class NotesActivity extends AppCompatActivity {
         });
 
         // OBSŁUGA LOGIKI PODPISÓW
-        setupSignatureLogic();
+        if (isCommonSpace != 1) {
+            setupSignatureLogic();
+
+        }
 
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (currentFlat == null) return;
@@ -193,8 +223,31 @@ public class NotesActivity extends AppCompatActivity {
                 hideKeyboard();
                 notesEditText.clearFocus();
                 flatViewModel.update(currentFlat);
+                Toast.makeText(this, "Zapisano uwagi", Toast.LENGTH_SHORT).show();
             }
         });
+
+        notes2Save.setOnClickListener(v -> {
+            if (currentFlat != null) {
+                currentFlat.notesProtocol = notes2EditText.getText().toString();
+                hideKeyboard();
+                notes2EditText.clearFocus();
+                flatViewModel.update(currentFlat);
+                Toast.makeText(this, "Zapisano uwagi do protokołu", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
+            if (!hasFocus && currentFlat != null) {
+                currentFlat.notes = notesEditText.getText().toString();
+                currentFlat.notesProtocol = notes2EditText.getText().toString();
+                flatViewModel.update(currentFlat);
+                Toast.makeText(this, "Zapisano zmiany", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        notesEditText.setOnFocusChangeListener(focusChangeListener);
+        notes2EditText.setOnFocusChangeListener(focusChangeListener);
 
         templateSave.setOnClickListener(v -> saveAsTemplate());
 
@@ -403,8 +456,15 @@ public class NotesActivity extends AppCompatActivity {
         Button boardButton = findViewById(R.id.boardButton);
         TextView titleView = findViewById(R.id.rcdTitle);
         titleView.setText("Mieszkanie numer - " + currentFlat.number + " podsumowanie");
-        Button backSave = findViewById(R.id.backSave);
+        if (isCommonSpace == 1) {
+            titleView.setText("Podsumowanie - " + blockName);
 
+        }
+        Button backSave = findViewById(R.id.backSave);
+        if (isCommonSpace == 1) {
+            backSave.setVisibility(View.GONE);
+            RCDButton.setVisibility(View.GONE);
+        }
         backSave.setOnClickListener(v -> {
             Actions.saveAndMarkReady(currentFlat, this);
 
@@ -414,18 +474,36 @@ public class NotesActivity extends AppCompatActivity {
         });
 
         boardButton.setOnClickListener(v -> {
+            if (isCommonSpace == 1) {
+                Intent intent = new Intent(NotesActivity.this, BoardCommonSpace.class);
+                intent.putExtra("isCommonSpace", 1);
+                intent.putExtra("blockId", currentFlat.blockId);
+                intent.putExtra("flatId", flatId);
+                startActivity(intent);
+                return;
+            }
             Intent intent = new Intent(NotesActivity.this, BoardActivity.class);
             if (catalogId != -1) intent.putExtra("catalogId", catalogId);
             intent.putExtra("flatId", currentFlat.id);
             startActivity(intent);
+
         });
 
         roomButton.setOnClickListener(v -> {
+            if (isCommonSpace == 1) {
+                Intent intent = new Intent(NotesActivity.this, RoomActivity.class);
+                intent.putExtra("isCommonSpace", 1);
+                intent.putExtra("name", blockName);
+                intent.putExtra("flatId", flatId);
+                startActivity(intent);
+                return;
+            }
             Intent intent = new Intent(NotesActivity.this, RoomActivity.class);
             if (catalogId != -1) intent.putExtra("catalogId", catalogId);
             intent.putExtra("flatId", currentFlat.id);
             startActivity(intent);
         });
+
 
         RCDButton.setOnClickListener(v -> {
             Intent intent = new Intent(NotesActivity.this, RCDActivity.class);
@@ -435,6 +513,11 @@ public class NotesActivity extends AppCompatActivity {
         });
 
         backButton.setOnClickListener(v -> {
+            if (isCommonSpace == 1) {
+                Intent intent = new Intent(this, BlockActivity.class);
+                intent.putExtra("blockId", currentFlat.blockId);
+                startActivity(intent);
+            }
             if (currentFlat == null) return;
             if (catalogId != -1) {
                 Intent intent = new Intent(NotesActivity.this, CatalogActivity.class);

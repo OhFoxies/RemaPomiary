@@ -6,6 +6,8 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.PrimaryKey;
 
+import com.rejner.remapomiary.ui.utils.Settings;
+
 import java.util.Date;
 
 @Entity(tableName = "flat",
@@ -36,14 +38,17 @@ public class Flat {
     @ColumnInfo(name = "notes", defaultValue = "")
     public String notes ="";
 
+    @ColumnInfo(name = "notesProtocol", defaultValue = "")
+    public String notesProtocol = "";
+
     @ColumnInfo(name = "circuitNotes", defaultValue = "")
     public String circuitNotes = "";
 
     @ColumnInfo(name = "gradeByUser", defaultValue = "0")
     public int gradeByUser = 0;
-//    TN-S, TN-C
-    @ColumnInfo(name = "type", defaultValue = "TN-S")
-    public String type = "TN-S";
+
+    @ColumnInfo(name = "type", defaultValue = Settings.installationTypeTNS)
+    public String type = Settings.installationTypeTNS;
 
 
     @ColumnInfo(name = "creation_date")

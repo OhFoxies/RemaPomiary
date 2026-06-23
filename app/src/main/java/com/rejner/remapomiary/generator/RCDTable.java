@@ -16,14 +16,18 @@ import com.rejner.remapomiary.generator.constants.Constants;
 import com.rejner.remapomiary.generator.constants.ProFonts;
 import com.rejner.remapomiary.generator.helpers.CellGenerator;
 import com.rejner.remapomiary.generator.helpers.RandomNumber;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class RCDTable {
     private final AppDatabase db;
     private final ArrayList<String> mistakes;
     private String rcdNotes = "";
+    private ArrayList<String> brokenRCDSCommonSpace;
     private int rcdIsGood = 1;
 
     public int getRcdIsGood() {
@@ -37,6 +41,7 @@ public class RCDTable {
     public RCDTable(AppDatabase db) {
         this.db = db;
         mistakes = new ArrayList<>();
+        brokenRCDSCommonSpace = new ArrayList<>();
     }
 
     public ArrayList<String> getMistakes() {
@@ -133,7 +138,7 @@ public class RCDTable {
 //                    badany punkt
                 values.add(om.appliance);
 //                    Model rcd
-                if (rcd.name == null || rcd.type.isEmpty()) {
+                if (rcd.name == null || rcd.type == null || rcd.type.isEmpty()) {
                     values.add("-");
                     mistakes.add("Mieszkanie: " + flat.number + " błąd danych RCD (nazwa)");
                 } else {
@@ -149,7 +154,7 @@ public class RCDTable {
                     values.add("-"); //6
                     values.add("-"); //9
                     values.add("Negatywna"); //10
-                } else if (om.note.equals("nie podłączony bolec") || om.note.equals("zepsute")) {
+                } else if (Settings.noGroundingBolt.equals(om.note) || Settings.brokenOutlet.equals(om.note)) {
                     values.add("-"); //6
                     values.add("-"); //9
                     values.add(om.note); //10
@@ -177,5 +182,137 @@ public class RCDTable {
 
         return table;
 
+    }
+
+    public ArrayList<String> getBrokenRCDSCommonSpace() {
+
+        return brokenRCDSCommonSpace;
+    }
+
+    public PdfPTable createCommonSpaceRCDTable(Flat flat) throws DocumentException {
+        List<RoomInFlat> rooms = db.roomDao().getRoomsForFlatSync(flat.id);
+        boolean hasAnyRCD = false;
+        for (RoomInFlat room : rooms) {
+            List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsForRoomSync(room.id);
+            for (OutletMeasurement om : oms) {
+                if (om.rcdStatus == 1 || om.rcdStatus == 2) {
+                    hasAnyRCD = true;
+                    break;
+                }
+            }
+            if (hasAnyRCD) break;
+        }
+
+        if (!hasAnyRCD) {
+            return null;
+        }
+
+        PdfPTable table = new PdfPTable(8);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2f, 6f, 6f, 2f, 2f, 2f, 2f, 4f});
+
+        String[] headers = {"Lp.", "Badany punkt", "Wyłącznik RCD", "Typ", "IΔn [mA]", "la [mA]", "t rcd [ms]", "Ocena"};
+        for (String header : headers) {
+            Phrase phrase = new Phrase();
+            if (header.contains("[")) {
+                int start = header.indexOf("[");
+                int end = header.indexOf("]");
+                String main = header.substring(0, start).trim();
+                String sub = header.substring(start, end + 1);
+                phrase.add(new Chunk(main + "\n", ProFonts.medium));
+                phrase.add(new Chunk(sub, ProFonts.mediumNotBold));
+            } else {
+                phrase.add(new Chunk(header, ProFonts.medium));
+            }
+
+            PdfPCell cell = new PdfPCell(phrase);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            cell.setPaddingTop(5f);
+            cell.setPaddingBottom(5f);
+            cell.setBackgroundColor(BaseColor.LIGHT_GRAY);
+
+            table.addCell(cell);
+        }
+
+        int index = 1;
+
+        for (RoomInFlat room : rooms) {
+            List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsForRoomSync(room.id);
+            List<OutletMeasurement> filteredOms = new ArrayList<>();
+            for (OutletMeasurement om : oms) {
+                if (om.rcdStatus == 1 || om.rcdStatus == 2) {
+                    filteredOms.add(om);
+                }
+            }
+
+            if (filteredOms.isEmpty()) {
+                continue;
+            }
+
+            if (room.name.equals(Settings.mainRoomName)) {
+                Collections.sort(filteredOms,
+                        Comparator
+                                .comparing((OutletMeasurement c) -> Settings.flatNoAccess.equals(c.note))
+                                .thenComparingInt(c -> {
+                                    try {
+                                        String cleanedNumber = c.appliance.replaceAll("\\D+", "");
+                                        return Integer.parseInt(cleanedNumber);
+                                    } catch (NumberFormatException e) {
+                                        return 0;
+                                    }
+                                })
+                );
+            }
+
+            PdfPCell roomCell = new PdfPCell(new Phrase(room.name, ProFonts.fontNormalBold));
+            roomCell.setColspan(8);
+            roomCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            roomCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            roomCell.setPaddingBottom(5f);
+            roomCell.setPaddingTop(5f);
+            table.addCell(roomCell);
+            int rcdStatusLocal = 0;
+            for (OutletMeasurement om : filteredOms) {
+                List<String> values = new ArrayList<>();
+                values.add(Integer.toString(index)); // Lp.
+                values.add(om.appliance); // Badany punkt
+
+                if (om.rcdName == null || om.rcdName.isEmpty()) {
+                    values.add("-");
+                    mistakes.add("Różnicówka brak nazwy (częśc wspólna " + om.appliance + " pokój" + room.name);
+                } else {
+                    values.add(om.rcdName);
+                }
+
+                values.add("A"); // Typ
+                values.add(String.valueOf(Constants.rcdIdeltaN)); // IΔn [mA]
+
+                if (om.rcdStatus == 2) {
+                    values.add("-");
+                    values.add("-");
+                    values.add("Negatywna");
+                    rcdStatusLocal = 2;
+                    rcdIsGood = 0;
+                } else if (Settings.noGroundingBolt.equals(om.note) || Settings.brokenOutlet.equals(om.note)) {
+                    values.add("-");
+                    values.add("-");
+                    values.add(om.note);
+                } else {
+                    values.add(om.rcdCurrent != null ? om.rcdCurrent.toString() : Integer.toString(RandomNumber.randomInt(19, 25)));
+                    values.add(om.rcdTime != null ? om.rcdTime.toString() : Integer.toString(RandomNumber.randomInt(19, 25)));
+                    values.add("Pozytywna");
+                }
+
+                index++;
+                for (String v : values) {
+                    table.addCell(CellGenerator.createCell(v));
+                }
+            }
+            if (rcdStatusLocal == 2) {
+                brokenRCDSCommonSpace.add("Różnicówka części wspólnej zabezpieczająca pomieszczenie: " + room.name + " jest uszkodzona.");
+            }
+        }
+        return table;
     }
 }

@@ -1,9 +1,12 @@
 package com.rejner.remapomiary.adapters;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -18,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,9 +29,15 @@ import java.util.List;
 
 public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitViewHolder> {
     String[] items = new String[]{"Oświetlenie", "Gniazda 230V", "Piekarnik", "Płyta indukcyjna", "inne"};
+    private boolean isWLZ;
 
-    public CircuitAdapter(OnCircuitActionListener listener) {
+    public CircuitAdapter(OnCircuitActionListener listener, boolean isWLZ) {
         this.listener = listener;
+        this.isWLZ = isWLZ;
+    }
+
+    public void setIsWLZ(boolean isWLZ) {
+        this.isWLZ = isWLZ;
     }
 
     public interface OnCircuitActionListener {
@@ -41,9 +51,35 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
     private List<CircuitCommonSpace> circuits = new ArrayList<>();
     private Context context;
 
+    private RecyclerView attachedRecyclerView;
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        this.attachedRecyclerView = recyclerView;
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView);
+        this.attachedRecyclerView = null;
+    }
+
     public void setCircuits(List<CircuitCommonSpace> circuits) {
+        int oldSize = this.circuits != null ? this.circuits.size() : 0;
+        int newSize = circuits != null ? circuits.size() : 0;
+
         this.circuits = circuits;
+
         notifyDataSetChanged();
+
+        if (newSize > oldSize && oldSize > 0) {
+            if (attachedRecyclerView != null) {
+                attachedRecyclerView.post(() -> {
+                    attachedRecyclerView.smoothScrollToPosition(newSize - 1);
+                });
+            }
+        }
     }
 
     @NonNull
@@ -62,6 +98,8 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         int inneIndex = Arrays.asList(items).indexOf("inne");
         int nameIndex = Arrays.asList(items).indexOf(circuit.name);
 
+        holder.isUserAction = false;
+
         if (nameIndex >= 0 && nameIndex != inneIndex) {
             holder.circuitNameSpinner.setSelection(nameIndex, false);
             holder.circuitInputName.setVisibility(View.GONE);
@@ -73,36 +111,47 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
             holder.circuitInputName.setText(circuit.name != null && circuit.name.equals("inne") ? "" : circuit.name);
         }
 
-        // 1. Zdejmujemy listener
         holder.phasesGroup.setOnCheckedChangeListener(null);
 
-        // 2. Ustawiamy stan na podstawie circuit.type
-        // UWAGA: Zmień 'R.id.radio_1f' i 'R.id.radio_3f' na poprawne ID z Twojego pliku XML!
-        if ("1f".equals(circuit.type)) {
+        if (Settings.installation1f.equals(circuit.type)) {
             holder.phasesGroup.check(R.id.radio1f);
-        } else if ("3f".equals(circuit.type)) {
+        } else if (Settings.installation3f.equals(circuit.type)) {
             holder.phasesGroup.check(R.id.radio3f);
         } else {
-            // Jeśli circuit.type jest null lub pusty, odznaczamy (ważne dla recyclingu)
             holder.phasesGroup.clearCheck();
         }
 
-        // 3. Przypinamy listener, który zaktualizuje obiekt i bazę przy kliknięciu
+        if (isWLZ && circuit.name != null && circuit.name.toLowerCase().contains("lokal")) {
+            Log.e("Wzium", "True dla " + circuit.name.toLowerCase());
+            holder.circuitInputName.setEnabled(false);
+            if (circuit.notes != null && !circuit.notes.isEmpty()) {
+                holder.status.setVisibility(View.VISIBLE);
+                holder.status.setText(circuit.notes);
+            } else {
+                holder.status.setVisibility(View.GONE);
+            }
+
+            holder.circuitNameSpinner.setEnabled(false);
+            holder.circuitNameSpinner.setVisibility(View.GONE);
+            holder.circuitNameSave.setVisibility(View.GONE);
+        } else {
+            holder.circuitInputName.setEnabled(true);
+            holder.circuitNameSpinner.setEnabled(true);
+            holder.circuitNameSpinner.setVisibility(View.VISIBLE);
+            holder.status.setVisibility(View.GONE);
+        }
+
         holder.phasesGroup.setOnCheckedChangeListener((group, checkedId) -> {
             int adapterPosition = holder.getBindingAdapterPosition();
-
             if (adapterPosition != RecyclerView.NO_POSITION && listener != null) {
+                holder.hideKeyboard();
+
                 CircuitCommonSpace currentCircuit = circuits.get(adapterPosition);
-
-                // Aktualizujemy obiekt lokalnie (żeby przewijanie działało poprawnie)
-                // UWAGA: Tutaj też użyj tych samych ID co wyżej
                 if (checkedId == R.id.radio1f) {
-                    currentCircuit.type = "1f";
+                    currentCircuit.type = Settings.installation1f;
                 } else if (checkedId == R.id.radio3f) {
-                    currentCircuit.type = "3f";
+                    currentCircuit.type = Settings.installation3f;
                 }
-
-                // Wysyłamy do Activity/Fragmentu w celu zapisu do bazy
                 listener.onCircuitTypeChange_(currentCircuit, checkedId);
             }
         });
@@ -120,6 +169,9 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         EditText circuitInputName;
         Button circuitNameSave;
         Button deleteCircuit;
+        TextView status;
+
+        boolean isUserAction = false;
 
         public CircuitViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -128,16 +180,58 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
             circuitInputName = itemView.findViewById(R.id.circuitInputName);
             circuitNameSave = itemView.findViewById(R.id.circuitNameSave);
             phasesGroup = itemView.findViewById(R.id.phasesGroup);
+            status = itemView.findViewById(R.id.status);
             deleteCircuit = itemView.findViewById(R.id.deleteCiruit);
+
+            circuitInputName.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    v.postDelayed(() -> {
+                        ViewParent p = itemView.getParent();
+                        RecyclerView mainRv = null;
+                        while (p != null) {
+                            if (p instanceof RecyclerView) {
+                                RecyclerView temp = (RecyclerView) p;
+                                if (temp.getId() == R.id.boardsRecyclerView) {
+                                    mainRv = temp;
+                                    break;
+                                }
+                            }
+                            p = p.getParent();
+                        }
+
+                        if (mainRv != null) {
+                            int[] viewLocation = new int[2];
+                            v.getLocationOnScreen(viewLocation);
+                            int viewBottom = viewLocation[1] + v.getHeight();
+
+                            int[] rvLocation = new int[2];
+                            mainRv.getLocationOnScreen(rvLocation);
+                            int rvBottom = rvLocation[1] + mainRv.getHeight();
+
+                            if (viewBottom > rvBottom) {
+                                float density = v.getContext().getResources().getDisplayMetrics().density;
+                                int extraMargin = (int) (20 * density);
+                                mainRv.smoothScrollBy(0, viewBottom - rvBottom + extraMargin);
+                            }
+                        }
+                    }, 300);
+                }
+            });
 
             setupSpinner();
             setupButtons();
         }
 
+        @SuppressLint("ClickableViewAccessibility")
         private void setupSpinner() {
             ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, items);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             circuitNameSpinner.setAdapter(adapter);
+
+            circuitNameSpinner.setOnTouchListener((v, event) -> {
+                isUserAction = true;
+                return false;
+            });
 
             circuitNameSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
@@ -149,29 +243,37 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
                     String selected = parent.getItemAtPosition(position).toString();
 
                     if ("inne".equalsIgnoreCase(selected)) {
-                        if (circuitInputName.getVisibility() != View.VISIBLE) {
-                            circuitInputName.setVisibility(View.VISIBLE);
-                            circuitNameSave.setVisibility(View.VISIBLE);
+                        circuitInputName.setVisibility(View.VISIBLE);
+                        circuitNameSave.setVisibility(View.VISIBLE);
 
-                            if (Arrays.asList(items).contains(currentCircuit.name) && !currentCircuit.name.equals("inne")) {
-                                circuitInputName.setText("");
-                            }
+                        if (Arrays.asList(items).contains(currentCircuit.name) && !currentCircuit.name.equals("inne")) {
+                            circuitInputName.setText("");
+                        }
 
+                        if (isUserAction) {
                             circuitInputName.requestFocus();
-                            InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-                            if (imm != null) {
-                                imm.showSoftInput(circuitInputName, InputMethodManager.SHOW_IMPLICIT);
-                            }
+                            circuitInputName.postDelayed(() -> {
+                                if (circuitInputName.requestFocus()) {
+                                    InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+                                    if (imm != null) {
+                                        imm.showSoftInput(circuitInputName, 0);
+                                    }
+                                }
+                            }, 200);
                         }
                     } else {
+                        hideKeyboard();
                         circuitInputName.setVisibility(View.GONE);
                         circuitNameSave.setVisibility(View.GONE);
+                        circuitInputName.clearFocus();
 
-                        if (currentCircuit.name != null && !selected.equals(currentCircuit.name) && listener != null) {
+                        if (isUserAction && currentCircuit.name != null && !selected.equals(currentCircuit.name) && listener != null) {
                             currentCircuit.name = selected;
                             listener.onCircuitNameSpinner_(currentCircuit, selected);
                         }
                     }
+
+                    isUserAction = false;
                 }
 
                 @Override
@@ -180,20 +282,44 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         }
 
         private void setupButtons() {
-            circuitNameSave.setOnClickListener(v -> {
-                int position = getBindingAdapterPosition();
-                if (position != RecyclerView.NO_POSITION && listener != null) {
-                    circuits.get(position).name = circuitInputName.getText().toString();
-                    listener.onCircuitNameSave_(circuits.get(position), circuitInputName.getText().toString());
+            circuitNameSave.setOnClickListener(v -> saveName());
+
+            circuitInputName.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                    saveName();
+                    return true;
                 }
+                return false;
             });
 
             deleteCircuit.setOnClickListener(v -> {
                 int position = getBindingAdapterPosition();
                 if (position != RecyclerView.NO_POSITION && listener != null) {
+                    hideKeyboard();
                     listener.onCircuitDelete_(circuits.get(position));
                 }
             });
+        }
+
+        private void saveName() {
+            int position = getBindingAdapterPosition();
+            if (position != RecyclerView.NO_POSITION && listener != null) {
+                hideKeyboard();
+                String name = circuitInputName.getText().toString();
+                if (name.isEmpty()) {
+                    name = "inne";
+                }
+                circuits.get(position).name = name;
+                listener.onCircuitNameSave_(circuits.get(position), name);
+                circuitInputName.clearFocus();
+            }
+        }
+
+        private void hideKeyboard() {
+            InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(circuitInputName.getWindowToken(), 0);
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import com.rejner.remapomiary.data.entities.Circuit;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.List;
 
@@ -27,10 +28,13 @@ public interface CircuitDao {
     @Query("SELECT * FROM circuit WHERE flatId = :flatId")
     LiveData<List<Circuit>> getCircuitsForFlat(int flatId);
 
-    @Query("SELECT * FROM circuit WHERE flatId = :flatId AND type = '3f'")
+    @Query("SELECT * FROM circuit WHERE flatId = :flatId AND type = '" + Settings.installation3f  + "'")
     List<Circuit> getCircuitsForFlatSync3f(int flatId);
 
-    @Query("SELECT * FROM circuit WHERE flatId = :flatId AND type != '3f'")
+    @Query("SELECT * FROM circuit WHERE flatId = :flatId AND type != '" + Settings.installation3f  + "'")
     List<Circuit> getCircuitsForFlatSync(int flatId);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM circuit WHERE flatId = :flatId AND type = '" + Settings.installation3f  + "')")
+    boolean isFlat3fSync(int flatId);
 
 }

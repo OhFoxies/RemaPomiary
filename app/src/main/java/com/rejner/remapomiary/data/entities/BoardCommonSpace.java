@@ -7,6 +7,8 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.PrimaryKey;
 
+import com.rejner.remapomiary.ui.utils.Settings;
+
 import java.util.Date;
 
 @Entity(tableName = "board_common_space",
@@ -21,8 +23,8 @@ public class BoardCommonSpace {
     @ColumnInfo(name = "name")
     public String name;
 
-    @ColumnInfo(name = "type", defaultValue = "TN-S")
-    public String type = "TN-S";
+    @ColumnInfo(name = "type", defaultValue = Settings.installationTypeTNS)
+    public String type = Settings.installationTypeTNS;
 
     @ColumnInfo(name = "notes", defaultValue = "")
     public String notes;

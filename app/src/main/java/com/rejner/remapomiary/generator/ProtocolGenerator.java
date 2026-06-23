@@ -27,6 +27,7 @@ import com.itextpdf.text.pdf.draw.LineSeparator;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
+import com.rejner.remapomiary.data.entities.BoardCommonSpace;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.FlatFullData;
@@ -34,6 +35,7 @@ import com.rejner.remapomiary.data.entities.ProtocolNumber;
 import com.rejner.remapomiary.generator.constants.ProFonts;
 import com.rejner.remapomiary.generator.helpers.CellGenerator;
 import com.rejner.remapomiary.generator.helpers.FlatPageNumberEvent;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -193,25 +195,40 @@ public class ProtocolGenerator {
 
                 String endNotes = "";
                 document.newPage();
-                pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number, writer);
+                boolean isCommonSpace = flat.flat.isCommonSpace == 1;
+
+                if (isCommonSpace) {
+                    pageEvent.startNewFlat("Część wspólna/administracyjna blok: " + blockFullData1.block.street + " " + blockFullData1.block.number, writer);
+
+                } else {
+                    pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number, writer);
+
+                }
 
                 addHeader();
                 String protocolNumberTitle;
-                if (!flat.flat.status.contains("niewykonany")) {
+                if (!flat.flat.status.contains(Settings.measurementNotReady) || isCommonSpace) {
                     protocolNumberTitle = "Protokół nr w/" + currentProtocolNumber + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
                 } else {
                     protocolNumberTitle = "Oświadczenie";
                 }
 
-                addTitleSection(protocolNumberTitle, flat.flat.type, flat.flat.hasRCD, flat.flat.status);
+                addTitleSection(protocolNumberTitle, flat.flat.type, flat.flat.hasRCD, flat.flat.status, flat.flat);
                 BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
 
                 String clientData = blockFullData.client.name + "\n" +
                         "ul. " + blockFullData.client.street + ", " + blockFullData.client.postal_code + " " + blockFullData.client.city;
-                String objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
+                String objectData;
+                if (isCommonSpace) {
+                    objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
+
+                } else {
+                    objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
+
+                }
                 addDetailsTable(clientData, objectData);
 
-                if (flat.flat.status.contains("niewykonany")) {
+                if (flat.flat.status.contains(Settings.measurementNotReady) && !isCommonSpace) {
                     skippedFlats.add("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
                     Paragraph gradeTitle = new Paragraph("3. Orzeczenie", ProFonts.fontNormalBold);
                     gradeTitle.setSpacingBefore(titleSpacing);
@@ -265,166 +282,102 @@ public class ProtocolGenerator {
 
                     continue;
                 }
-                addData(flat.flat.type, flat.flat.creation_date);
+                addData(flat.flat.type, flat.flat.creation_date, flat.flat);
 
                 List<Circuit> circuits3f = db.circuitDao().getCircuitsForFlatSync3f(flat.flat.id);
-                if (!circuits3f.isEmpty()) {
-                    Paragraph circuitsFor3fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 3f " + flat.flat.type, ProFonts.fontNormalBold);
-                    circuitsFor3fTitle.setAlignment(Element.ALIGN_LEFT);
-                    circuitsFor3fTitle.setSpacingAfter(5f);
-                    document.add(circuitsFor3fTitle);
+                if (!isCommonSpace) {
+                    if (!circuits3f.isEmpty()) {
+                        Paragraph circuitsFor3fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 3f " + flat.flat.type, ProFonts.fontNormalBold);
+                        circuitsFor3fTitle.setAlignment(Element.ALIGN_LEFT);
+                        circuitsFor3fTitle.setSpacingAfter(5f);
+                        document.add(circuitsFor3fTitle);
 
-                    TableFor3f tableFor3fGenerator = new TableFor3f();
+                        TableFor3f tableFor3fGenerator = new TableFor3f(db);
 
-                    PdfPTable table = tableFor3fGenerator.createMeasurementTableFor3f(circuits3f, flat.flat);
-                    document.add(table);
-                    table.setSpacingAfter(5f);
+                        PdfPTable table = tableFor3fGenerator.createMeasurementTableFor3f(circuits3f, flat.flat);
+                        document.add(table);
+                        table.setSpacingAfter(5f);
 
-                    if (flat.flat.type.equals("TN-S")) {
-                        Paragraph f3Legend = new Paragraph();
-
-                        f3Legend.setFont(normalFont);
-
-                        // R L1-L2
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
-                        subL1L2.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL1L2);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
-
-                        // R L1-PE
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1PE = new Chunk("Lx-PE", subscriptFont);
-                        subL1PE.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL1PE);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i PE, ", normalFont));
-
-                        // R L1-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1N = new Chunk("Lx-N", subscriptFont);
-                        subL1N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL1N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
-
-                        // R N-PE
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subNPE = new Chunk("N-PE", subscriptFont);
-                        subNPE.setTextRise(-subscriptOffset);
-                        f3Legend.add(subNPE);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
-
-                        // Rw
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subW = new Chunk("w", subscriptFont);
-                        subW.setTextRise(-subscriptOffset);
-                        f3Legend.add(subW);
-                        f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
-
-                        // Ustawienia końcowe i dodanie do dokumentu
-                        f3Legend.setSpacingAfter(7f);
-                        document.add(f3Legend);
-                    } else {
-                        Paragraph f3Legend = new Paragraph();
-                        f3Legend.setFont(normalFont); // Ustaw domyślną czcionkę
-
-                        // R L1-L2
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
-                        subL1L2.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL1L2);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
-
-                        // R L1-N
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subL1N = new Chunk("Lx-N", subscriptFont);
-                        subL1N.setTextRise(-subscriptOffset);
-                        f3Legend.add(subL1N);
-                        f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
-
-                        // Rw
-                        f3Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subW = new Chunk("W", subscriptFont);
-                        subW.setTextRise(-subscriptOffset);
-                        f3Legend.add(subW);
-                        f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
-
-                        // Ustawienia końcowe i dodanie do dokumentu
-                        f3Legend.setSpacingAfter(7f);
-                        document.add(f3Legend);
+                        add3fLegend(flat.flat.type);
                     }
 
+                } else {
+                    List<BoardCommonSpace> boards = db.boardCommonSpaceDao().getBoardsForFlatSync(flat.flat.id);
+
+                    if (!boards.isEmpty()) {
+                        TableFor3f tableFor3fGenerator = new TableFor3f(db);
+                        
+                        // Generujemy tabele dla obu typów instalacji w części wspólnej
+                        String[] types = {Settings.installationTypeTNS, Settings.installationTypeTNC};
+                        for (String type : types) {
+                            PdfPTable tableFor3f = tableFor3fGenerator.createMeasurementTableFor3fCommonSpace(boards, type);
+
+                            if (tableFor3f != null) {
+                                Paragraph circuitsFor3fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 3f " + type, ProFonts.fontNormalBold);
+                                circuitsFor3fTitle.setAlignment(Element.ALIGN_LEFT);
+                                circuitsFor3fTitle.setSpacingAfter(5f);
+                                document.add(circuitsFor3fTitle);
+
+                                document.add(tableFor3f);
+                                tableFor3f.setSpacingAfter(5f);
+
+                                add3fLegend(type);
+                            }
+                        }
+                    }
                 }
 
                 List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
-                if (!circuits.isEmpty()) {
-                    Paragraph circuitsFor1fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 1f " + flat.flat.type, ProFonts.fontNormalBold);
-                    circuitsFor1fTitle.setAlignment(Element.ALIGN_LEFT);
-                    circuitsFor1fTitle.setSpacingAfter(5f);
-                    document.add(circuitsFor1fTitle);
 
-                    TableFor1f tableFor1fGenerator = new TableFor1f(db);
+                if (!isCommonSpace) {
+                    if (!circuits.isEmpty()) {
+                        Paragraph circuitsFor1fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 1f " + flat.flat.type, ProFonts.fontNormalBold);
+                        circuitsFor1fTitle.setAlignment(Element.ALIGN_LEFT);
+                        circuitsFor1fTitle.setSpacingAfter(5f);
+                        document.add(circuitsFor1fTitle);
 
-                    PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1f(circuits, flat.flat);
-                    document.add(tableFor1f);
-                    tableFor1f.setSpacingAfter(5f);
+                        TableFor1f tableFor1fGenerator = new TableFor1f(db);
 
-                    if (flat.flat.type.equals("TN-S")) {
-                        Paragraph f1Legend = new Paragraph();
-                        f1Legend.setFont(normalFont);
+                        PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1f(circuits, flat.flat);
+                        document.add(tableFor1f);
+                        tableFor1f.setSpacingAfter(5f);
 
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subLPE = new Chunk("L-PE", subscriptFont);
-                        subLPE.setTextRise(-subscriptOffset);
-                        f1Legend.add(subLPE);
-                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i PE, ", normalFont));
-
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subLN = new Chunk("L-N", subscriptFont);
-                        subLN.setTextRise(-subscriptOffset);
-                        f1Legend.add(subLN);
-                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
-
-
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subNPE = new Chunk("N-PE", subscriptFont);
-                        subNPE.setTextRise(-subscriptOffset);
-                        f1Legend.add(subNPE);
-                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
-
-
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subRw = new Chunk("W", subscriptFont);
-                        subRw.setTextRise(-subscriptOffset);
-                        f1Legend.add(subRw);
-                        f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
-
-                        f1Legend.setSpacingAfter(7f);
-                        document.add(f1Legend);
-                    } else {
-                        Paragraph f1Legend = new Paragraph();
-                        f1Legend.setFont(normalFont);
-
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subLN = new Chunk("L-N", subscriptFont);
-                        subLN.setTextRise(-subscriptOffset);
-                        f1Legend.add(subLN);
-                        f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
-
-
-                        f1Legend.add(new Chunk("R", ProFonts.medium));
-                        Chunk subRw = new Chunk("W", subscriptFont);
-                        subRw.setTextRise(-subscriptOffset);
-                        f1Legend.add(subRw);
-                        f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
-
-                        f1Legend.setSpacingAfter(7f);
-                        document.add(f1Legend);
+                        add1fLegend(flat.flat.type);
                     }
+                } else {
+                    List<BoardCommonSpace> boards = db.boardCommonSpaceDao().getBoardsForFlatSync(flat.flat.id);
 
+                    if (!boards.isEmpty()) {
+                        TableFor1f tableFor1fGenerator = new TableFor1f(db);
+                        
+                        String[] types = {Settings.installationTypeTNS, Settings.installationTypeTNC};
+                        for (String type : types) {
+                            PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1fCommonSpace(boards, type);
+                            
+                            if (tableFor1f != null) {
+                                Paragraph circuitsFor1fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 1f " + type, ProFonts.fontNormalBold);
+                                circuitsFor1fTitle.setAlignment(Element.ALIGN_LEFT);
+                                circuitsFor1fTitle.setSpacingAfter(5f);
+                                document.add(circuitsFor1fTitle);
+
+                                document.add(tableFor1f);
+                                tableFor1f.setSpacingAfter(5f);
+
+                                add1fLegend(type);
+                            }
+                        }
+                    }
+                }
+                String addition = "";
+                if (isCommonSpace) {
+                    BoardCommonSpace bcp = db.boardCommonSpaceDao().getBoardByNameSync(flat.flat.id, Settings.mainBoardName);
+                    if (bcp != null && db.circuitCommonSpaceDao().areThereNotDoneFlatsBoard(bcp.id))  {
+                        endNotes += "Ocena pomiaru pętli zwarcia lub rezystancji izolacji lokalu oznaczona jako 'Brak dostępu' oznacza, że właściciel bądź lokator nie udostępnił lokalu do wykonania przeglądu instalacji. \n";
+                        addition = " Oprócz WLZ mieszkań, w których nie został wykonany przegląd";
+                    }
                 }
 
-
-                if (flat.flat.hasRCD == 1) {
+                if (flat.flat.hasRCD == 1 && !isCommonSpace) {
                     Paragraph RCDTitle = new Paragraph("Wyniki z badania wyłączników różnicowoprądowych ", ProFonts.fontNormalBold);
                     RCDTitle.setAlignment(Element.ALIGN_LEFT);
                     RCDTitle.setSpacingAfter(5f);
@@ -439,8 +392,18 @@ public class ProtocolGenerator {
                     if (!rcdTableGenerator.getMistakes().isEmpty()) {
                         rcdMistakes.addAll(rcdTableGenerator.getMistakes());
                     }
-                    if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
-                        endNotes += rcdTableGenerator.getRcdNotes() + "\n";
+                    if (!rcdTableGenerator.getRcdNotes().isEmpty() || rcdIsGood == 0) {
+                        endNotes += "Różnicówka: ";
+                        if (rcdIsGood == 0) {
+                            endNotes += "Wyłącznik różnicowoprądowy jest niesprawny, zaleca się wymianę. ";
+                        }
+                        if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
+                            endNotes += rcdTableGenerator.getRcdNotes() + "\n";
+
+                        } else {
+                            endNotes += "\n";
+                        }
+
                     }
 
                     Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
@@ -449,46 +412,81 @@ public class ProtocolGenerator {
                     rcdLegend.setSpacingAfter(7f);
                     document.add(rcdLegend);
 
-                }
+                } else if (isCommonSpace) {
+                    RCDTable rcdTableGenerator = new RCDTable(db);
+                    PdfPTable rcdTable = rcdTableGenerator.createCommonSpaceRCDTable(flat.flat);
 
-                if (!circuits.isEmpty()) {
-                    Paragraph omTableTitle = new Paragraph("Wynik pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormalBold);
-                    omTableTitle.setAlignment(Element.ALIGN_LEFT);
-                    omTableTitle.setSpacingAfter(5f);
-                    document.add(omTableTitle);
+                    if (rcdTable != null) {
+                        Paragraph RCDTitle = new Paragraph("Wyniki z badania wyłączników różnicowoprądowych ", ProFonts.fontNormalBold);
+                        RCDTitle.setAlignment(Element.ALIGN_LEFT);
+                        RCDTitle.setSpacingAfter(5f);
+                        document.add(RCDTitle);
 
-                    OmTable omTableGenerator = new OmTable(db);
+                        document.add(rcdTable);
+                        rcdTable.setSpacingAfter(5f);
+                        rcdIsGood = rcdTableGenerator.getRcdIsGood();
+                        if (!rcdTableGenerator.getMistakes().isEmpty()) {
+                            rcdMistakes.addAll(rcdTableGenerator.getMistakes());
+                        }
 
-                    PdfPTable omTable = omTableGenerator.createOmTable(flat.flat);
-                    document.add(omTable);
-                    omTable.setSpacingAfter(5f);
-                    omGrade = omTableGenerator.getGrade();
-                    if (!omTableGenerator.getMistakes().isEmpty()) {
-                        omMistakes.addAll(omTableGenerator.getMistakes());
+                        if (rcdIsGood == 0) {
+                            for (String note : rcdTableGenerator.getBrokenRCDSCommonSpace()){
+                                endNotes += note + "\n";
+                            }
+                        }
+
+                        Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
+                                "Ia [mA]: prąd powodujący wyłączenie RCD, " +
+                                "t rcd [ms]: zmierzony czas wyłączenia RCD", ProFonts.mediumNotBold);
+                        rcdLegend.setSpacingAfter(7f);
+                        document.add(rcdLegend);
                     }
-                    Paragraph omLegend = new Paragraph("Typ: charakterystyka bezpiecznika, In [A]: prąd nominalny bezpiecznika, " +
-                            "Ia [A]: prąd powodujący wyzwolenie bezpiecznika, " +
-                            "Zs [Ω]: zmierzona impedancja pętli zwarciowej, " +
-                            "Za [Ω]: wartość wymagana impedancji pętli zwarciowej: Za = (Uo/Ia)", ProFonts.mediumNotBold);
-                    omLegend.setSpacingAfter(15f);
-                    document.add(omLegend);
-
                 }
-                if (!flat.flat.notes.isEmpty()) {
-                    endNotes += flat.flat.circuitNotes;
+
+                if (!circuits.isEmpty() || isCommonSpace) {
+                    OmTable omTableGenerator = new OmTable(db);
+                    PdfPTable omTable;
+                    if (isCommonSpace) {
+                        omTable = omTableGenerator.createCommonSpaceOmTable(flat.flat);
+                    } else {
+                        omTable = omTableGenerator.createOmTable(flat.flat);
+                    }
+
+                    if (omTable != null) {
+                        Paragraph omTableTitle = new Paragraph("Wynik pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormalBold);
+                        omTableTitle.setAlignment(Element.ALIGN_LEFT);
+                        omTableTitle.setSpacingAfter(5f);
+                        document.add(omTableTitle);
+
+                        document.add(omTable);
+                        omTable.setSpacingAfter(5f);
+                        omGrade = omTableGenerator.getGrade();
+                        if (!omTableGenerator.getMistakes().isEmpty()) {
+                            omMistakes.addAll(omTableGenerator.getMistakes());
+                        }
+                        Paragraph omLegend = new Paragraph("Typ: charakterystyka bezpiecznika, In [A]: prąd nominalny bezpiecznika, " +
+                                "Ia [A]: prąd powodujący wyzwolenie bezpiecznika, " +
+                                "Zs [Ω]: zmierzona impedancja pętli zwarciowej, " +
+                                "Za [Ω]: wartość wymagana impedancji pętli zwarciowej: Za = (Uo/Ia)", ProFonts.mediumNotBold);
+                        omLegend.setSpacingAfter(15f);
+                        document.add(omLegend);
+                    }
+                }
+                if (!flat.flat.circuitNotes.isEmpty()) {
+                    endNotes += "Rozdzielnia: " + flat.flat.circuitNotes + "\n";
+                }
+                if (!flat.flat.notesProtocol.isEmpty()) {
+                    endNotes += "Inne: " + flat.flat.notesProtocol;
                 }
                 int next = 7;
-                if (flat.flat.hasRCD == 1) {
-                    if (rcdIsGood == 0) {
-                       endNotes += " Wyłącznik różnicowoprądowy jest niesprawny, zaleca się wymianę. ";
-                    }
-                }
+
                 if (!endNotes.isEmpty()) {
+                    endNotes = endNotes.strip();
                     createNotes(endNotes);
                     next = 8;
                 }
                 generatedFlats++;
-                createGrade(next, flat.flat);
+                createGrade(next, flat.flat, addition);
                 next++;
                 createEndSummary(next, flat.flat);
                 if (allFlats || saveData) {
@@ -514,6 +512,108 @@ public class ProtocolGenerator {
         } finally {
             closeDocument();
         }
+    }
+
+    private void add3fLegend(String type) throws DocumentException {
+        Paragraph f3Legend = new Paragraph();
+        f3Legend.setFont(normalFont);
+
+        if (type.equals(Settings.installationTypeTNS)) {
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
+            subL1L2.setTextRise(-subscriptOffset);
+            f3Legend.add(subL1L2);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subL1PE = new Chunk("Lx-PE", subscriptFont);
+            subL1PE.setTextRise(-subscriptOffset);
+            f3Legend.add(subL1PE);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i PE, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subL1N = new Chunk("Lx-N", subscriptFont);
+            subL1N.setTextRise(-subscriptOffset);
+            f3Legend.add(subL1N);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subNPE = new Chunk("N-PE", subscriptFont);
+            subNPE.setTextRise(-subscriptOffset);
+            f3Legend.add(subNPE);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subW = new Chunk("w", subscriptFont);
+            subW.setTextRise(-subscriptOffset);
+            f3Legend.add(subW);
+            f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
+        } else {
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subL1L2 = new Chunk("Lx-Lx", subscriptFont);
+            subL1L2.setTextRise(-subscriptOffset);
+            f3Legend.add(subL1L2);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i Lx, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subL1N = new Chunk("Lx-N", subscriptFont);
+            subL1N.setTextRise(-subscriptOffset);
+            f3Legend.add(subL1N);
+            f3Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami Lx i N, ", normalFont));
+
+            f3Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subW = new Chunk("W", subscriptFont);
+            subW.setTextRise(-subscriptOffset);
+            f3Legend.add(subW);
+            f3Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
+        }
+        f3Legend.setSpacingAfter(7f);
+        document.add(f3Legend);
+    }
+
+    private void add1fLegend(String type) throws DocumentException {
+        Paragraph f1Legend = new Paragraph();
+        f1Legend.setFont(normalFont);
+
+        if (type.equals(Settings.installationTypeTNS)) {
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subLPE = new Chunk("L-PE", subscriptFont);
+            subLPE.setTextRise(-subscriptOffset);
+            f1Legend.add(subLPE);
+            f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i PE, ", normalFont));
+
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subLN = new Chunk("L-N", subscriptFont);
+            subLN.setTextRise(-subscriptOffset);
+            f1Legend.add(subLN);
+            f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
+
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subNPE = new Chunk("N-PE", subscriptFont);
+            subNPE.setTextRise(-subscriptOffset);
+            f1Legend.add(subNPE);
+            f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami N i PE, ", normalFont));
+
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subRw = new Chunk("W", subscriptFont);
+            subRw.setTextRise(-subscriptOffset);
+            f1Legend.add(subRw);
+            f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
+        } else {
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subLN = new Chunk("L-N", subscriptFont);
+            subLN.setTextRise(-subscriptOffset);
+            f1Legend.add(subLN);
+            f1Legend.add(new Chunk(": zmierzona rezystancja izolacji pomiędzy obwodami L i N, ", normalFont));
+
+            f1Legend.add(new Chunk("R", ProFonts.medium));
+            Chunk subRw = new Chunk("W", subscriptFont);
+            subRw.setTextRise(-subscriptOffset);
+            f1Legend.add(subRw);
+            f1Legend.add(new Chunk(": wymagana wartość rezystancji.", normalFont));
+        }
+        f1Legend.setSpacingAfter(7f);
+        document.add(f1Legend);
     }
 
     public void createEndSummary(int next, Flat flat) throws DocumentException {
@@ -592,7 +692,7 @@ public class ProtocolGenerator {
         document.add(notes);
     }
 
-    private void createGrade(int next, Flat flat) throws DocumentException {
+    private void createGrade(int next, Flat flat, String additon) throws DocumentException {
 
 
         Paragraph gradeTitle = new Paragraph(next + ". Orzeczenie", ProFonts.fontNormalBold);
@@ -618,9 +718,19 @@ public class ProtocolGenerator {
         }
 
         if (finalGrade.equals("Instalacja dopuszczona do użytku po usunięciu usterek.")) {
+            if (flat.isCommonSpace == 1) {
+                if (additon != null && !additon.isEmpty()) {
+                    finalGrade += additon;
+                }
+            }
             grade1Flats.add(flat.number);
         }
         if (finalGrade.equals("Instalacja dopuszczona do użytku.")) {
+            if (flat.isCommonSpace == 1) {
+                if (additon != null && !additon.isEmpty()) {
+                    finalGrade += additon;
+                }
+            }
             grade0Flats.add(flat.number);
 
         }
@@ -761,7 +871,7 @@ public class ProtocolGenerator {
 
     }
 
-    private void addData(String type, Date date) throws DocumentException {
+    private void addData(String type, Date date, Flat flat) throws DocumentException {
 
 
         Paragraph measurementsCon = new Paragraph("3. Warunki pomiarów", ProFonts.fontNormalBold);
@@ -769,10 +879,23 @@ public class ProtocolGenerator {
         measurementsCon.setSpacingAfter(titleSpacingA);
         measurementsCon.setSpacingBefore(titleSpacing);
 
+        Paragraph con1;
 
-        Paragraph con1 = new Paragraph("układ sieci: " + type + ", napięcie względem ziemi Uo = 230 [V], " + "napięcie probiercze: 500 [V]", ProFonts.fontNormal);
+        if (flat.isCommonSpace != 0) {
+            boolean tnc = db.boardCommonSpaceDao().hasTncBoardSync(flat.id);
+            boolean tns = db.boardCommonSpaceDao().hasTnsBoardSync(flat.id);
+            if (tnc && tns) {
+                type = "TN-C i TN-S";
+            } else if (tnc) {
+                type = "TN-C";
+            } else {
+                type = "TN-S";
+            }
+        }
+        con1 = new Paragraph("układ sieci: " + type + ", napięcie względem ziemi Uo = 230 [V], " + "napięcie probiercze: 500 [V]", ProFonts.fontNormal);
         con1.setAlignment(Element.ALIGN_LEFT);
         con1.setIndentationLeft(indentation);
+
 
         Paragraph meDate = new Paragraph("4. Data badania", ProFonts.fontNormalBold);
         meDate.setSpacingBefore(titleSpacing);
@@ -878,13 +1001,14 @@ public class ProtocolGenerator {
     }
 
 
-    private void addTitleSection(String protocolNumber, String type, int hasRCD, String status) throws DocumentException {
+    private void addTitleSection(String protocolNumber, String type, int hasRCD, String status, Flat flat) throws DocumentException {
 
         Paragraph title = new Paragraph(protocolNumber, ProFonts.fontBold14);
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
-        if (status.contains("niewykonany")) {
+
+        if (status.contains(Settings.measurementNotReady)) {
             Paragraph subtitle = new Paragraph("Z badań okresowych instalacji elektrycznej", ProFonts.fontNormal);
             subtitle.setAlignment(Element.ALIGN_CENTER);
             subtitle.setSpacingBefore(5f);
@@ -898,24 +1022,53 @@ public class ProtocolGenerator {
         subtitle.setSpacingAfter(15f);
         document.add(subtitle);
 
+        if (flat.isCommonSpace == 0) {
+            Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
+            desc1.setAlignment(Element.ALIGN_LEFT);
+            document.add(desc1);
+        } else {
+            boolean tnc = db.boardCommonSpaceDao().hasTncBoardSync(flat.id);
+            boolean tns = db.boardCommonSpaceDao().hasTnsBoardSync(flat.id);
+            if (tnc && tns) {
+                type = "TN-C i TN-S";
+            } else if (tnc) {
+                type = "TN-C";
+            } else {
+                type = "TN-S";
+            }
+            Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
+            desc1.setAlignment(Element.ALIGN_LEFT);
+            document.add(desc1);
+        }
 
-        Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
-        desc1.setAlignment(Element.ALIGN_LEFT);
-        document.add(desc1);
 
         Paragraph desc2 = new Paragraph("Wynik z pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormal);
         desc2.setAlignment(Element.ALIGN_LEFT);
-
-        if (hasRCD == 1) {
-            Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
-            desc3.setAlignment(Element.ALIGN_LEFT);
-            desc3.setSpacingAfter(25f);
-            document.add(desc2);
-            document.add(desc3);
+        if (flat.isCommonSpace == 0) {
+            if (hasRCD == 1) {
+                Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
+                desc3.setAlignment(Element.ALIGN_LEFT);
+                desc3.setSpacingAfter(25f);
+                document.add(desc2);
+                document.add(desc3);
+            } else {
+                desc2.setSpacingAfter(25f);
+                document.add(desc2);
+            }
         } else {
-            desc2.setSpacingAfter(25f);
-            document.add(desc2);
+            boolean rcdInCommonSpace = db.outletMeasurementDao().hasAnyCommonSpaceRcdSync(flat.id);
+            if (rcdInCommonSpace) {
+                Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
+                desc3.setAlignment(Element.ALIGN_LEFT);
+                desc3.setSpacingAfter(25f);
+                document.add(desc2);
+                document.add(desc3);
+            } else {
+                desc2.setSpacingAfter(25f);
+                document.add(desc2);
+            }
         }
+
     }
 
 

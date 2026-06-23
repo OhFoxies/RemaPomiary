@@ -1,6 +1,8 @@
 package com.rejner.remapomiary.generator.constants;
 
 public class BreakerC {
+    public final static String  name = "C";
+
     public double ia;
     public double za;
     public double in;

@@ -12,6 +12,7 @@ import androidx.room.Update;
 
 import com.rejner.remapomiary.data.entities.RoomFullData;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.List;
 @Dao
@@ -35,7 +36,7 @@ public interface RoomDao {
     @Query("SELECT * FROM room WHERE flatId = :flatId ORDER BY id ASC")
     List<RoomInFlat> getRoomsForFlatSync(int flatId);
 
-    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = 'Lokale'")
+    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = '" + Settings.mainRoomName  + "'")
     RoomInFlat getMainCommonSpaceRoom(int flatId);
     @Transaction
     @Query("SELECT * FROM room WHERE id = :roomId")
@@ -45,6 +46,6 @@ public interface RoomDao {
     long insert2(RoomInFlat room);
 
     // Metoda synchroniczna (bez LiveData), potrzebna do sprawdzenia w tle
-    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = 'Lokale' LIMIT 1")
+    @Query("SELECT * FROM room WHERE flatId = :flatId AND name = '" + Settings.mainRoomName  + "' LIMIT 1")
     RoomInFlat getMainRoomSync(int flatId);
 }

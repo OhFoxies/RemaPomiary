@@ -18,7 +18,7 @@ import java.util.List;
 public interface BoardCommonSpaceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(BoardCommonSpace board);
+    long insert(BoardCommonSpace board);
 
     @Update
     void update(BoardCommonSpace board);
@@ -30,7 +30,19 @@ public interface BoardCommonSpaceDao {
     @Query("SELECT * FROM board_common_space WHERE flatId = :flatId")
     LiveData<List<BoardCommonSpace>> getBoardsForFlat(int flatId);
 
+    @Query("SELECT * FROM board_common_space WHERE flatId = :flatId")
+    List<BoardCommonSpace> getBoardsForFlatSync(int flatId);
+
     @Transaction
     @Query("SELECT * FROM board_common_space WHERE flatId = :flatId ORDER BY creation_date DESC")
     LiveData<List<BoardsFullData>> getBoardsWithCircuitsForFlat(int flatId);
+
+    @Query("SELECT * FROM board_common_space WHERE flatId = :flatId AND name = :name LIMIT 1")
+    BoardCommonSpace getBoardByNameSync(int flatId, String name);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM board_common_space WHERE flatId = :flatId AND type = 'TN-C')")
+    boolean hasTncBoardSync(int flatId);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM board_common_space WHERE flatId = :flatId AND type = 'TN-S')")
+    boolean hasTnsBoardSync(int flatId);
 }

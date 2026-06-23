@@ -7,15 +7,12 @@
     android:padding="16dp"
     android:orientation="vertical"
     android:layout_marginBottom="16dp"
-
     android:layout_height="wrap_content">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_marginBottom="20dp"
-
         android:layout_height="wrap_content">
-
 
         <TextView
             android:id="@+id/boardName"
@@ -37,16 +34,47 @@
             android:layout_height="wrap_content"
             android:backgroundTint="#f23022"
             style="@style/Widget.MaterialComponents.Button"
-
             android:text="🗑️ Usuń rozdzielnie" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <LinearLayout
+        android:id="@+id/extraInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone"
+        android:background="@drawable/round_corners">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="Rozdzielnia WLZ mieszkań"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="10dp"
+            android:textColor="#333333" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pomiar WLZ mieszkania jest dodawany automatycznie po wykonaniu w nim pomiaru. Faza mieszkania ustawia się automatycznie - jeśli w rozdzielni mieszkania widnieje obwód 3fazowy to WLZ zostanie dodany jako 3 fazowy. Fazy odświeżają się przy zmianie statusu mieszkania. Jeśli istnieje potrzeba odświeżenia faz, nazw mieszkań użyj przycisku poniżej."
+            android:textSize="14sp"
+            android:layout_marginBottom="10dp"
+            android:textColor="#333333" />
+
+        <Button
+            android:id="@+id/generateButton"
+            android:layout_width="match_parent"
+            style="@style/Widget.MaterialComponents.Button"
+            android:backgroundTint="#3FAB1F"
+            android:layout_height="wrap_content"
+            android:text="Odśwież" />
+    </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_marginBottom="30dp"
-
         android:layout_height="wrap_content"
         android:padding="16dp"
         android:background="@color/white">
@@ -85,13 +113,30 @@
                 android:id="@+id/radioTNC"
                 android:layout_width="wrap_content"
                 android:textSize="20sp"
-
                 android:layout_height="wrap_content"
                 android:text="TN-C" />
         </RadioGroup>
-
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <Button
+        android:id="@+id/toggleCircuitsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pokaż obwody"
+        android:visibility="gone"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_marginBottom="8dp"/>
+
+    <ProgressBar
+        android:id="@+id/progressBarCircuits"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp"/>
+
     <LinearLayout
+        android:id="@+id/circuitsHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="6dp"
@@ -104,11 +149,20 @@
             android:layout_weight="1"
             android:gravity="center"
             android:layout_marginEnd="10dp"
-
             android:text="Nr"
             android:textSize="16sp"
             android:textStyle="bold" />
-
+        <TextView
+            android:id="@+id/statusHeader"
+            android:visibility="gone"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:textStyle="bold"
+            android:text="Status"
+            android:textSize="16sp" />
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -117,8 +171,8 @@
             android:text="Nazwa obwodu"
             android:textSize="16sp"
             android:layout_marginEnd="10dp"
-
             android:textStyle="bold" />
+
 
         <TextView
             android:layout_width="0dp"
@@ -127,7 +181,6 @@
             android:gravity="center"
             android:text="Faza"
             android:layout_marginEnd="10dp"
-
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -139,9 +192,7 @@
             android:text="Usuń"
             android:textSize="16sp"
             android:textStyle="bold" />
-
     </LinearLayout>
-
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/circuitsRecyclerView"
@@ -149,11 +200,11 @@
         android:layout_height="wrap_content"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tools:listitem="@layout/circuit_item"
-
-        android:nestedScrollingEnabled="false"
-        />
-
-
+        android:nestedScrollingEnabled="true"
+        android:scrollbars="vertical"
+        android:scrollbarThumbVertical="@android:color/darker_gray"
+        android:scrollbarSize="5dp"
+        android:fadeScrollbars="false" />
 
     <Button
         android:id="@+id/addCircuit"
@@ -161,7 +212,6 @@
         android:layout_height="wrap_content"
         android:text="➕ Dodaj obwód"
         style="@style/Widget.MaterialComponents.Button"
-
         android:textColor="@android:color/white"
         android:backgroundTint="#669900"/>
 
@@ -173,15 +223,30 @@
         android:layout_marginTop="10dp"
         android:orientation="vertical">
 
-
-        <TextView
-            android:id="@+id/textView17"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="24sp"
-            android:layout_marginBottom="15dp"
-            android:textStyle="bold"
-            android:text="Uwagi do rozdzielni" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/textView17"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:text="Uwagi do rozdzielni" />
+
+            <Button
+                android:id="@+id/saveBoardNotes"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:backgroundTint="#ff0099cc"
+                android:text="✔ Zapisz"
+                android:layout_height="wrap_content"
+                />
+        </LinearLayout>
 
         <EditText
             android:id="@+id/boardNotes"
@@ -190,22 +255,8 @@
             android:ems="10"
             android:padding="8dp"
             android:layout_marginBottom="15dp"
-
             android:background="@drawable/input"
             android:gravity="start|top"
             android:inputType="textMultiLine" />
-
-
-
-        <Button
-            android:id="@+id/saveBoardNotes"
-            android:layout_gravity="end"
-            android:layout_width="wrap_content"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_height="wrap_content"
-            android:text="Zapisz" />
     </LinearLayout>
-
-
-
 </LinearLayout>

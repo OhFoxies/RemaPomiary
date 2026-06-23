@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -16,6 +17,7 @@ import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +28,7 @@ import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.ui.utils.Actions;
+import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
@@ -132,13 +135,13 @@ public class BoardActivity extends AppCompatActivity {
                 }
                 if (installationRadioGroup != null && flat != null) {
                     isSettingInstallation = true;
-                    if (flat.type != null && flat.type.equals("TN-C")) {
+                    if (flat.type != null && flat.type.equals(Settings.installationTypeTNC)) {
                         installationRadioGroup.check(tnCRadio.getId());
                     } else {
                         // domyślnie TN-S
                         installationRadioGroup.check(tnSRadio.getId());
                         if (flat.type == null) {
-                            flat.type = "TN-S";
+                            flat.type = Settings.installationTypeTNS;
                             flatViewModel.update(flat);
                         }
                     }
@@ -203,7 +206,7 @@ public class BoardActivity extends AppCompatActivity {
             Circuit newCircuit = new Circuit();
             newCircuit.flatId = flatId;
             newCircuit.name = "Gniazdka łazienka";
-            newCircuit.type = "1f";
+            newCircuit.type = Settings.installation1f;
             circuitViewModel.insert(newCircuit);
 
             boardLayout.post(() -> {
@@ -381,6 +384,7 @@ public class BoardActivity extends AppCompatActivity {
         EditText customName = new EditText(this);
         customName.setHint("Własny opis");
         customName.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        customName.setImeOptions(EditorInfo.IME_ACTION_DONE);
         customName.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         customName.setVisibility(View.GONE);
         customName.setFocusable(true);
@@ -394,6 +398,14 @@ public class BoardActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams.WRAP_CONTENT
         ));
         saveButton.setVisibility(View.GONE);
+
+        customName.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                saveButton.performClick();
+                return true;
+            }
+            return false;
+        });
 
         int selectedIndex = 0;
         for (int i = 0; i < circuitNames.length; i++) {
@@ -449,7 +461,7 @@ public class BoardActivity extends AppCompatActivity {
 
         f1 = new RadioButton(this);
 
-        f1.setText("1f");
+        f1.setText(Settings.installation1f);
         f1.setId(View.generateViewId());
         f1.setTextSize(18f);
 
@@ -465,7 +477,7 @@ public class BoardActivity extends AppCompatActivity {
 
 
         f3 = new RadioButton(this);
-        f3.setText("3f");
+        f3.setText(Settings.installation3f);
         f3.setId(View.generateViewId());
         f3.setTextSize(18f);
 
@@ -476,7 +488,7 @@ public class BoardActivity extends AppCompatActivity {
 
         phaseGroup.addView(f1);
         phaseGroup.addView(f3);
-        if (circuit.type.equals("1f") || circuit.type.equals("L1") || circuit.type.equals("L2") || circuit.type.equals("L3")) {
+        if (circuit.type.equals(Settings.installation1f) || circuit.type.equals("L1") || circuit.type.equals("L2") || circuit.type.equals("L3")) {
             phaseGroup.check(f1.getId());
 
         } else {
@@ -486,7 +498,7 @@ public class BoardActivity extends AppCompatActivity {
 
         phaseGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (isInitializing) return;
-            String newType = (checkedId == f1.getId()) ? "1f" : "3f";
+            String newType = (checkedId == f1.getId()) ? Settings.installation1f : Settings.installation3f;
             if (circuit.type == null || !circuit.type.equals(newType)) {
                 circuit.type = newType;
                 circuitViewModel.update(circuit);
@@ -619,13 +631,35 @@ public class BoardActivity extends AppCompatActivity {
             notesContainer.setBackground(rowBackgroundDrawable);
         }
 
+        LinearLayout titleAndButtonLayout = new LinearLayout(this);
+        titleAndButtonLayout.setOrientation(LinearLayout.HORIZONTAL);
+        titleAndButtonLayout.setGravity(Gravity.CENTER_VERTICAL);
+        titleAndButtonLayout.setPadding(0, 0, 0, (int) (16 * dp));
+
         TextView notesTitle = new TextView(this);
-        notesTitle.setText("Uwagi do rozdzielni");
+        notesTitle.setText("Uwagi do rozdzielni (widoczne w protokole)");
         notesTitle.setTextSize(22f);
         notesTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        notesTitle.setPadding(0, 0, 0, (int) (16 * dp));
         notesTitle.setTextColor(ContextCompat.getColor(this, android.R.color.black));
-        notesTitle.setGravity(Gravity.START);
+        notesTitle.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        saveNotesButton = new Button(this);
+        saveNotesButton.setText("✔ Zapisz");
+        if (catalogId != -1) {
+            saveNotesButton.setEnabled(false);
+
+        }
+        saveNotesButton.setTextSize(16f);
+        saveNotesButton.setVisibility(View.VISIBLE);
+        saveNotesButton.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        saveNotesButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+        saveNotesButton.setBackgroundTintList(blueTint);
+
+        titleAndButtonLayout.addView(notesTitle);
+        titleAndButtonLayout.addView(saveNotesButton);
 
         circuitNotesEditText = new EditText(this);
         if (catalogId != -1) {
@@ -650,30 +684,8 @@ public class BoardActivity extends AppCompatActivity {
         circuitNotesEditText.setPadding((int)(20*dp), (int)(16*dp), (int)(20*dp), (int)(16*dp));
         circuitNotesEditText.setText(flat != null && flat.circuitNotes != null ? flat.circuitNotes : "");
 
-        saveNotesButton = new Button(this);
-        saveNotesButton.setText("✔ Zapisz");
-        if (catalogId != -1) {
-            saveNotesButton.setEnabled(false);
-
-        }
-        saveNotesButton.setTextSize(16f);
-        saveNotesButton.setVisibility(View.GONE);
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        btnParams.gravity = Gravity.END;
-        saveNotesButton.setLayoutParams(btnParams);
-        saveNotesButton.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-        saveNotesButton.setBackgroundTintList(blueTint);
-
-        circuitNotesEditText.setOnFocusChangeListener((v, hasFocus) ->
-                saveNotesButton.setVisibility(hasFocus ? View.VISIBLE : View.GONE)
-        );
-
         circuitNotesEditText.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
-                saveNotesButton.setVisibility(View.VISIBLE);
                 circuitNotesEditText.post(() -> {
                     circuitNotesEditText.requestFocus();
                     if (imm != null) imm.showSoftInput(circuitNotesEditText, InputMethodManager.SHOW_IMPLICIT);
@@ -687,19 +699,18 @@ public class BoardActivity extends AppCompatActivity {
             if (flat != null) {
                 flat.circuitNotes = newNotes;
                 flatViewModel.update(flat);
+                Toast.makeText(this, "Zapisano uwagi do rozdzielni", Toast.LENGTH_SHORT).show();
             }
             boardLayout.requestFocus();
             if (imm != null) {
                 imm.hideSoftInputFromWindow(circuitNotesEditText.getWindowToken(), 0);
             }
             circuitNotesEditText.clearFocus();
-            saveNotesButton.setVisibility(View.GONE);
         });
 
         notesContainer.removeAllViews();
-        notesContainer.addView(notesTitle);
+        notesContainer.addView(titleAndButtonLayout);
         notesContainer.addView(circuitNotesEditText);
-        notesContainer.addView(saveNotesButton);
     }
 
     private void prepareInstallationTypeViews() {
@@ -738,7 +749,7 @@ public class BoardActivity extends AppCompatActivity {
 
         tnSRadio = new RadioButton(this);
 
-        tnSRadio.setText("TN-S");
+        tnSRadio.setText(Settings.installationTypeTNS);
         tnSRadio.setId(View.generateViewId());
         tnSRadio.setTextSize(20f);
         LinearLayout.LayoutParams tnSParams = new LinearLayout.LayoutParams(
@@ -749,7 +760,7 @@ public class BoardActivity extends AppCompatActivity {
         tnSRadio.setLayoutParams(tnSParams);
 
         tnCRadio = new RadioButton(this);
-        tnCRadio.setText("TN-C");
+        tnCRadio.setText(Settings.installationTypeTNC);
         tnCRadio.setId(View.generateViewId());
         tnCRadio.setTextSize(20f);
         LinearLayout.LayoutParams tnCParams = new LinearLayout.LayoutParams(
@@ -767,7 +778,7 @@ public class BoardActivity extends AppCompatActivity {
         installationRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (isSettingInstallation) return;
             if (flat == null) return;
-            String newType = (checkedId == tnCRadio.getId()) ? "TN-C" : "TN-S";
+            String newType = (checkedId == tnCRadio.getId()) ? Settings.installationTypeTNC : Settings.installationTypeTNS;
             if (flat.type == null || !flat.type.equals(newType)) {
                 flat.type = newType;
                 flatViewModel.update(flat);

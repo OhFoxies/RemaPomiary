@@ -34,6 +34,7 @@ import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.ActivityRoomBinding;
 import com.rejner.remapomiary.ui.utils.Actions;
+import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.CommonSpaceInfoViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class RoomActivity extends AppCompatActivity {
 
@@ -59,7 +61,7 @@ public class RoomActivity extends AppCompatActivity {
     public String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
     public String[] applianceOptions = {"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Inne"};
     public final String[] breakerTypes = {"B", "C", "D", "Gg"};
-    public final String[] noteOptions = {"brak uwag", "nie podłączony bolec", "Urwane", "zepsute", "Inne"};
+    public final String[] noteOptions = {Settings.noNotes, Settings.noGroundingBolt, "Urwane", Settings.brokenOutlet, "Inne"};
     public final String[] ampsOptions = {"3", "6", "10", "16", "20", "25", "32", "40"};
 
     private final Map<Integer, List<OutletMeasurement>> roomMeasurementsMap = new HashMap<>();
@@ -78,6 +80,7 @@ public class RoomActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         binding = ActivityRoomBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -164,6 +167,7 @@ public class RoomActivity extends AppCompatActivity {
                 Intent intent = new Intent(RoomActivity.this, BoardCommonSpace.class);
                 intent.putExtra("flatId", flatId);
                 intent.putExtra("blockId", flat.blockId);
+                intent.putExtra("name", blockName);
 
                 intent.putExtra("commonSpace", 1);
 
@@ -233,6 +237,10 @@ public class RoomActivity extends AppCompatActivity {
                 } else if ("Piętro -".equals(sel)) {
                     binding.customRoomEditText.setVisibility(View.VISIBLE);
                     binding.customRoomEditText.setText("Piętro ");
+
+                    // DODANE: Przesunięcie kursora na koniec tekstu
+                    binding.customRoomEditText.setSelection(binding.customRoomEditText.getText().length());
+
                     binding.customRoomEditText.requestFocus();
                     showKeyboard(binding.customRoomEditText);
                 }
@@ -263,8 +271,11 @@ public class RoomActivity extends AppCompatActivity {
                 if (name.isEmpty()) {
                     if (isCommonSpace ) {
                         binding.customRoomEditText.setError("Wpisz nazwę pomieszczenia");
+                        Toast.makeText(this, "Podaj nazwe pomieszczenia", Toast.LENGTH_SHORT).show();
+
 
                     } else {
+                        Toast.makeText(this, "Podaj nazwe pokoju", Toast.LENGTH_SHORT).show();
 
                         binding.customRoomEditText.setError("Wpisz nazwę pokoju");
                     }
@@ -274,7 +285,7 @@ public class RoomActivity extends AppCompatActivity {
             } else {
                 name = roomNames[pos];
             }
-            if (isCommonSpace && name.equals("Lokale")) {
+            if (isCommonSpace && name.equals(Settings.mainRoomName)) {
                 Toast.makeText(this, "Nie możesz tak nazwać pomieszczenia", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -361,7 +372,7 @@ public class RoomActivity extends AppCompatActivity {
         String name;
         if (isCommonSpace) {
             name = "pomieszczenie";
-            if (room.name.equals("Lokale")) {
+            if (room.name.equals(Settings.mainRoomName)) {
                 Toast.makeText(this, "Nie można usunąć tego pomieszczenia", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -445,6 +456,15 @@ public class RoomActivity extends AppCompatActivity {
         // Inicjalizacja TextWatchera
         binding.csBaseValue.addTextChangedListener(new OhmsTextWatcher(binding.csBaseValue));
 
+        // ZAPEWNIENIE WIDOCZNOŚCI POLA PO KLIKNIĘCIU (Rozwinięcie AppBarLayout)
+        View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
+            if (hasFocus) {
+                binding.appBarLayout.setExpanded(true, true);
+            }
+        };
+        binding.csSwitchEdit.setOnFocusChangeListener(focusChangeListener);
+        binding.csBaseValue.setOnFocusChangeListener(focusChangeListener);
+
         // Inicjalizacja Spinnerów
         ArrayAdapter<String> breakerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, breakerTypes);
         breakerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -464,7 +484,6 @@ public class RoomActivity extends AppCompatActivity {
                 int breakerPos = breakerAdapter.getPosition(currentCommonSpaceInfo.breakerType);
                 if (breakerPos >= 0) binding.csBreakerSpinner.setSelection(breakerPos);
 
-                // Formatujemy kropkę na przecinek dla polskiego formatu przed wstawieniem do pola
                 String ohmsStr = currentCommonSpaceInfo.ohmsBase != null ?
                         String.valueOf(currentCommonSpaceInfo.ohmsBase).replace(".", ",") : "0,00";
                 binding.csBaseValue.setText(ohmsStr);
@@ -488,6 +507,7 @@ public class RoomActivity extends AppCompatActivity {
             String switchName = binding.csSwitchEdit.getText().toString().trim();
 
             if (switchName.isEmpty()) {
+                binding.csSwitchEdit.setError("Podaj nazwe");
                 Toast.makeText(this, "Podaj nazwę wyłącznika", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -498,14 +518,12 @@ public class RoomActivity extends AppCompatActivity {
                 change = true;
             }
 
-            // BEZPIECZNE PARSOWANIE OHMÓW
             double enteredOhms = safeParseDouble(binding.csBaseValue.getText().toString());
             if (enteredOhms != currentCommonSpaceInfo.ohmsBase) {
                 change = true;
                 currentCommonSpaceInfo.ohmsBase = enteredOhms;
             }
 
-            // Bezpieczne parsowanie Amperów
             try {
                 double enteredAmps = Double.parseDouble(binding.csAmpsSpinner.getSelectedItem().toString());
                 if (enteredAmps != currentCommonSpaceInfo.amps) {
@@ -516,7 +534,6 @@ public class RoomActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            // POPRAWIONY WARUNEK: Zmiana następuje, gdy nowa wartość NIE RÓWNA SIĘ starej
             String selectedBreaker = binding.csBreakerSpinner.getSelectedItem().toString();
             if (!selectedBreaker.equals(currentCommonSpaceInfo.breakerType)) {
                 change = true;
@@ -524,24 +541,28 @@ public class RoomActivity extends AppCompatActivity {
             }
 
             hideKeyboard();
+            binding.csBaseValue.clearFocus();
+            binding.csSwitchEdit.clearFocus();
 
             if (change) {
                 if (currentCommonSpaceInfo.ohmsBase != 0.0) {
                     saveOrUpdateCommonSpaceInfo();
+                    Toast.makeText(this, "Dane pętli zwarcia zostały zaktualizowane", Toast.LENGTH_SHORT).show();
+
                 } else {
+                    binding.csBaseValue.setError("Podaj wartość bazową omów");
                     Toast.makeText(this, "Podaj wartość bazową", Toast.LENGTH_SHORT).show();
                 }
+            } else {
+                Toast.makeText(this, "Brak zmian, brak efektu", Toast.LENGTH_SHORT).show();
+
             }
         });
     }
 
-    /**
-     * Pomocnicza metoda usuwająca litery, symbole (np. Ω) i spacje przed parsowaniem do Double
-     */
     private double safeParseDouble(String text) {
         if (text == null || text.trim().isEmpty()) return 0.0;
         try {
-            // Usuwa wszystko oprócz cyfr, przecinków i kropek
             String cleanString = text.replaceAll("[^0-9,.]", "").replace(",", ".");
             return cleanString.isEmpty() ? 0.0 : Double.parseDouble(cleanString);
         } catch (NumberFormatException e) {
@@ -552,27 +573,23 @@ public class RoomActivity extends AppCompatActivity {
     private void generateMeasurements() {
         if (flat == null || currentCommonSpaceInfo == null) return;
 
-        // Ensure we have a "Main Room" to store these measurements
         roomViewModel.getOrCreateMainRoom(flatId, room -> {
-            // Get all flats in the block to generate measurements for them
             flatViewModel.getFlatsSync(flat.blockId, flats -> {
                 for (FlatFullData ffd : flats) {
-                    // Skip if it's a common space (we only want measurements for actual flats)
                     if (ffd.flat.isCommonSpace == 1) continue;
 
                     String applianceName = "Lokal - " + ffd.flat.number;
                     OutletMeasurement om = outletViewModel.getOutletMeasurementSync(room.id, applianceName);
 
-                    // Check if measurement already exists for this flat in this room
                     if (om == null) {
                         OutletMeasurement om_new = new OutletMeasurement();
                         om_new.roomId = room.id;
                         om_new.appliance = applianceName;
 
-                        // Use settings from currentCommonSpaceInfo
                         om_new.switchName = currentCommonSpaceInfo.switchName;
                         om_new.breakerType = currentCommonSpaceInfo.breakerType;
                         om_new.amps = currentCommonSpaceInfo.amps;
+
                         int number;
 
                         try {
@@ -585,6 +602,13 @@ public class RoomActivity extends AppCompatActivity {
                                         * 100.0
                         ) / 100.0;
 
+                        if (ffd.flat.status.equals(Settings.measurementDone)) {
+                            om_new.note = Settings.noNotes;
+
+                        } else {
+                            om_new.note = Settings.flatNoAccess;
+                            om_new.ohms = 0.0;
+                        }
                         om_new.number = number;
 
                         outletViewModel.insert(om_new, null);
@@ -592,6 +616,7 @@ public class RoomActivity extends AppCompatActivity {
                         om.switchName = currentCommonSpaceInfo.switchName;
                         om.breakerType = currentCommonSpaceInfo.breakerType;
                         om.amps = currentCommonSpaceInfo.amps;
+
                         int number;
 
                         try {
@@ -603,6 +628,12 @@ public class RoomActivity extends AppCompatActivity {
                                 (((number - 1) / 20.0) * 0.05 + currentCommonSpaceInfo.ohmsBase + randomOhms())
                                         * 100.0
                         ) / 100.0;
+                        if (ffd.flat.status.equals(Settings.measurementDone)) {
+                            om.note = Settings.noNotes;
+                        } else {
+                            om.note = Settings.flatNoAccess;
+                            om.ohms = 0.0;
+                        }
                         om.number = number;
 
                         outletViewModel.update(om, null);
@@ -615,21 +646,22 @@ public class RoomActivity extends AppCompatActivity {
 
     private void saveOrUpdateCommonSpaceInfo() {
         if (currentCommonSpaceInfo.id == 0) {
-            // Brak ID oznacza, że rekord jeszcze nie istnieje w tabeli -> INSERT
             commonSpaceInfoViewModel.insert(currentCommonSpaceInfo);
         } else {
-            // Rekord już istnieje -> UPDATE
             commonSpaceInfoViewModel.update(currentCommonSpaceInfo);
         }
         generateMeasurements();
     }
     public void showKeyboard(View view) {
-        view.post(() -> {
+        // Używamy postDelayed, aby dać UI czas na zmianę stanu z GONE na VISIBLE
+        view.postDelayed(() -> {
+            view.requestFocus(); // Upewniamy się, że widok ma focus w momencie wywołania klawiatury
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
             if (imm != null) {
-                imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT);
+                // Użycie 0 jest często skuteczniejsze niż SHOW_IMPLICIT po programowej zmianie widoczności
+                imm.showSoftInput(view, 0);
             }
-        });
+        }, 100); // 100 milisekund opóźnienia w zupełności wystarczy
     }
 
     public void hideKeyboard() {

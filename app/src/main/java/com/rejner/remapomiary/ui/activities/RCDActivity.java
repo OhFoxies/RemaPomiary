@@ -259,6 +259,7 @@ public class RCDActivity extends AppCompatActivity {
                 rcd.notes = notedEditText.getText().toString();
                 rcdViewModel.update(rcd);
                 hideKeyboard(notedEditText);
+                Toast.makeText(this, "Zapisano uwagi do różnicówki", Toast.LENGTH_SHORT).show();
             }
         });
 

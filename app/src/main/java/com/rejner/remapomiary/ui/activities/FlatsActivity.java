@@ -36,6 +36,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.utils.ProtocolWorker;
+import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
@@ -212,7 +213,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
             newFlat.number = flatNumber;
             newFlat.creation_date = now;
             newFlat.edition_date = now;
-            newFlat.status = "Pomiar niewykonany ❌";
+            newFlat.status = Settings.measurementNotReady;
             newFlat.blockId = blockId;
 
             flatViewModel.insertWithId(newFlat, id -> {
@@ -220,6 +221,9 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                 newRcd.flatId = Math.toIntExact(id);
                 newRcd.type = "A";
                 rcdViewModel.insert(newRcd);
+                newFlat.id = Math.toIntExact(id);
+                Actions.saveAndMarkReady(newFlat, this);
+                Actions.markUnready(newFlat, this);
             });
             updateMetadata();
             Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
@@ -237,12 +241,13 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
             newFlat.type = flat.type;
             newFlat.blockId = blockId;
             newFlat.number = flatNumber;
-            newFlat.status = "Pomiar niewykonany ❌";
+            newFlat.status = Settings.measurementNotReady;
             newFlat.creation_date = now;
             newFlat.edition_date = now;
 
             flatViewModel.insertWithId(newFlat, id -> {
                 long newFlatId = id;
+
                 runOnUiThread(() -> {
                     LiveDataUtil.observeOnce(circuitViewModel.getCircuitsForFlat(selectedTemplate.flatId), FlatsActivity.this, circuits -> {
                         for (Circuit c : circuits) {
@@ -295,6 +300,9 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                         hideKeyboard();
                     });
                 });
+                newFlat.id = Math.toIntExact(newFlatId);
+                Actions.saveAndMarkReady(newFlat, this);
+                Actions.markUnready(newFlat, this);
             });
         });
     }
@@ -321,7 +329,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
         List<Flat> sortedFlats = new ArrayList<>(currentFlats);
 
         int readyCount = 0;
-        for (Flat f : sortedFlats) if (f.status != null && f.status.contains("gotowy")) readyCount++;
+        for (Flat f : sortedFlats) if (f.status != null && f.status.contains(Settings.measurementDone)) readyCount++;
         String countText = sortedFlats.isEmpty()
                 ? "Brak mieszkań"
                 : "Znaleziono " + sortedFlats.size() + " mieszkań (gotowe: " + readyCount + "/" + sortedFlats.size() + ")";
@@ -346,8 +354,8 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                 break;
             case 4:
                 Collections.sort(sortedFlats, (f1, f2) -> {
-                    boolean done1 = f1.status != null && f1.status.contains("gotowy");
-                    boolean done2 = f2.status != null && f2.status.contains("gotowy");
+                    boolean done1 = f1.status != null && f1.status.contains(Settings.measurementDone);
+                    boolean done2 = f2.status != null && f2.status.contains(Settings.measurementDone);
                     return Boolean.compare(done1, done2);
                 });
                 break;
@@ -381,8 +389,6 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                         int savedOffset = prefs.getInt("scroll_offset_" + blockId, 0);
                         lm.scrollToPositionWithOffset(savedPos, savedOffset);
 
-                        // ZABEZPIECZENIE 1: Skoro wiemy z pamięci, że byliśmy zjechani w dół,
-                        // możemy wymusić pokazanie przycisku zanim lista w ogóle to przetworzy!
                         if (savedPos > 0 && scrollToTopButton != null) {
                             scrollToTopButton.setVisibility(View.VISIBLE);
                             scrollToTopButton.setScaleX(1f);
@@ -395,11 +401,9 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                     lm.onRestoreInstanceState(localScroll);
                 }
 
-                // ZABEZPIECZENIE 2: Czekamy aż lista faktycznie ułoży widoki (child count > 0)
                 recyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
                     @Override
                     public void onGlobalLayout() {
-                        // Odpal to tylko wtedy, kiedy RecyclerView stworzył już na ekranie widoki kafelków
                         if (recyclerView.getChildCount() > 0) {
                             recyclerView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                             checkScrollToTopButtonVisibility();
@@ -413,13 +417,11 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private void checkScrollToTopButtonVisibility() {
         if (recyclerView == null || scrollToTopButton == null) return;
 
-        // Najpewniejsza metoda na Androidzie do sprawdzania, czy da się przewinąć w górę
         boolean isScrolledDown = recyclerView.canScrollVertically(-1) || recyclerView.computeVerticalScrollOffset() > 150;
 
         if (isScrolledDown) {
             if (scrollToTopButton.getVisibility() != View.VISIBLE) {
                 scrollToTopButton.setVisibility(View.VISIBLE);
-                // Obejście wbudowanego błędu animacji FAB - wymuszenie 100% wielkości
                 scrollToTopButton.setScaleX(1f);
                 scrollToTopButton.setScaleY(1f);
                 scrollToTopButton.setAlpha(1f);
@@ -488,6 +490,11 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                 })
                 .setNegativeButton("Nie", null)
                 .show();
+    }
+
+    @Override
+    public void onHideKeyboard() {
+        hideKeyboard();
     }
 
     private void startProtocolWorker(int b, int c, int f, int p) {
