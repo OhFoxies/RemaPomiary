@@ -57,8 +57,13 @@ public class OutletMeasurement {
 
     @ColumnInfo(name = "rcd_name")
     public String rcdName;
+
     @ColumnInfo(name = "rcd_current")
     public Integer rcdCurrent;
+
+    @ColumnInfo(name = "photo_path")
+    public String photoPath;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -77,12 +82,13 @@ public class OutletMeasurement {
                 Objects.equals(note, mystery.note) &&
                 Objects.equals(rcdName, mystery.rcdName) &&
                 Objects.equals(rcdTime, mystery.rcdTime) &&
+                Objects.equals(photoPath, mystery.photoPath) &&
                 Objects.equals(rcdCurrent, mystery.rcdCurrent);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, roomId, appliance, switchName, breakerType, amps, ohms, note, number, rcdStatus, rcdName, rcdTime, rcdCurrent);
+        return Objects.hash(id, roomId, appliance, switchName, breakerType, amps, ohms, note, number, rcdStatus, rcdName, rcdTime, rcdCurrent, photoPath);
     }
 
     public OutletMeasurement() {}
@@ -90,5 +96,24 @@ public class OutletMeasurement {
     public OutletMeasurement(int roomId, String appliance) {
         this.roomId = roomId;
         this.appliance = appliance;
+    }
+
+    public OutletMeasurement copy() {
+        OutletMeasurement copy = new OutletMeasurement();
+        copy.id = this.id;
+        copy.roomId = this.roomId;
+        copy.number = this.number;
+        copy.appliance = this.appliance;
+        copy.switchName = this.switchName;
+        copy.breakerType = this.breakerType;
+        copy.amps = this.amps;
+        copy.ohms = this.ohms;
+        copy.note = this.note;
+        copy.rcdStatus = this.rcdStatus;
+        copy.rcdTime = this.rcdTime;
+        copy.rcdName = this.rcdName;
+        copy.rcdCurrent = this.rcdCurrent;
+        copy.photoPath = this.photoPath;
+        return copy;
     }
 }

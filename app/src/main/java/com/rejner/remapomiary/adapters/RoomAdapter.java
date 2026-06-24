@@ -40,6 +40,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     private final String[] applianceOptions, breakerTypes, noteOptions, ampsOptions;
     private final Consumer<RoomInFlat> deleteListener;
     private final Consumer<Integer> addMeasurementListener;
+    private final MeasurementAdapter.OnMeasurementActionListener photoListener;
     private long newlyAddedMeasurementId = -1;
     private final int catalogId;
     private final boolean isCommonSpace;
@@ -50,7 +51,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
     public RoomAdapter(RoomViewModel roomViewModel, OutletMeasurementViewModel outletViewModel,
                        LifecycleOwner lifecycleOwner, Context context,
                        String[] applianceOptions, String[] breakerTypes, String[] noteOptions, String[] ampsOptions,
-                       Consumer<RoomInFlat> deleteListener, Consumer<Integer> addMeasurementListener, int catalogId,
+                       Consumer<RoomInFlat> deleteListener, Consumer<Integer> addMeasurementListener,
+                       MeasurementAdapter.OnMeasurementActionListener photoListener, int catalogId,
                        boolean isCommonSpace) {
         super(DIFF_CALLBACK);
         this.roomViewModel = roomViewModel;
@@ -63,6 +65,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
         this.ampsOptions = ampsOptions;
         this.deleteListener = deleteListener;
         this.addMeasurementListener = addMeasurementListener;
+        this.photoListener = photoListener;
         this.catalogId = catalogId;
         this.isCommonSpace = isCommonSpace;
     }
@@ -386,7 +389,8 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
                     ampsOptions,
                     catalogId,
                     isCommonSpace,
-                    roomName
+                    roomName,
+                    photoListener
             );
             binding.measurementsRecyclerView.setLayoutManager(new LinearLayoutManager(context));
             binding.measurementsRecyclerView.setAdapter(measurementAdapter);

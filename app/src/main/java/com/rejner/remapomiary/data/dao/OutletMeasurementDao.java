@@ -53,4 +53,9 @@ public interface OutletMeasurementDao {
             "INNER JOIN room r ON om.roomId = r.id " +
             "WHERE r.flatId = :flatId AND (om.rcd_status = 1 OR om.rcd_status = 2))")
     LiveData<Boolean> hasAnyCommonSpaceRcd(int flatId);
+
+    @Query("SELECT om.* FROM outletMeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = :flatId AND om.photo_path IS NOT NULL AND om.photo_path != ''")
+    List<OutletMeasurement> getMeasurementsWithPhotosForFlatSync(int flatId);
 }

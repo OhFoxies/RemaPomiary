@@ -218,21 +218,31 @@ public class RCDActivity extends AppCompatActivity {
         });
         setupInlineSave(time1EditText, saveTime1Button, value -> {
             if (rcd != null) {
-                try {
-                    rcd.time1 = Integer.parseInt(value);
+                if (value.trim().isEmpty()) {
+                    rcd.time1 = 0;
                     rcdViewModel.update(rcd);
-                } catch (NumberFormatException e) {
-                    time1EditText.setError("Nieprawidłowa liczba");
+                } else {
+                    try {
+                        rcd.time1 = Integer.parseInt(value.trim());
+                        rcdViewModel.update(rcd);
+                    } catch (NumberFormatException e) {
+                        time1EditText.setError("Nieprawidłowa liczba");
+                    }
                 }
             }
         });
         setupInlineSave(time2EditText, saveTime2Button, value -> {
             if (rcd != null) {
-                try {
-                    rcd.time2 = Integer.parseInt(value);
+                if (value.trim().isEmpty()) {
+                    rcd.time2 = 0;
                     rcdViewModel.update(rcd);
-                } catch (NumberFormatException e) {
-                    time2EditText.setError("Nieprawidłowa liczba");
+                } else {
+                    try {
+                        rcd.time2 = Integer.parseInt(value.trim());
+                        rcdViewModel.update(rcd);
+                    } catch (NumberFormatException e) {
+                        time2EditText.setError("Nieprawidłowa liczba");
+                    }
                 }
             }
         });
@@ -355,6 +365,14 @@ public class RCDActivity extends AppCompatActivity {
             rcdFieldsContainer.setVisibility(View.GONE);
             noRCDButton.setText("Jednak jest różnicówka");
             flat.hasRCD = 0;
+            if (rcd != null) {
+                rcd.name = "";
+                rcd.time1 = 0;
+                rcd.time2 = 0;
+                rcd.notes = "";
+                rcdViewModel.update(rcd);
+                populateFields();
+            }
         }
         flatViewModel.update(flat);
     }

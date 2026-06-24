@@ -20,6 +20,7 @@ import com.rejner.remapomiary.data.dao.ClientDao;
 import com.rejner.remapomiary.data.dao.CommonSpaceInfoDao;
 import com.rejner.remapomiary.data.dao.ContractorsDao;
 import com.rejner.remapomiary.data.dao.FlatDao;
+import com.rejner.remapomiary.data.dao.FlatPhotoDao;
 import com.rejner.remapomiary.data.dao.OutletMeasurementDao;
 import com.rejner.remapomiary.data.dao.ProtocolNumberDao;
 import com.rejner.remapomiary.data.dao.RCDDao;
@@ -35,6 +36,7 @@ import com.rejner.remapomiary.data.entities.Client;
 import com.rejner.remapomiary.data.entities.CommonSpaceInfo;
 import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.FlatPhoto;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.ProtocolNumber;
 import com.rejner.remapomiary.data.entities.RCD;
@@ -45,7 +47,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class}, version = 25)
+@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class, FlatPhoto.class}, version = 28)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -58,6 +60,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract FlatDao flatDao();
     public abstract RCDDao rcdDao();
     public abstract CircuitDao circuitDao();
+    public abstract FlatPhotoDao flatPhotoDao();
     public abstract OutletMeasurementDao outletMeasurementDao();
     public abstract RoomDao roomDao();
     public abstract ProtocolNumberDao protocolNumberDao();
@@ -208,7 +211,33 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_25_26 = new Migration(25, 26) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // Usuwamy DEFAULT '', ponieważ Room oczekuje standardowego typu TEXT (nullable)
+            database.execSQL("ALTER TABLE outletMeasurement ADD COLUMN photo_path TEXT");
+        }
+    };
+    static final Migration MIGRATION_26_27 = new Migration(26, 27) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE board_common_space ADD COLUMN photo_paths TEXT");
+        }
+    };
 
+    static final Migration MIGRATION_27_28 = new Migration(27, 28) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `flat_photos` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`flat_id` INTEGER NOT NULL, " +
+                    "`photo_path` TEXT, " +
+                    "`description` TEXT, " +
+                    "`type` INTEGER NOT NULL, " +
+                    "FOREIGN KEY(`flat_id`) REFERENCES `flat`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_flat_photos_flat_id` ON `flat_photos` (`flat_id`)");
+        }
+    };
 
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
@@ -216,7 +245,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
                             .build();
 
                 }

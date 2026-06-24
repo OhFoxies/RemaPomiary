@@ -13,6 +13,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -26,8 +27,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
-// ZMIANA: Przechodzimy z ListAdapter na zwykły RecyclerView.Adapter
 public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int TYPE_HEADER = 0;
@@ -37,11 +38,13 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final SimpleDateFormat creationDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private final SimpleDateFormat editDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
+    // OPTYMALIZACJA: Przetrzymywanie stałych kolorów w pamięci podręcznej (zapobiega obciążającemu parsowaniu stringów Hex w kółko)
+    private final ColorStateList colorDone = ColorStateList.valueOf(Color.parseColor("#FF0000"));
+    private final ColorStateList colorReady = ColorStateList.valueOf(Color.parseColor("#3FAB1F"));
+
     private List<Template> templates;
     private int selectedSortPosition = 0;
     private String flatCountText = "";
-
-    // ZMIANA: Ręczne trzymanie bieżącej listy
     private List<Flat> currentList = new ArrayList<>();
 
     public interface OnFlatActionListener {
@@ -52,25 +55,59 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         void onGenerateProtocol(Flat flat, int protocolNumber);
         void onCreateFlat(String number, Template template);
         void onSortSelected(int position);
-        void onHideKeyboard(); // Nowa metoda w interfejsie
+        void onHideKeyboard();
     }
 
     public FlatAdapter(OnFlatActionListener listener) {
         this.listener = listener;
-        // ZMIANA: Ustawienie stałych ID, co całkowicie naprawia problem gubienia pozycji i skakania listy!
         setHasStableIds(true);
     }
 
-    // ZMIANA: Nasza własna, bezpieczniejsza metoda submitList
-    public void submitList(List<Flat> list) {
-        this.currentList = list == null ? new ArrayList<>() : new ArrayList<>(list);
-        notifyDataSetChanged(); // Natychmiastowe odświeżenie (naprawia wizualny brak kolorów i tekstu)
+    // OPTYMALIZACJA: Przejście na asynchroniczne/inteligentne odświeżanie danych za pomocą DiffUtil zamiast ciężkiego notifyDataSetChanged()
+    public void submitList(List<Flat> newList) {
+        final List<Flat> oldList = this.currentList;
+        this.currentList = newList == null ? new ArrayList<>() : new ArrayList<>(newList);
+
+        DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return oldList.size() + 1; // +1 uwzględnia nagłówek
+            }
+
+            @Override
+            public int getNewListSize() {
+                return currentList.size() + 1; // +1 uwzględnia nagłówek
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                if (oldItemPosition == 0 && newItemPosition == 0) return true;
+                if (oldItemPosition == 0 || newItemPosition == 0) return false;
+                return oldList.get(oldItemPosition - 1).id == currentList.get(newItemPosition - 1).id;
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                if (oldItemPosition == 0 && newItemPosition == 0) return true;
+                if (oldItemPosition == 0 || newItemPosition == 0) return false;
+
+                Flat oldFlat = oldList.get(oldItemPosition - 1);
+                Flat newFlat = currentList.get(newItemPosition - 1);
+
+                return Objects.equals(oldFlat.number, newFlat.number) &&
+                        Objects.equals(oldFlat.status, newFlat.status) &&
+                        Objects.equals(oldFlat.notes, newFlat.notes) &&
+                        Objects.equals(oldFlat.circuitNotes, newFlat.circuitNotes) &&
+                        Objects.equals(oldFlat.creation_date, newFlat.creation_date) &&
+                        Objects.equals(oldFlat.edition_date, newFlat.edition_date);
+            }
+        }).dispatchUpdatesTo(this);
     }
 
     @Override
     public long getItemId(int position) {
-        if (position == 0) return -1; // Unikalne ID dla nagłówka
-        return currentList.get(position - 1).id; // Pobranie ID z bazy danych dla elementu
+        if (position == 0) return -1;
+        return currentList.get(position - 1).id;
     }
 
     public void setHeaderData(List<Template> templates, int sortPosition, String countText) {
@@ -106,7 +143,6 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder instanceof HeaderViewHolder) {
             ((HeaderViewHolder) holder).bind();
         } else {
-            // ZMIANA: Używamy currentList.get zamiast getItem()
             ((FlatViewHolder) holder).bind(currentList.get(position - 1));
         }
     }
@@ -133,7 +169,6 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             setupSortSpinner();
 
-            // ZMIANA: Precyzyjne scrollowanie (offset 0 przypina element do samej góry)
             inputFlatNumber.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus) {
                     v.postDelayed(() -> {
@@ -164,11 +199,12 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
 
             flatCancelButton.setOnClickListener(v -> {
-                listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę, potem czyścimy focus
+                listener.onHideKeyboard();
                 inputFlatNumber.setText("");
                 inputFlatNumber.clearFocus();
             });
         }
+
         private void setupSortSpinner() {
             String[] sortOptions = {"Numer mieszkania", "Data utworzenia \\/", "Data utworzenia /\\", "Data edycji", "Status", "Uwagi na początku"};
             ArrayAdapter<String> adapter = new ArrayAdapter<>(itemView.getContext(), android.R.layout.simple_spinner_item, sortOptions);
@@ -207,7 +243,6 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             protocolNumber = itemView.findViewById(R.id.inputProtocolNumber);
             flatMain = itemView.findViewById(R.id.flatMain);
 
-            // ZMIANA: Precyzyjne scrollowanie (offset 0 przypina element do samej góry po resize)
             View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
                 if (hasFocus) {
                     v.postDelayed(() -> {
@@ -243,11 +278,11 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (flat.status != null && flat.status.contains(Settings.measurementDone)) {
                 markButton.setText("❌ Oznacz jako niewykonany");
                 flatMain.setBackgroundResource(R.drawable.border_done);
-                markButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FF0000")));
+                markButton.setBackgroundTintList(colorDone); // ZOPTYMALIZOWANO
             } else {
                 markButton.setText("✅ Oznacz jako gotowy");
                 flatMain.setBackgroundResource(R.drawable.border);
-                markButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3FAB1F")));
+                markButton.setBackgroundTintList(colorReady); // ZOPTYMALIZOWANO
             }
 
             title.setVisibility(View.VISIBLE);
@@ -270,7 +305,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     editButton.setText("✅ Zapisz");
                     deleteButton.setText("❌ Anuluj");
                 } else {
-                    listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
+                    listener.onHideKeyboard();
                     titleEdit.clearFocus();
                     String newNum = titleEdit.getText().toString().trim();
                     title.setVisibility(View.VISIBLE);
@@ -283,7 +318,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             deleteButton.setOnClickListener(v -> {
                 if (titleEdit.getVisibility() == View.VISIBLE) {
-                    listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
+                    listener.onHideKeyboard();
                     titleEdit.clearFocus();
                     title.setVisibility(View.VISIBLE);
                     titleEdit.setVisibility(View.GONE);
@@ -295,7 +330,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             });
 
             createProtocolButton.setOnClickListener(v -> {
-                listener.onHideKeyboard(); // ZMIANA: Najpierw chowamy klawiaturę
+                listener.onHideKeyboard();
                 int pNum = -1;
                 try {
                     String pStr = protocolNumber.getText().toString();

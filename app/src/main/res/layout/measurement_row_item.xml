@@ -423,4 +423,30 @@
             android:layout_height="match_parent"/>
 
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/photoContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="8dp">
+
+        <ImageView
+            android:id="@+id/measurementPhoto"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:scaleType="centerInside"
+            android:adjustViewBounds="true" />
+
+        <Button
+            android:id="@+id/deletePhotoBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Usuń zdjęcie"
+            android:layout_gravity="center"
+            android:layout_marginTop="4dp"
+            android:backgroundTint="@android:color/holo_red_dark"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
 </LinearLayout>

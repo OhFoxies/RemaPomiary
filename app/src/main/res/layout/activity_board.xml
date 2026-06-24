@@ -36,9 +36,9 @@
                 android:layout_height="match_parent"
                 android:text="Mieszkanie - numer"
                 android:gravity="center_vertical"
-
                 android:textSize="24sp"
                 android:textStyle="bold" />
+
             <Button
                 android:id="@+id/backSave"
                 android:layout_width="wrap_content"
@@ -67,8 +67,6 @@
                 android:paddingTop="15dp"
                 android:paddingBottom="15dp"
                 android:text="Podsumowanie"
-
-
                 android:textSize="18sp" />
 
             <Button
@@ -81,7 +79,6 @@
                 android:paddingTop="15dp"
                 android:paddingBottom="15dp"
                 android:text="Rozdzielnia"
-
                 android:textSize="18sp" />
 
             <Button
@@ -103,11 +100,9 @@
                 android:layout_weight="1"
                 android:gravity="center_horizontal"
                 android:paddingTop="15dp"
-
                 android:paddingBottom="15dp"
                 android:text="Pętla zwarcia"
                 android:textSize="18sp" />
-
         </LinearLayout>
 
         <com.google.android.flexbox.FlexboxLayout
@@ -132,7 +127,7 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-              <TextView
+                <TextView
                     android:id="@+id/boardTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -140,15 +135,73 @@
                     android:textSize="24sp"
                     android:textStyle="bold"
                     android:paddingBottom="8dp" />
+
                 <Button
                     android:id="@+id/addCircuitButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Dodaj obwód"
                     android:layout_marginTop="16dp"/>
+            </LinearLayout>
+        </com.google.android.flexbox.FlexboxLayout>
 
+        <LinearLayout
+            android:id="@+id/flatPhotosSectionContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:layout_margin="16dp"
+            android:backgroundTint="@android:color/white"
+            android:background="@drawable/round_corners"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:text="Zdjęcia rozdzielni" />
+
+                <Button
+                    android:id="@+id/toggleFlatPhotosButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="Pokaż zdjęcia" />
+
+                <Button
+                    android:id="@+id/addFlatPhotoBtn"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:backgroundTint="#669900"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📷 Dodaj" />
             </LinearLayout>
 
-        </com.google.android.flexbox.FlexboxLayout>
+            <HorizontalScrollView
+                android:id="@+id/flatPhotosScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:id="@+id/flatPhotosContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical" />
+            </HorizontalScrollView>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

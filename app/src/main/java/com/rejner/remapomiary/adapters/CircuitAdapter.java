@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitViewHolder> {
-    String[] items = new String[]{"Oświetlenie", "Gniazda 230V", "Piekarnik", "Płyta indukcyjna", "inne"};
+    String[] items = new String[]{"Oświetlenie", "Oświetlenie -", "Gniazda 230V", "Gniazda -", "Piekarnik", "Płyta indukcyjna", "inne"};
     private boolean isWLZ;
 
     public CircuitAdapter(OnCircuitActionListener listener, boolean isWLZ) {
@@ -242,18 +242,25 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
                     CircuitCommonSpace currentCircuit = circuits.get(positionV);
                     String selected = parent.getItemAtPosition(position).toString();
 
-                    if ("inne".equalsIgnoreCase(selected)) {
+                    if ("inne".equalsIgnoreCase(selected) || "Oświetlenie -".equalsIgnoreCase(selected) || "Gniazda -".equalsIgnoreCase(selected)) {
                         circuitInputName.setVisibility(View.VISIBLE);
                         circuitNameSave.setVisibility(View.VISIBLE);
 
-                        if (Arrays.asList(items).contains(currentCircuit.name) && !currentCircuit.name.equals("inne")) {
-                            circuitInputName.setText("");
-                        }
-
                         if (isUserAction) {
+                            if ("Oświetlenie -".equalsIgnoreCase(selected)) {
+                                circuitInputName.setText("Oświetlenie ");
+                            } else if ("Gniazda -".equalsIgnoreCase(selected)) {
+                                circuitInputName.setText("Gniazda ");
+                            } else if ("inne".equalsIgnoreCase(selected)) {
+                                if (Arrays.asList(items).contains(currentCircuit.name) && !currentCircuit.name.equals("inne")) {
+                                    circuitInputName.setText("");
+                                }
+                            }
+
                             circuitInputName.requestFocus();
                             circuitInputName.postDelayed(() -> {
                                 if (circuitInputName.requestFocus()) {
+                                    circuitInputName.setSelection(circuitInputName.getText().length());
                                     InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
                                     if (imm != null) {
                                         imm.showSoftInput(circuitInputName, 0);
@@ -305,9 +312,12 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
             int position = getBindingAdapterPosition();
             if (position != RecyclerView.NO_POSITION && listener != null) {
                 hideKeyboard();
-                String name = circuitInputName.getText().toString();
+                String name = circuitInputName.getText().toString().trim();
                 if (name.isEmpty()) {
-                    name = "inne";
+                    name = items[0]; // "Oświetlenie"
+                    circuitNameSpinner.setSelection(0, false);
+                    circuitInputName.setVisibility(View.GONE);
+                    circuitNameSave.setVisibility(View.GONE);
                 }
                 circuits.get(position).name = name;
                 listener.onCircuitNameSave_(circuits.get(position), name);

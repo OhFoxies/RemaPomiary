@@ -2,15 +2,22 @@ package com.rejner.remapomiary.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -20,21 +27,29 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.FlatPhoto;
 import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
+import com.rejner.remapomiary.ui.viewmodels.FlatPhotoViewModel;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class BoardActivity extends AppCompatActivity {
@@ -75,15 +90,10 @@ public class BoardActivity extends AppCompatActivity {
     private RadioButton tnSRadio;
     private RadioButton tnCRadio;
 
-
-
     private boolean firstLoad = true;
-
     private boolean isSettingInstallation = false;
 
-
     private ArrayAdapter<String> nameAdapter;
-    private ArrayAdapter<String> phaseAdapter;
     private Set<String> nameSet;
     private float dp;
     private int smallPad;
@@ -97,6 +107,15 @@ public class BoardActivity extends AppCompatActivity {
     private android.graphics.drawable.Drawable inputDrawable;
     private InputMethodManager imm;
     private int catalogId;
+
+    // NOWE POLA DLA SYSTEMU ZDJĘĆ TABELARYCZNYCH
+    private FlatPhotoViewModel flatPhotoViewModel;
+    private ActivityResultLauncher<Uri> takeFlatPhotoLauncher;
+    private File tempFlatPhotoFile;
+    private boolean isPhotosExpanded = false;
+    private LinearLayout flatPhotosContainer;
+    private HorizontalScrollView flatPhotosScrollView;
+    private Button toggleFlatPhotosButton, addFlatPhotoBtn;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -125,6 +144,8 @@ public class BoardActivity extends AppCompatActivity {
         nameSet = new HashSet<>(Arrays.asList(circuitNames));
 
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        flatPhotoViewModel = new ViewModelProvider(this).get(FlatPhotoViewModel.class);
+
         flatViewModel.getFlatByIdSync(flatId, flat1 -> {
             flat = flat1.flat;
             runOnUiThread(() -> {
@@ -138,7 +159,6 @@ public class BoardActivity extends AppCompatActivity {
                     if (flat.type != null && flat.type.equals(Settings.installationTypeTNC)) {
                         installationRadioGroup.check(tnCRadio.getId());
                     } else {
-                        // domyślnie TN-S
                         installationRadioGroup.check(tnSRadio.getId());
                         if (flat.type == null) {
                             flat.type = Settings.installationTypeTNS;
@@ -160,10 +180,10 @@ public class BoardActivity extends AppCompatActivity {
         setupSectionTitle();
         setupTableHeader();
         setupAddButton();
-
         prepareNotesViews();
 
         if (installationTypeContainer == null) prepareInstallationTypeViews();
+
         circuitViewModel.getCircuitsForFlat(flatId).observe(this, circuits -> {
             isInitializing = true;
 
@@ -200,7 +220,6 @@ public class BoardActivity extends AppCompatActivity {
             }
         });
 
-
         addCircuitButton.setOnClickListener(v -> {
             if (flatId == -1) return;
             Circuit newCircuit = new Circuit();
@@ -217,6 +236,111 @@ public class BoardActivity extends AppCompatActivity {
                 }
             });
         });
+
+        // INICJALIZACJA SYSTEMU ZDJĘĆ TABELARYCZNYCH
+        initFlatPhotosSystem();
+    }
+
+    private void initFlatPhotosSystem() {
+        toggleFlatPhotosButton = findViewById(R.id.toggleFlatPhotosButton);
+        addFlatPhotoBtn = findViewById(R.id.addFlatPhotoBtn);
+        flatPhotosScrollView = findViewById(R.id.flatPhotosScrollView);
+        flatPhotosContainer = findViewById(R.id.flatPhotosContainer);
+
+        toggleFlatPhotosButton.setOnClickListener(v -> {
+            isPhotosExpanded = !isPhotosExpanded;
+            flatPhotosScrollView.setVisibility(isPhotosExpanded ? View.VISIBLE : View.GONE);
+            toggleFlatPhotosButton.setText(isPhotosExpanded ? "Ukryj zdjęcia" : "Pokaż zdjęcia");
+        });
+
+        takeFlatPhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                success -> {
+                    if (success && tempFlatPhotoFile != null) {
+                        FlatPhoto photo = new FlatPhoto();
+                        photo.flatId = flatId;
+                        photo.photoPath = tempFlatPhotoFile.getAbsolutePath();
+                        photo.type = 0; // 0 oznacza rozdzielnię
+                        photo.description = "";
+
+                        flatPhotoViewModel.insert(photo);
+                        Toast.makeText(this, "Dodano zdjęcie rozdzielni", Toast.LENGTH_SHORT).show();
+                    }
+                    tempFlatPhotoFile = null;
+                }
+        );
+
+        addFlatPhotoBtn.setOnClickListener(v -> {
+            try {
+                String fileName = "MIESZKANIE_BOARD_" + flatId + "_" + System.currentTimeMillis();
+                File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                tempFlatPhotoFile = File.createTempFile(fileName, ".jpg", storageDir);
+
+                Uri photoURI = FileProvider.getUriForFile(
+                        this,
+                        getPackageName() + ".fileprovider",
+                        tempFlatPhotoFile
+                );
+                takeFlatPhotoLauncher.launch(photoURI);
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Błąd uruchamiania aparatu", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Obserwacja LiveData z osobnej tabeli
+        flatPhotoViewModel.getPhotosByFlatAndType(flatId, 0).observe(this, this::renderFlatPhotos);
+    }
+
+    private void renderFlatPhotos(List<FlatPhoto> photos) {
+        flatPhotosContainer.removeAllViews();
+        if (photos != null && !photos.isEmpty()) {
+            for (FlatPhoto photo : photos) {
+                FrameLayout frameLayout = new FrameLayout(this);
+                LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
+                        (int) (200 * dp), (int) (270 * dp));
+                frameParams.setMargins(0, 0, (int) (12 * dp), 0);
+                frameLayout.setLayoutParams(frameParams);
+
+                ImageView imageView = new ImageView(this);
+                FrameLayout.LayoutParams imgParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                imgParams.bottomMargin = (int) (44 * dp);
+                imageView.setLayoutParams(imgParams);
+                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                imageView.setImageURI(Uri.fromFile(new File(photo.photoPath)));
+                frameLayout.addView(imageView);
+
+                Button delBtn = new Button(this);
+                FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, (int) (44 * dp));
+                btnParams.gravity = Gravity.BOTTOM;
+                delBtn.setLayoutParams(btnParams);
+                delBtn.setText("USUŃ");
+                delBtn.setTextSize(13);
+                delBtn.setPadding(0, 0, 0, 0);
+                delBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
+                delBtn.setTextColor(Color.WHITE);
+
+                delBtn.setOnClickListener(v -> {
+                    File file = new File(photo.photoPath);
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                    flatPhotoViewModel.delete(photo);
+                    Toast.makeText(this, "Zdjęcie zostało usunięte", Toast.LENGTH_SHORT).show();
+                });
+                frameLayout.addView(delBtn);
+                flatPhotosContainer.addView(frameLayout);
+            }
+        } else {
+            TextView noPhotosTv = new TextView(this);
+            noPhotosTv.setText("Brak zdjęć dla tej rozdzielni");
+            noPhotosTv.setTextSize(16);
+            noPhotosTv.setTextColor(Color.parseColor("#757575"));
+            noPhotosTv.setPadding((int) (8 * dp), (int) (16 * dp), (int) (8 * dp), (int) (16 * dp));
+            flatPhotosContainer.addView(noPhotosTv);
+        }
     }
 
     private ScrollView findScrollView(View view) {
@@ -236,7 +360,6 @@ public class BoardActivity extends AppCompatActivity {
 
         backSave.setOnClickListener(v -> {
             Actions.saveAndMarkReady(flat, this);
-
             Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
             intent.putExtra("blockId", flat.blockId);
             startActivity(intent);
@@ -246,67 +369,49 @@ public class BoardActivity extends AppCompatActivity {
             notesButton.setVisibility(View.GONE);
         }
 
-        notesButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(BoardActivity.this, NotesActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
-
-                }
-                intent.putExtra("flatId", flat.id);
-                startActivity(intent);
+        notesButton.setOnClickListener(v -> {
+            Intent intent = new Intent(BoardActivity.this, NotesActivity.class);
+            if (catalogId != -1) {
+                intent.putExtra("catalogId", catalogId);
             }
+            intent.putExtra("flatId", flat.id);
+            startActivity(intent);
         });
 
-
-        RCDButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(BoardActivity.this, RCDActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
-
-                }
-                intent.putExtra("flatId", flat.id);
-                startActivity(intent);
+        RCDButton.setOnClickListener(v -> {
+            Intent intent = new Intent(BoardActivity.this, RCDActivity.class);
+            if (catalogId != -1) {
+                intent.putExtra("catalogId", catalogId);
             }
+            intent.putExtra("flatId", flat.id);
+            startActivity(intent);
         });
 
-        roomsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (flat == null) return;
-                Intent intent = new Intent(BoardActivity.this, RoomActivity.class);
-                if (catalogId != -1) {
-                    intent.putExtra("catalogId", catalogId);
-
-                }
-                intent.putExtra("flatId", flat.id);
-                startActivity(intent);
+        roomsButton.setOnClickListener(v -> {
+            if (flat == null) return;
+            Intent intent = new Intent(BoardActivity.this, RoomActivity.class);
+            if (catalogId != -1) {
+                intent.putExtra("catalogId", catalogId);
             }
+            intent.putExtra("flatId", flat.id);
+            startActivity(intent);
         });
 
-
-        backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (flat == null) return;
-                if (catalogId != -1) {
-                    Intent intent = new Intent(BoardActivity.this, TemplatesActivity.class);
-                    intent.putExtra("catalogId", catalogId);
-                    startActivity(intent);
-                } else {
-                    Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
-                    intent.putExtra("blockId", flat.blockId);
-                    startActivity(intent);
-                }
-
+        backButton.setOnClickListener(v -> {
+            if (flat == null) return;
+            if (catalogId != -1) {
+                Intent intent = new Intent(BoardActivity.this, TemplatesActivity.class);
+                intent.putExtra("catalogId", catalogId);
+                startActivity(intent);
+            } else {
+                Intent intent = new Intent(BoardActivity.this, FlatsActivity.class);
+                intent.putExtra("blockId", flat.blockId);
+                startActivity(intent);
             }
         });
 
         TextView mainTitle  = findViewById(R.id.flatTitle);
-        mainTitle.setText("Mieszkanie numer - " + (flat != null ? flat.number : "") + " rodzielnia");
+        mainTitle.setText("Mieszkanie numer - " + (flat != null ? flat.number : "") + " rozdzielnia");
     }
 
     private void setupSectionTitle() {
@@ -426,24 +531,7 @@ public class BoardActivity extends AppCompatActivity {
         nameContainer.addView(customName);
         nameContainer.addView(saveButton);
 
-//        Spinner phaseSpinner = new Spinner(this);
-//        phaseSpinner.setAdapter(phaseAdapter);
-
-//        int phaseIndex = 0;
-//        for (int i = 0; i < phases.length; i++) {
-//            if (phases[i].equals(circuit.type)) {
-//                phaseIndex = i;
-//                break;
-//            }
-//        }
-//        phaseSpinner.setSelection(phaseIndex, false);
-//        phaseSpinner.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-//        phaseSpinner.setGravity(Gravity.CENTER);
-        RadioGroup phaseGroup;
-        RadioButton f3;
-        RadioButton f1;
-
-        phaseGroup = new RadioGroup(this);
+        RadioGroup phaseGroup = new RadioGroup(this);
         phaseGroup.setOrientation(LinearLayout.HORIZONTAL);
 
         LinearLayout.LayoutParams phaseParams = new LinearLayout.LayoutParams(
@@ -452,15 +540,13 @@ public class BoardActivity extends AppCompatActivity {
                 1f
         );
 
-        int leftMarginPx = (int) (16 * getResources().getDisplayMetrics().density); // 16dp
+        int leftMarginPx = (int) (16 * getResources().getDisplayMetrics().density);
         phaseParams.setMargins(leftMarginPx, 0, 0, 0);
 
         phaseGroup.setLayoutParams(phaseParams);
         phaseGroup.setGravity(Gravity.CENTER_VERTICAL);
 
-
-        f1 = new RadioButton(this);
-
+        RadioButton f1 = new RadioButton(this);
         f1.setText(Settings.installation1f);
         f1.setId(View.generateViewId());
         f1.setTextSize(18f);
@@ -471,29 +557,21 @@ public class BoardActivity extends AppCompatActivity {
                 1f
         );
         f1.setLayoutParams(radioParams);
-
-
         f1.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
 
-
-        f3 = new RadioButton(this);
+        RadioButton f3 = new RadioButton(this);
         f3.setText(Settings.installation3f);
         f3.setId(View.generateViewId());
         f3.setTextSize(18f);
-
         f3.setLayoutParams(radioParams);
-
         f3.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-
 
         phaseGroup.addView(f1);
         phaseGroup.addView(f3);
         if (circuit.type.equals(Settings.installation1f) || circuit.type.equals("L1") || circuit.type.equals("L2") || circuit.type.equals("L3")) {
             phaseGroup.check(f1.getId());
-
         } else {
             phaseGroup.check(f3.getId());
-
         }
 
         phaseGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -504,7 +582,6 @@ public class BoardActivity extends AppCompatActivity {
                 circuitViewModel.update(circuit);
             }
         });
-
 
         Button deleteButton = new Button(this);
         deleteButton.setText("USUŃ");
@@ -554,8 +631,7 @@ public class BoardActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
         customName.setOnFocusChangeListener((v, hasFocus) ->
@@ -587,22 +663,6 @@ public class BoardActivity extends AppCompatActivity {
             saveButton.setVisibility(View.GONE);
         });
 
-//        phaseSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-//            @Override
-//            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-//                if (isInitializing) return;
-//                String newType = phases[position];
-//                if (!newType.equals(circuit.type)) {
-//                    circuit.type = newType;
-//                    circuitViewModel.update(circuit);
-//                }
-//            }
-//
-//            @Override
-//            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-//            }
-//        });
-
         deleteButton.setOnClickListener(v -> {
             if (!isInitializing) circuitViewModel.delete(circuit);
         });
@@ -614,7 +674,6 @@ public class BoardActivity extends AppCompatActivity {
 
         boardLayout.addView(circuitRow);
     }
-
 
     private void prepareNotesViews() {
         if (notesContainer == null) {
@@ -647,7 +706,6 @@ public class BoardActivity extends AppCompatActivity {
         saveNotesButton.setText("✔ Zapisz");
         if (catalogId != -1) {
             saveNotesButton.setEnabled(false);
-
         }
         saveNotesButton.setTextSize(16f);
         saveNotesButton.setVisibility(View.VISIBLE);
@@ -664,7 +722,6 @@ public class BoardActivity extends AppCompatActivity {
         circuitNotesEditText = new EditText(this);
         if (catalogId != -1) {
             circuitNotesEditText.setEnabled(false);
-
         }
         circuitNotesEditText.setHint("Wpisz uwagi...");
         circuitNotesEditText.setMinLines(5);
@@ -748,7 +805,6 @@ public class BoardActivity extends AppCompatActivity {
         installationRadioGroup.setGravity(Gravity.CENTER);
 
         tnSRadio = new RadioButton(this);
-
         tnSRadio.setText(Settings.installationTypeTNS);
         tnSRadio.setId(View.generateViewId());
         tnSRadio.setTextSize(20f);

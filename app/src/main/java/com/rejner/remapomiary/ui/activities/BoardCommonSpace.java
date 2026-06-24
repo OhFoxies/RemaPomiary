@@ -2,7 +2,9 @@ package com.rejner.remapomiary.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -13,9 +15,12 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,6 +37,8 @@ import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.BoardCommonSpaceViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitCommonSpaceViewModel;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -55,6 +62,11 @@ public class BoardCommonSpace extends AppCompatActivity {
 
     private BoardCommonSpaceViewModel boardCommonSpaceViewModel;
     private CircuitCommonSpaceViewModel circuitCommonSpaceViewModel;
+
+    // Aparat dla zdjęć całej rozdzielni
+    private ActivityResultLauncher<Uri> takeBoardPictureLauncher;
+    private BoardsFullData boardPendingPhoto = null;
+    private File tempBoardPhotoFile = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +94,36 @@ public class BoardCommonSpace extends AppCompatActivity {
         setupAddBoardUi();
         observeDatabase();
         ensureMainBoardExists();
+
+        // Inicjalizacja Launchera Aparatu dla Rozdzielni
+        takeBoardPictureLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                success -> {
+                    if (success && boardPendingPhoto != null && tempBoardPhotoFile != null) {
+                        com.rejner.remapomiary.data.entities.BoardCommonSpace updatedBoard = new com.rejner.remapomiary.data.entities.BoardCommonSpace();
+                        updatedBoard.id = boardPendingPhoto.board.id;
+                        updatedBoard.flatId = boardPendingPhoto.board.flatId;
+                        updatedBoard.name = boardPendingPhoto.board.name;
+                        updatedBoard.notes = boardPendingPhoto.board.notes;
+                        updatedBoard.type = boardPendingPhoto.board.type;
+                        updatedBoard.creation_date = boardPendingPhoto.board.creation_date;
+
+                        String currentPaths = boardPendingPhoto.board.photoPaths;
+                        String newPath = tempBoardPhotoFile.getAbsolutePath();
+
+                        if (currentPaths == null || currentPaths.trim().isEmpty()) {
+                            updatedBoard.photoPaths = newPath;
+                        } else {
+                            updatedBoard.photoPaths = currentPaths + "," + newPath;
+                        }
+
+                        boardCommonSpaceViewModel.update(updatedBoard);
+                        Toast.makeText(this, "Dodano zdjęcie rozdzielni", Toast.LENGTH_SHORT).show();
+                    }
+                    boardPendingPhoto = null;
+                    tempBoardPhotoFile = null;
+                }
+        );
     }
 
     private void ensureMainBoardExists() {
@@ -181,18 +223,39 @@ public class BoardCommonSpace extends AppCompatActivity {
 
             @Override
             public void onCircuitNameSave(CircuitCommonSpace circuit, String name) {
-                if (name.isEmpty()) {
-                    Toast.makeText(BoardCommonSpace.this, "Nazwa nie może być pusta!", Toast.LENGTH_SHORT).show();
-                } else {
-                    circuit.name = name;
-                    circuitCommonSpaceViewModel.update(circuit);
-                }
+                circuit.name = name;
+                circuitCommonSpaceViewModel.update(circuit);
             }
 
             @Override
             public void onCircuitNameSpinner(CircuitCommonSpace circuit, String name) {
                 circuit.name = name;
                 circuitCommonSpaceViewModel.update(circuit);
+            }
+
+            @Override
+            public void onAddBoardPhoto(BoardsFullData board) {
+                boardPendingPhoto = board;
+                try {
+                    String fileName = "ROZDZIELNIA_" + board.board.id + "_" + System.currentTimeMillis();
+                    File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                    tempBoardPhotoFile = File.createTempFile(fileName, ".jpg", storageDir);
+
+                    Uri photoURI = FileProvider.getUriForFile(
+                            BoardCommonSpace.this,
+                            getPackageName() + ".fileprovider",
+                            tempBoardPhotoFile
+                    );
+                    takeBoardPictureLauncher.launch(photoURI);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(BoardCommonSpace.this, "Błąd uruchamiania aparatu", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onUpdateBoard(com.rejner.remapomiary.data.entities.BoardCommonSpace board) {
+                boardCommonSpaceViewModel.update(board);
             }
 
             @Override
@@ -364,7 +427,7 @@ public class BoardCommonSpace extends AppCompatActivity {
             boardCommonSpaceViewModel.insert(boardCommonSpace);
 
             Toast.makeText(BoardCommonSpace.this, "Dodano rozdzielnie", Toast.LENGTH_SHORT).show();
-            
+
             boardNameInput.setText("");
             boardNameInput.setVisibility(View.GONE);
             boardNameSpinner.setSelection(0);

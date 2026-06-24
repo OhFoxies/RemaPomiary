@@ -31,5 +31,6 @@ public class BoardCommonSpace {
 
     @ColumnInfo(name = "creation_date")
     public Date creation_date;
-
+    @ColumnInfo(name = "photo_paths")
+    public String photoPaths;
 }

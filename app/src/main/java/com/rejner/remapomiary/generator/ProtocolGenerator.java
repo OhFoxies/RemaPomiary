@@ -14,9 +14,11 @@ import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
+import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.Phrase;
+import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.CMYKColor;
 import com.itextpdf.text.pdf.ColumnText;
 import com.itextpdf.text.pdf.PdfContentByte;
@@ -31,12 +33,16 @@ import com.rejner.remapomiary.data.entities.BoardCommonSpace;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.FlatFullData;
+import com.rejner.remapomiary.data.entities.FlatPhoto;
+import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.ProtocolNumber;
+import com.rejner.remapomiary.data.entities.RoomInFlat;
 import com.rejner.remapomiary.generator.constants.ProFonts;
 import com.rejner.remapomiary.generator.helpers.CellGenerator;
 import com.rejner.remapomiary.generator.helpers.FlatPageNumberEvent;
 import com.rejner.remapomiary.ui.utils.Settings;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
@@ -306,8 +312,7 @@ public class ProtocolGenerator {
 
                     if (!boards.isEmpty()) {
                         TableFor3f tableFor3fGenerator = new TableFor3f(db);
-                        
-                        // Generujemy tabele dla obu typów instalacji w części wspólnej
+
                         String[] types = {Settings.installationTypeTNS, Settings.installationTypeTNC};
                         for (String type : types) {
                             PdfPTable tableFor3f = tableFor3fGenerator.createMeasurementTableFor3fCommonSpace(boards, type);
@@ -349,11 +354,11 @@ public class ProtocolGenerator {
 
                     if (!boards.isEmpty()) {
                         TableFor1f tableFor1fGenerator = new TableFor1f(db);
-                        
+
                         String[] types = {Settings.installationTypeTNS, Settings.installationTypeTNC};
                         for (String type : types) {
                             PdfPTable tableFor1f = tableFor1fGenerator.createMeasurementTableFor1fCommonSpace(boards, type);
-                            
+
                             if (tableFor1f != null) {
                                 Paragraph circuitsFor1fTitle = new Paragraph("Wyniki z pomiarów rezystancji izolacji instalacji - obwody 1f " + type, ProFonts.fontNormalBold);
                                 circuitsFor1fTitle.setAlignment(Element.ALIGN_LEFT);
@@ -489,6 +494,10 @@ public class ProtocolGenerator {
                 createGrade(next, flat.flat, addition);
                 next++;
                 createEndSummary(next, flat.flat);
+
+                // ZMIANA: Przekazujemy teraz również dane obiektu block, aby sformatować odpowiednio nagłówek
+                addPhotoPages(flat.flat, blockFullData1.block);
+
                 if (allFlats || saveData) {
                     currentProtocolNumber++;
                     db.protocolNumberDao().incrementNum();
@@ -614,6 +623,144 @@ public class ProtocolGenerator {
         }
         f1Legend.setSpacingAfter(7f);
         document.add(f1Legend);
+    }
+
+    // ZMIANA: Głęboka przebudowa generowania stron ze zdjęciami oraz formatu napisów
+    private void addPhotoPages(Flat flat, Block block) throws DocumentException {
+        List<FlatPhoto> boardPhotos = db.flatPhotoDao().getPhotosByFlatAndTypeSync(flat.id, 0);
+        List<FlatPhoto> notePhotos = db.flatPhotoDao().getPhotosByFlatAndTypeSync(flat.id, 1);
+        List<OutletMeasurement> measurementsWithPhotos = db.outletMeasurementDao().getMeasurementsWithPhotosForFlatSync(flat.id);
+
+        // Pobieramy rozdzielnie z części wspólnej powiązane z tym obiektem flat
+        List<BoardCommonSpace> commonSpaceBoards = db.boardCommonSpaceDao().getBoardsForFlatSync(flat.id);
+
+        // Obliczamy ile łącznie zdjęć ma część wspólna
+        int totalCommonSpaceBoardPhotos = 0;
+        for (BoardCommonSpace board : commonSpaceBoards) {
+            if (board.photoPaths != null && !board.photoPaths.trim().isEmpty()) {
+                totalCommonSpaceBoardPhotos += board.photoPaths.split(",").length;
+            }
+        }
+
+        // Jeśli brak jakichkolwiek zdjęć – nie twórz nowej strony
+        if (boardPhotos.isEmpty() && notePhotos.isEmpty() && measurementsWithPhotos.isEmpty() && totalCommonSpaceBoardPhotos == 0) {
+            return;
+        }
+
+        document.newPage();
+
+        // ZMIANA: Formatowanie czytelnego nagłówka uwzględniającego lokal i blok
+        String headerTitleText = "DOKUMENTACJA FOTOGRAFICZNA\n";
+        if (flat.isCommonSpace == 1) {
+            headerTitleText += block.street + " " + block.number + " - Część wspólna";
+        } else {
+            headerTitleText += block.street + " " + block.number + " - LOKAL " + flat.number;
+        }
+
+        Paragraph photoTitle = new Paragraph(headerTitleText, ProFonts.fontBold14);
+        photoTitle.setAlignment(Element.ALIGN_CENTER);
+        photoTitle.setSpacingAfter(20f);
+        document.add(photoTitle);
+
+        PdfPTable photoTable = new PdfPTable(2);
+        photoTable.setWidthPercentage(100);
+        photoTable.setSpacingBefore(10f);
+
+        int totalPhotosAddedCounter = 0;
+
+        // 1. Rozdzielnie ze zwykłych mieszkań (FlatPhoto - Typ 0)
+        int regularBoardPhotoIdx = 1;
+        for (FlatPhoto photo : boardPhotos) {
+            String caption = "Rozdzielnia - Zdjęcie " + regularBoardPhotoIdx;
+            if (photo.description != null && !photo.description.isEmpty()) {
+                caption += " (" + photo.description + ")";
+            }
+            addPhotoToTable(photoTable, photo.photoPath, caption);
+            regularBoardPhotoIdx++;
+            totalPhotosAddedCounter++;
+        }
+
+        // 2. Rozdzielnie z części wspólnej (Pętla po tabeli rozdzielni i ich wewnętrznych ścieżkach)
+        for (BoardCommonSpace board : commonSpaceBoards) {
+            if (board.photoPaths != null && !board.photoPaths.trim().isEmpty()) {
+                String[] paths = board.photoPaths.split(",");
+                int csBoardPhotoIdx = 1;
+                for (String path : paths) {
+                    if (path.trim().isEmpty()) continue;
+
+                    // ZMIANA: Format napisu dla części wspólnej: Rozdzielnia: [nazwa] + [numer]
+                    String caption = "Rozdzielnia: " + board.name + " - Zdjęcie " + csBoardPhotoIdx;
+                    addPhotoToTable(photoTable, path, caption);
+                    csBoardPhotoIdx++;
+                    totalPhotosAddedCounter++;
+                }
+            }
+        }
+
+        // 3. Uwagi / Usterki (FlatPhoto - Typ 1)
+        int notePhotoIdx = 1;
+        for (FlatPhoto photo : notePhotos) {
+            String caption = "Uwagi ogólne - zdjęcie " + notePhotoIdx;
+            if (photo.description != null && !photo.description.isEmpty()) {
+                caption += " — " + photo.description;
+            }
+            addPhotoToTable(photoTable, photo.photoPath, caption);
+            notePhotoIdx++;
+            totalPhotosAddedCounter++;
+        }
+
+        // 4. Pomiary obwodowe / pętli zwarcia z pojedynczych pokoi
+        for (OutletMeasurement om : measurementsWithPhotos) {
+            String roomName = "Pomieszczenie";
+            RoomInFlat room = db.roomDao().getRoomsForFlatSync(flat.id).stream()
+                    .filter(r -> r.id == om.roomId)
+                    .findFirst()
+                    .orElse(null);
+            if (room != null) {
+                roomName = room.name;
+            }
+            String caption = "Pomieszczenie: " + roomName + " - urządzenie/punkt pomiaru : " + om.appliance;
+            addPhotoToTable(photoTable, om.photoPath, caption);
+            totalPhotosAddedCounter++;
+        }
+
+        // Dopełnienie tabeli pustą komórką jeśli wyszła nieparzysta liczba elementów
+        if (totalPhotosAddedCounter % 2 != 0) {
+            PdfPCell emptyCell = new PdfPCell();
+            emptyCell.setBorder(Rectangle.NO_BORDER);
+            photoTable.addCell(emptyCell);
+        }
+
+        document.add(photoTable);
+    }
+
+    private void addPhotoToTable(PdfPTable table, String path, String caption) {
+        try {
+            File file = new File(path);
+            if (!file.exists()) {
+                Log.e(TAG, "Plik zdjęcia nie istnieje: " + path);
+                return;
+            }
+
+            Image img = Image.getInstance(path);
+            img.scaleToFit(250f, 250f);
+
+            PdfPCell cell = new PdfPCell();
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setPadding(10f);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+
+            img.setAlignment(Image.ALIGN_CENTER);
+            cell.addElement(img);
+
+            Paragraph p = new Paragraph(caption, ProFonts.small);
+            p.setAlignment(Element.ALIGN_CENTER);
+            cell.addElement(p);
+
+            table.addCell(cell);
+        } catch (Exception e) {
+            Log.e(TAG, "Błąd podczas dodawania zdjęcia do PDF: " + path, e);
+        }
     }
 
     public void createEndSummary(int next, Flat flat) throws DocumentException {

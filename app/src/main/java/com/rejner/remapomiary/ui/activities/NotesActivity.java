@@ -6,12 +6,18 @@ import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -19,12 +25,17 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Flat;
+import com.rejner.remapomiary.data.entities.FlatPhoto;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RCD;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
@@ -39,19 +50,20 @@ import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 import com.rejner.remapomiary.ui.viewmodels.TemplateViewModel;
-import com.rejner.remapomiary.ui.viewmodels.SignatureViewModel; // NOWE
-import com.rejner.remapomiary.ui.activities.SignatureView; // NOWE
-
-import org.w3c.dom.Text;
+import com.rejner.remapomiary.ui.viewmodels.SignatureViewModel;
+import com.rejner.remapomiary.ui.viewmodels.FlatPhotoViewModel;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 
 public class NotesActivity extends AppCompatActivity {
 
     private FlatViewModel flatViewModel;
     private TemplateViewModel templateViewModel;
-    private SignatureViewModel signatureViewModel; // NOWE
+    private SignatureViewModel signatureViewModel;
 
     private Flat currentFlat;
     private int flatId;
@@ -76,7 +88,7 @@ public class NotesActivity extends AppCompatActivity {
     private int catalogId;
     private boolean areButtonsSet = false;
 
-    // NOWE POLA DLA PODPISU
+    // POLA DLA PODPISU
     private LinearLayout termsContainer;
     private LinearLayout signaturePadContainer;
     private LinearLayout savedSignatureContainer;
@@ -94,6 +106,16 @@ public class NotesActivity extends AppCompatActivity {
     private int isCommonSpace;
     private String blockName;
 
+    // NOWE POLA DLA SYSTEMU ZDJĘĆ Z OPISAMI (TABELA)
+    private FlatPhotoViewModel flatPhotoViewModel;
+    private ActivityResultLauncher<Uri> takeNotesPhotoLauncher;
+    private File tempNotesPhotoFile;
+    private boolean isNotesPhotosExpanded = false;
+    private LinearLayout notesPhotosContainer;
+    private HorizontalScrollView notesPhotosScrollView;
+    private Button toggleNotesPhotosButton, addNotesPhotoBtn;
+    private float dpScale;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,6 +125,8 @@ public class NotesActivity extends AppCompatActivity {
         catalogId = getIntent().getIntExtra("catalogId", -1);
         isCommonSpace = getIntent().getIntExtra("isCommonSpace", 0);
         blockName = getIntent().getStringExtra("name");
+        dpScale = getResources().getDisplayMetrics().density;
+
         if (flatId == -1) {
             Toast.makeText(this, "Nieprawidłowe ID mieszkania", Toast.LENGTH_SHORT).show();
             finish();
@@ -129,7 +153,6 @@ public class NotesActivity extends AppCompatActivity {
         btnDeleteSignature = findViewById(R.id.btnDeleteSignature);
         tvSavedSignatureInfo = findViewById(R.id.tvSavedSignatureInfo);
 
-        // NOWE WIDOKI
         termsContainer = findViewById(R.id.termsContainer);
         signaturePadContainer = findViewById(R.id.signaturePadContainer);
         savedSignatureContainer = findViewById(R.id.savedSignatureContainer);
@@ -138,7 +161,6 @@ public class NotesActivity extends AppCompatActivity {
         signatureView = findViewById(R.id.signatureView);
         savedSignatureImage = findViewById(R.id.savedSignatureImage);
         saveName = findViewById(R.id.confirmName);
-
 
         if (catalogId != -1) {
             radioDopuszczona.setEnabled(false);
@@ -160,22 +182,21 @@ public class NotesActivity extends AppCompatActivity {
         rcdViewModel = new ViewModelProvider(this).get(RCDViewModel.class);
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
-        signatureViewModel = new ViewModelProvider(this).get(SignatureViewModel.class); // INICJALIZACJA
+        signatureViewModel = new ViewModelProvider(this).get(SignatureViewModel.class);
+        flatPhotoViewModel = new ViewModelProvider(this).get(FlatPhotoViewModel.class);
+
         if (isCommonSpace == 1) {
             termsContainer.setVisibility(View.GONE);
             findViewById(R.id.other).setVisibility(View.GONE);
             signaturePadContainer.setVisibility(View.GONE);
             savedSignatureContainer.setVisibility(View.GONE);
 
-
             ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do części wspólnej (niewidoczne w protokole)");
             ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do części wspólnej (WIDOCZNE W PROTOKOLE)");
-
             ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
-
             findViewById(R.id.other).setVisibility(View.GONE);
-
         }
+
         flatViewModel.getCombinedFlat(flatId).observe(this, flat -> {
             if (flat != null) {
                 currentFlat = flat;
@@ -190,10 +211,8 @@ public class NotesActivity extends AppCompatActivity {
             }
         });
 
-        // OBSŁUGA LOGIKI PODPISÓW
         if (isCommonSpace != 1) {
             setupSignatureLogic();
-
         }
 
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -251,9 +270,169 @@ public class NotesActivity extends AppCompatActivity {
 
         templateSave.setOnClickListener(v -> saveAsTemplate());
 
+        // Inicjalizacja funkcjonalności zdjęć uwag
+        initNotesPhotosSystem();
     }
 
-    // NOWA METODA - Logika widoczności i zapisu podpisu
+    // SYSTEM ZDJĘĆ Z ZAPISYWANIEM I EDYCJĄ OPISU
+    private void initNotesPhotosSystem() {
+        toggleNotesPhotosButton = findViewById(R.id.toggleNotesPhotosButton);
+        addNotesPhotoBtn = findViewById(R.id.addNotesPhotoBtn);
+        notesPhotosScrollView = findViewById(R.id.notesPhotosScrollView);
+        notesPhotosContainer = findViewById(R.id.notesPhotosContainer);
+
+        toggleNotesPhotosButton.setOnClickListener(v -> {
+            isNotesPhotosExpanded = !isNotesPhotosExpanded;
+            notesPhotosScrollView.setVisibility(isNotesPhotosExpanded ? View.VISIBLE : View.GONE);
+            toggleNotesPhotosButton.setText(isNotesPhotosExpanded ? "Ukryj zdjęcia" : "Pokaż zdjęcia");
+        });
+
+        takeNotesPhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                success -> {
+                    if (success && tempNotesPhotoFile != null) {
+                        FlatPhoto photo = new FlatPhoto();
+                        photo.flatId = flatId;
+                        photo.photoPath = tempNotesPhotoFile.getAbsolutePath();
+                        photo.type = 1; // Typ 1 oznacza sekcję uwag/usterek
+                        photo.description = "";
+
+                        flatPhotoViewModel.insert(photo);
+                        Toast.makeText(this, "Dodano zdjęcie usterki", Toast.LENGTH_SHORT).show();
+                    }
+                    tempNotesPhotoFile = null;
+                }
+        );
+
+        addNotesPhotoBtn.setOnClickListener(v -> {
+            if (catalogId != -1) return;
+            try {
+                String fileName = "MIESZKANIE_NOTES_" + flatId + "_" + System.currentTimeMillis();
+                File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                tempNotesPhotoFile = File.createTempFile(fileName, ".jpg", storageDir);
+
+                Uri photoURI = FileProvider.getUriForFile(
+                        this,
+                        getPackageName() + ".fileprovider",
+                        tempNotesPhotoFile
+                );
+                takeNotesPhotoLauncher.launch(photoURI);
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Błąd uruchamiania aparatu", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Obserwacja bazy z filtrowaniem na uwagi (typ = 1)
+        flatPhotoViewModel.getPhotosByFlatAndType(flatId, 1).observe(this, this::renderNotesPhotos);
+    }
+
+    private void renderNotesPhotos(List<FlatPhoto> photos) {
+        notesPhotosContainer.removeAllViews();
+        if (photos != null && !photos.isEmpty()) {
+            for (FlatPhoto photo : photos) {
+                // Karta usterki (pionowy kontener grupujący widoki)
+                LinearLayout cardLayout = new LinearLayout(this);
+                cardLayout.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                        (int) (220 * dpScale), ViewGroup.LayoutParams.WRAP_CONTENT);
+                cardParams.setMargins(0, 0, (int) (14 * dpScale), 0);
+                cardLayout.setLayoutParams(cardParams);
+                cardLayout.setPadding((int) (4 * dpScale), (int) (4 * dpScale), (int) (4 * dpScale), (int) (4 * dpScale));
+                cardLayout.setBackground(ContextCompat.getDrawable(this, R.drawable.circuit_row_background));
+
+                // Podgląd dużego zdjęcia (200x200dp w kwadracie, reszta karty na formularz opisu)
+                ImageView imageView = new ImageView(this);
+                LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, (int) (200 * dpScale));
+                imageView.setLayoutParams(imgParams);
+                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                imageView.setImageURI(Uri.fromFile(new File(photo.photoPath)));
+                cardLayout.addView(imageView);
+
+                // Pole wprowadzania opisu usterki do protokołu
+                EditText descEditText = new EditText(this);
+                LinearLayout.LayoutParams etParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                etParams.setMargins(0, (int) (8 * dpScale), 0, (int) (6 * dpScale));
+                descEditText.setLayoutParams(etParams);
+                descEditText.setHint("Opis usterki do protokołu...");
+                descEditText.setText(photo.description != null ? photo.description : "");
+                descEditText.setTextSize(14);
+
+// =======================================================================
+// ZMIANY ZWIĘKSZAJĄCE POLE:
+// 1. Włączamy obsługę wielu linii tekstu
+                descEditText.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+// 2. Ustalamy minimalną wysokość pola na 3 linie (możesz zmienić na 4 lub 5, zależnie od potrzeb)
+                descEditText.setMinLines(3);
+// 3. Wyrównujemy tekst i hint do lewego górnego rogu (żeby tekst nie zaczynał się na środku pola)
+                descEditText.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+// =======================================================================
+
+                descEditText.setBackground(ContextCompat.getDrawable(this, R.drawable.input));
+// Zwiększyłem też delikatnie padding wewnętrzny (z 8 na 12), żeby tekst nie był "przyklejony" do ramek
+                descEditText.setPadding((int) (12 * dpScale), (int) (12 * dpScale), (int) (12 * dpScale), (int) (12 * dpScale));
+
+                if (catalogId != -1) descEditText.setEnabled(false);
+                cardLayout.addView(descEditText);
+
+                // Przycisk Zapisu Opisu
+                Button saveDescBtn = new Button(this);
+                LinearLayout.LayoutParams btnDescParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, (int) (42 * dpScale));
+                btnDescParams.setMargins(0, 0, 0, (int) (6 * dpScale));
+                saveDescBtn.setLayoutParams(btnDescParams);
+                saveDescBtn.setText("ZAPISZ OPIS");
+                saveDescBtn.setTextSize(12);
+                saveDescBtn.setPadding(0, 0, 0, 0);
+                saveDescBtn.setBackgroundColor(Color.parseColor("#0099CC"));
+                saveDescBtn.setTextColor(Color.WHITE);
+                if (catalogId != -1) saveDescBtn.setEnabled(false);
+
+                saveDescBtn.setOnClickListener(v -> {
+                    photo.description = descEditText.getText().toString().trim();
+                    flatPhotoViewModel.update(photo);
+                    Toast.makeText(this, "Zapisano opis usterki", Toast.LENGTH_SHORT).show();
+                    hideKeyboard();
+                    descEditText.clearFocus();
+                });
+                cardLayout.addView(saveDescBtn);
+
+                // Przycisk Usuń (Zawsze widoczny krwistoczerwony)
+                Button delBtn = new Button(this);
+                LinearLayout.LayoutParams btnDelParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, (int) (42 * dpScale));
+                delBtn.setLayoutParams(btnDelParams);
+                delBtn.setText("USUŃ");
+                delBtn.setTextSize(12);
+                delBtn.setPadding(0, 0, 0, 0);
+                delBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
+                delBtn.setTextColor(Color.WHITE);
+                if (catalogId != -1) delBtn.setEnabled(false);
+
+                delBtn.setOnClickListener(v -> {
+                    File file = new File(photo.photoPath);
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                    flatPhotoViewModel.delete(photo);
+                    Toast.makeText(this, "Zdjęcie zostało usunięte", Toast.LENGTH_SHORT).show();
+                });
+                cardLayout.addView(delBtn);
+
+                notesPhotosContainer.addView(cardLayout);
+            }
+        } else {
+            TextView noPhotosTv = new TextView(this);
+            noPhotosTv.setText("Brak zdjęć dla tych uwag");
+            noPhotosTv.setTextSize(16);
+            noPhotosTv.setTextColor(Color.parseColor("#757575"));
+            noPhotosTv.setPadding((int) (8 * dpScale), (int) (16 * dpScale), (int) (8 * dpScale), (int) (16 * dpScale));
+            notesPhotosContainer.addView(noPhotosTv);
+        }
+    }
+
     private void setupSignatureLogic() {
         saveName.setOnClickListener(v-> {
             hideKeyboard();
@@ -261,47 +440,40 @@ public class NotesActivity extends AppCompatActivity {
         });
         etSignerName.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                hideKeyboard();          // Ukrywa klawiaturę (korzysta z Twojej metody)
-                etSignerName.clearFocus(); // Usuwa focus (kursor) z pola tekstowego
-                return true;             // Konsumuje zdarzenie
+                hideKeyboard();
+                etSignerName.clearFocus();
+                return true;
             }
             return false;
         });
         signatureViewModel.getSignatureForFlat(flatId).observe(this, signature -> {
             if (signature != null && signature.signatureData != null) {
-                // Podpis istnieje w bazie - ukryj panele wprowadzania, pokaż podgląd
                 termsContainer.setVisibility(View.GONE);
                 signaturePadContainer.setVisibility(View.GONE);
                 savedSignatureContainer.setVisibility(View.VISIBLE);
 
-                // Wyświetlenie danych tekstowych (Kto i Kiedy)
                 String dateStr = signature.signatureDate != null ?
                         android.text.format.DateFormat.format("yyyy-MM-dd HH:mm", signature.signatureDate).toString() : "-";
                 tvSavedSignatureInfo.setText("Podpis złożony przez: " + signature.signerName + "\nData: " + dateStr);
 
-                // Wyświetlenie rysunku podpisu
                 Bitmap bitmap = BitmapFactory.decodeByteArray(signature.signatureData, 0, signature.signatureData.length);
                 savedSignatureImage.setImageBitmap(bitmap);
             } else {
-                // Brak podpisu - pokaż panel startowy (Regulamin)
                 if (catalogId == -1) {
                     termsContainer.setVisibility(View.VISIBLE);
                     signaturePadContainer.setVisibility(View.GONE);
                     savedSignatureContainer.setVisibility(View.GONE);
-                    // Czyszczenie pól tekstowych i padu rysowania na wszelki wypadek
                     etSignerName.setText("");
                     signatureView.clear();
                 }
             }
         });
 
-        // Przejście z regulaminu do podpisywania
         btnNextToSignature.setOnClickListener(v -> {
             termsContainer.setVisibility(View.GONE);
             signaturePadContainer.setVisibility(View.VISIBLE);
         });
 
-        // Przycisk: ANULUJ składanie podpisu (wraca do regulaminu)
         btnCancelSignature.setOnClickListener(v -> {
             hideKeyboard();
             signatureView.clear();
@@ -310,12 +482,10 @@ public class NotesActivity extends AppCompatActivity {
             termsContainer.setVisibility(View.VISIBLE);
         });
 
-        // Przycisk: WYCZYŚĆ pad (czyści tylko płótno rysunku w trakcie podpisywania)
         btnClearSignature.setOnClickListener(v -> {
             signatureView.clear();
         });
 
-        // Przycisk: ZAPISZ podpis w bazie
         btnSaveSignature.setOnClickListener(v -> {
             String name = etSignerName.getText().toString().trim();
             if (name.isEmpty()) {
@@ -324,25 +494,21 @@ public class NotesActivity extends AppCompatActivity {
             }
 
             Bitmap signatureBitmap = signatureView.getSignatureBitmap();
-
-            // Kompresja grafiki bitmapy do tablicy bajtów
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
             signatureBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
             byte[] byteArray = stream.toByteArray();
 
-            // Budowanie nowego obiektu z datą i nazwiskiem
             Signature newSignature = new Signature();
             newSignature.flatId = flatId;
             newSignature.signatureData = byteArray;
             newSignature.signerName = name;
-            newSignature.signatureDate = new Date(); // Bieżąca data i czas
+            newSignature.signatureDate = new Date();
 
             hideKeyboard();
             signatureViewModel.insert(newSignature);
             Toast.makeText(this, "Podpis został pomyślnie zapisany!", Toast.LENGTH_SHORT).show();
         });
 
-        // Przycisk: POKAŻ REGULAMIN po złożeniu podpisu (wyświetla Dialog)
         btnShowTermsPostSign.setOnClickListener(v -> {
             TextView termsTv = findViewById(R.id.tvTermsText);
             CharSequence termsContent = termsTv != null ? termsTv.getText() : "Treść regulaminu";
@@ -354,15 +520,14 @@ public class NotesActivity extends AppCompatActivity {
                     .show();
         });
 
-        // Przycisk: PODPISZ PONOWNIE / USUŃ (Kasuje stary podpis i pozwala zacząć od nowa)
         btnDeleteSignature.setOnClickListener(v -> {
             new androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle("Usuwanie podpisu")
                     .setMessage("Czy na pewno chcesz usunąć obecny podpis i podpisać dokument ponownie?")
                     .setPositiveButton("Tak, usuń", (dialog, which) -> {
-                signatureViewModel.deleteSignatureForFlat(flatId);
-                Toast.makeText(this, "Stary podpis usunięty.", Toast.LENGTH_SHORT).show();
-            })
+                        signatureViewModel.deleteSignatureForFlat(flatId);
+                        Toast.makeText(this, "Stary podpis usunięty.", Toast.LENGTH_SHORT).show();
+                    })
                     .setNegativeButton("Nie", null)
                     .show();
         });
@@ -458,7 +623,6 @@ public class NotesActivity extends AppCompatActivity {
         titleView.setText("Mieszkanie numer - " + currentFlat.number + " podsumowanie");
         if (isCommonSpace == 1) {
             titleView.setText("Podsumowanie - " + blockName);
-
         }
         Button backSave = findViewById(R.id.backSave);
         if (isCommonSpace == 1) {
@@ -467,7 +631,6 @@ public class NotesActivity extends AppCompatActivity {
         }
         backSave.setOnClickListener(v -> {
             Actions.saveAndMarkReady(currentFlat, this);
-
             Intent intent = new Intent(NotesActivity.this, FlatsActivity.class);
             intent.putExtra("blockId", currentFlat.blockId);
             startActivity(intent);
@@ -486,7 +649,6 @@ public class NotesActivity extends AppCompatActivity {
             if (catalogId != -1) intent.putExtra("catalogId", catalogId);
             intent.putExtra("flatId", currentFlat.id);
             startActivity(intent);
-
         });
 
         roomButton.setOnClickListener(v -> {
@@ -504,7 +666,6 @@ public class NotesActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-
         RCDButton.setOnClickListener(v -> {
             Intent intent = new Intent(NotesActivity.this, RCDActivity.class);
             if (catalogId != -1) intent.putExtra("catalogId", catalogId);
@@ -517,6 +678,7 @@ public class NotesActivity extends AppCompatActivity {
                 Intent intent = new Intent(this, BlockActivity.class);
                 intent.putExtra("blockId", currentFlat.blockId);
                 startActivity(intent);
+                return;
             }
             if (currentFlat == null) return;
             if (catalogId != -1) {

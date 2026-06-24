@@ -3,7 +3,9 @@ package com.rejner.remapomiary.ui.activities;
 import static com.rejner.remapomiary.ui.utils.Actions.randomOhms;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.MotionEvent;
@@ -13,11 +15,14 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -39,6 +44,8 @@ import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,6 +86,10 @@ public class RoomActivity extends AppCompatActivity {
     private String blockName;
     private FlatViewModel flatViewModel;
 
+    private ActivityResultLauncher<Uri> takePhotoLauncher;
+    private OutletMeasurement measurementPendingPhoto;
+    private File tempPhotoFile;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,6 +105,23 @@ public class RoomActivity extends AppCompatActivity {
         outletViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
         commonSpaceInfoViewModel = new ViewModelProvider(this).get(CommonSpaceInfoViewModel.class);
+
+        takePhotoLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                success -> {
+                    if (success && measurementPendingPhoto != null && tempPhotoFile != null) {
+                        // Tworzymy kopię, aby DiffUtil w adapterze zauważył różnicę
+                        // (oryginalny obiekt na liście pozostaje bez ścieżki do czasu odświeżenia z bazy)
+                        OutletMeasurement updateMe = measurementPendingPhoto.copy();
+                        updateMe.photoPath = tempPhotoFile.getAbsolutePath();
+                        
+                        outletViewModel.update(updateMe, null);
+                        Toast.makeText(this, "Dodano zdjęcie do pomiaru", Toast.LENGTH_SHORT).show();
+                    }
+                    measurementPendingPhoto = null;
+                    tempPhotoFile = null;
+                }
+        );
 
         if (isCommonSpace) {
             roomNames = new String[]{"Korytarz", "Garaż", "Piwnica", "Rowerownia", "Pralnia", "Piętro -", "Inne"};
@@ -307,6 +335,7 @@ public class RoomActivity extends AppCompatActivity {
                 ampsOptions,
                 this::onDeleteRoomClicked,
                 this::onAddMeasurementClicked,
+                this::onAddMeasurementPhoto,
                 catalogId,
                 isCommonSpace
         );
@@ -387,6 +416,25 @@ public class RoomActivity extends AppCompatActivity {
         outletViewModel.insert(newOm, lastId -> {
             roomAdapter.setNewlyAddedMeasurementId(lastId);
         });
+    }
+
+    private void onAddMeasurementPhoto(OutletMeasurement measurement) {
+        measurementPendingPhoto = measurement;
+        try {
+            String fileName = "POMIAR_" + measurement.id + "_" + System.currentTimeMillis();
+            File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            tempPhotoFile = File.createTempFile(fileName, ".jpg", storageDir);
+
+            Uri photoURI = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".fileprovider",
+                    tempPhotoFile
+            );
+            takePhotoLauncher.launch(photoURI);
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Błąd uruchamiania aparatu", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void onDeleteRoomClicked(RoomInFlat room) {
@@ -671,10 +719,13 @@ public class RoomActivity extends AppCompatActivity {
     }
 
     public void hideKeyboard() {
+        hideKeyboard(getCurrentFocus());
+    }
+
+    public void hideKeyboard(View view) {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        View focused = getCurrentFocus();
-        if (imm != null && focused != null) {
-            imm.hideSoftInputFromWindow(focused.getWindowToken(), 0);
+        if (imm != null && view != null) {
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
 

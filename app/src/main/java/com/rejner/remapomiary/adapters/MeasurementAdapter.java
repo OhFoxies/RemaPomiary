@@ -12,6 +12,7 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,6 +29,11 @@ import java.util.concurrent.Executors;
 
 public class MeasurementAdapter extends ListAdapter<OutletMeasurement, MeasurementAdapter.MeasurementViewHolder> {
 
+    public interface OnMeasurementActionListener {
+        void onAddPhoto(OutletMeasurement measurement);
+    }
+
+    private final OnMeasurementActionListener listener;
     private final RoomActivity activity;
     private final OutletMeasurementViewModel outletViewModel;
     private final String[] applianceOptions;
@@ -38,6 +44,8 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     private final boolean isCommonSpace;
     private long focusToMeasurementId = -1;
     private final String roomName;
+
+    private final java.util.Set<Integer> expandedPhotoIds = new java.util.HashSet<>();
 
     private final ArrayAdapter<String> rcdStateAdapter;
     private final ArrayAdapter<String> applianceSpinnerAdapter;
@@ -50,7 +58,8 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     public MeasurementAdapter(RoomActivity activity, OutletMeasurementViewModel outletViewModel,
                               String[] applianceOptions, String[] breakerTypes, String[] noteOptions,
-                              String[] ampsOptions, int catalogId, boolean isCommonSpace, String roomName) {
+                              String[] ampsOptions, int catalogId, boolean isCommonSpace, String roomName,
+                              OnMeasurementActionListener listener) {
         super(DIFF_CALLBACK);
         this.activity = activity;
         this.outletViewModel = outletViewModel;
@@ -61,6 +70,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.catalogId = catalogId;
         this.isCommonSpace = isCommonSpace;
         this.roomName = roomName;
+        this.listener = listener;
 
         if (Settings.mainRoomName.equalsIgnoreCase(roomName)) {
             this.noteOptions = new String[]{Settings.noNotes, "Inne"};
@@ -145,9 +155,15 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
                     if (position == 0) {
                         currentItem.rcdName = "";
+                        currentItem.rcdTime = null;
+                        currentItem.rcdCurrent = null;
                         binding.rcdNameEdit.setText("");
+                        binding.rcdTimeEdit.setText("");
+                        binding.rcdCurrentEdit.setText("");
                         outletViewModel.update(currentItem, null);
+                        enableRcdEdits(false);
                     } else {
+                        enableRcdEdits(true);
                         if (currentItem.rcdName == null || currentItem.rcdName.trim().isEmpty()) {
                             // OPTYMALIZACJA: Użycie stałego dbExecutor zamiast ciągłego tworzenia nowego wątku
                             dbExecutor.execute(() -> {
@@ -176,7 +192,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             });
 
             binding.rcdNameEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.rcdNameSaveBtn.performClick();
                     return true;
                 }
@@ -185,12 +201,9 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             binding.rcdNameSaveBtn.setOnClickListener(v -> {
                 if (currentItem == null) return;
                 String nameText = binding.rcdNameEdit.getText().toString().trim();
-                if (nameText.equals(currentItem.rcdName) || nameText.isEmpty()) {
-                    return;
-                }
                 currentItem.rcdName = nameText;
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.rcdNameEdit);
                 binding.rcdNameEdit.clearFocus();
             });
 
@@ -199,7 +212,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 if (hasFocus) scrollToView(v);
             });
             binding.rcdTimeEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.rcdTimeSaveBtn.performClick();
                     return true;
                 }
@@ -209,11 +222,17 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 if (currentItem == null) return;
                 String timeText = binding.rcdTimeEdit.getText().toString().trim();
                 if (timeText.isEmpty()) {
-                    return;
+                    currentItem.rcdTime = null;
+                } else {
+                    try {
+                        currentItem.rcdTime = Integer.parseInt(timeText);
+                    } catch (NumberFormatException e) {
+                        binding.rcdTimeEdit.setError("Błąd");
+                        return;
+                    }
                 }
-                currentItem.rcdTime = Integer.parseInt(timeText);
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.rcdTimeEdit);
                 binding.rcdTimeEdit.clearFocus();
             });
 
@@ -222,7 +241,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 if (hasFocus) scrollToView(v);
             });
             binding.rcdCurrentEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.rcdCurrentSaveBtn.performClick();
                     return true;
                 }
@@ -232,11 +251,17 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 if (currentItem == null) return;
                 String currentText = binding.rcdCurrentEdit.getText().toString().trim();
                 if (currentText.isEmpty()) {
-                    return;
+                    currentItem.rcdCurrent = null;
+                } else {
+                    try {
+                        currentItem.rcdCurrent = Integer.parseInt(currentText);
+                    } catch (NumberFormatException e) {
+                        binding.rcdCurrentEdit.setError("Błąd");
+                        return;
+                    }
                 }
-                currentItem.rcdCurrent = Integer.parseInt(currentText);
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.rcdCurrentEdit);
                 binding.rcdCurrentEdit.clearFocus();
             });
 
@@ -268,12 +293,20 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 if (hasFocus) scrollToView(v);
             });
 
+            binding.customApplianceEdit.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
+                    binding.customApplianceSaveBtn.performClick();
+                    return true;
+                }
+                return false;
+            });
+
             binding.customApplianceSaveBtn.setOnClickListener(v -> {
                 if (currentItem == null) return;
                 String txt = binding.customApplianceEdit.getText().toString().trim();
                 currentItem.appliance = txt.isEmpty() ? applianceOptions[0] : txt;
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.customApplianceEdit);
                 binding.customApplianceEdit.clearFocus();
                 if (txt.isEmpty()) setupApplianceField(currentItem);
             });
@@ -283,7 +316,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 binding.customApplianceEdit.setText("");
                 currentItem.appliance = applianceOptions[0];
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.customApplianceEdit);
                 binding.customApplianceEdit.clearFocus();
                 setupApplianceField(currentItem);
             });
@@ -311,7 +344,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             });
 
             binding.switchEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.switchSaveBtn.performClick();
                     return true;
                 }
@@ -325,7 +358,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                     currentItem.switchName = newSwitch;
                     outletViewModel.update(currentItem, null);
                 }
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.switchEdit);
                 binding.switchEdit.clearFocus();
             });
 
@@ -362,7 +395,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             });
 
             binding.ohmsEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.ohmsSaveBtn.performClick();
                     return true;
                 }
@@ -389,7 +422,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                     currentItem.ohms = val;
                     outletViewModel.update(currentItem, null);
                 }
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.ohmsEdit);
                 binding.ohmsEdit.clearFocus();
             });
 
@@ -421,7 +454,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             });
 
             binding.customNoteEdit.setOnEditorActionListener((v, actionId, event) -> {
-                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                     binding.customNoteSaveBtn.performClick();
                     return true;
                 }
@@ -433,7 +466,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 String txt = binding.customNoteEdit.getText().toString().trim();
                 currentItem.note = txt.isEmpty() ? noteOptions[0] : txt;
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.customNoteEdit);
                 binding.customNoteEdit.clearFocus();
                 if (txt.isEmpty()) setupNoteField(currentItem);
             });
@@ -443,7 +476,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                 binding.customNoteEdit.setText("");
                 currentItem.note = noteOptions[0];
                 outletViewModel.update(currentItem, null);
-                activity.hideKeyboard();
+                activity.hideKeyboard(binding.customNoteEdit);
                 binding.customNoteEdit.clearFocus();
                 setupNoteField(currentItem);
             });
@@ -456,6 +489,42 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                         activity.hideKeyboard();
                     }
                     outletViewModel.delete(currentItem, null);
+                }
+            });
+
+            binding.photoBtn.setOnClickListener(v -> {
+                if (currentItem == null) return;
+                if (currentItem.photoPath == null || currentItem.photoPath.isEmpty()) {
+                    if (listener != null) {
+                        listener.onAddPhoto(currentItem);
+                    }
+                } else {
+                    if (binding.photoContainer.getVisibility() == View.VISIBLE) {
+                        binding.photoContainer.setVisibility(View.GONE);
+                        expandedPhotoIds.remove(currentItem.id);
+                    } else {
+                        binding.photoContainer.setVisibility(View.VISIBLE);
+                        expandedPhotoIds.add(currentItem.id);
+                        if (currentItem.photoPath != null) {
+                            binding.measurementPhoto.setImageURI(android.net.Uri.fromFile(new java.io.File(currentItem.photoPath)));
+                        }
+                        scrollToView(binding.photoContainer);
+                    }
+                }
+            });
+
+            binding.deletePhotoBtn.setOnClickListener(v -> {
+                if (currentItem != null) {
+                    OutletMeasurement updateMe = currentItem.copy();
+                    updateMe.photoPath = null;
+                    outletViewModel.update(updateMe, null);
+
+                    // Natychmiastowa aktualizacja UI, aby uniknąć problemów z brakiem odświeżenia przez DiffUtil
+                    binding.photoBtn.setText("📷");
+                    binding.photoBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                            android.graphics.Color.parseColor("#8C8C8C")));
+                    binding.photoContainer.setVisibility(View.GONE);
+                    expandedPhotoIds.remove(currentItem.id);
                 }
             });
         }
@@ -522,6 +591,26 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.ohmsEdit.addTextChangedListener(ohmsWatcher);
 
+            if (om.photoPath != null && !om.photoPath.isEmpty()) {
+                binding.photoBtn.setText("🖼️");
+                binding.photoBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                        ContextCompat.getColor(activity, android.R.color.holo_blue_dark)));
+
+                if (expandedPhotoIds.contains(om.id)) {
+                    binding.photoContainer.setVisibility(View.VISIBLE);
+                    binding.measurementPhoto.setImageURI(android.net.Uri.fromFile(new java.io.File(om.photoPath)));
+                } else {
+                    binding.photoContainer.setVisibility(View.GONE);
+                }
+            } else {
+                binding.photoBtn.setText("📷");
+                binding.photoBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                        android.graphics.Color.parseColor("#8C8C8C")));
+                binding.photoContainer.setVisibility(View.GONE);
+                binding.measurementPhoto.setImageDrawable(null);
+                expandedPhotoIds.remove(om.id);
+            }
+
             isBinding = false;
         }
 
@@ -583,6 +672,18 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             binding.rcdNameEdit.setText(om.rcdName != null ? om.rcdName : "");
             binding.rcdTimeEdit.setText(om.rcdTime != null ? om.rcdTime.toString() : "");
             binding.rcdCurrentEdit.setText(om.rcdCurrent != null ? om.rcdCurrent.toString() : "");
+            enableRcdEdits(om.rcdStatus != 0);
+        }
+
+        private void enableRcdEdits(boolean enable) {
+            binding.rcdNameEdit.setEnabled(enable);
+            binding.rcdTimeEdit.setEnabled(enable);
+            binding.rcdCurrentEdit.setEnabled(enable);
+            if (!enable) {
+                binding.rcdNameSaveBtn.setVisibility(View.GONE);
+                binding.rcdTimeSaveBtn.setVisibility(View.GONE);
+                binding.rcdCurrentSaveBtn.setVisibility(View.GONE);
+            }
         }
 
         private void toggleFieldExpansion(View fieldToExpand, View fieldToHide, boolean expand,

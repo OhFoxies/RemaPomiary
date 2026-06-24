@@ -57,6 +57,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private FlatViewModel flatViewModel;
     private FlatAdapter flatAdapter;
     private RecyclerView recyclerView;
+    private GridLayoutManager gridLayoutManager; // OPTYMALIZACJA: Przetrzymywanie managera jako pole klasy
 
     private BlockViewModel blockViewModel;
     private CircuitViewModel circuitViewModel;
@@ -74,10 +75,14 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private TemplateViewModel templateViewModel;
     private boolean isFirstLoad = true;
 
+    private TextView flatsTitle; // OPTYMALIZACJA: Cache referencji widoku tytułu
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_flats);
+
+        flatsTitle = findViewById(R.id.flatsTitle); // Odnalezienie widoku tylko raz
 
         blockId = getIntent().getIntExtra("blockId", -1);
         catalogViewModel = new ViewModelProvider(this).get(CatalogViewModel.class);
@@ -93,8 +98,9 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
         blockViewModel.getBlockById(blockId, blockData -> {
             block = blockData;
             runOnUiThread(() -> {
-                TextView textView = findViewById(R.id.flatsTitle);
-                textView.setText("Mieszkania w bloku - " + block.block.street + "/" + block.block.number);
+                if (flatsTitle != null && block != null && block.block != null) {
+                    flatsTitle.setText("Mieszkania w bloku - " + block.block.street + "/" + block.block.number);
+                }
                 setupTemplatesSpinner();
             });
         });
@@ -138,13 +144,12 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     @Override
     protected void onPause() {
         super.onPause();
-        if (recyclerView != null && recyclerView.getLayoutManager() != null) {
-            recyclerViewState = recyclerView.getLayoutManager().onSaveInstanceState();
+        if (recyclerView != null && gridLayoutManager != null) {
+            recyclerViewState = gridLayoutManager.onSaveInstanceState();
 
-            GridLayoutManager lm = (GridLayoutManager) recyclerView.getLayoutManager();
-            int position = lm.findFirstVisibleItemPosition();
+            int position = gridLayoutManager.findFirstVisibleItemPosition();
             if (position != RecyclerView.NO_POSITION) {
-                View v = lm.findViewByPosition(position);
+                View v = gridLayoutManager.findViewByPosition(position);
                 int offset = (v == null) ? 0 : v.getTop();
                 getSharedPreferences("settings", MODE_PRIVATE).edit()
                         .putInt("scroll_pos_" + blockId, position)
@@ -157,19 +162,19 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.flatsRecyclerView);
 
-        GridLayoutManager layoutManager = new GridLayoutManager(this, 3);
-        layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+        gridLayoutManager = new GridLayoutManager(this, 3);
+        gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
             @Override
             public int getSpanSize(int position) {
                 return position == 0 ? 3 : 1;
             }
         });
 
-        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setLayoutManager(gridLayoutManager);
         recyclerView.setHasFixedSize(false);
         recyclerView.setItemViewCacheSize(20);
-        recyclerView.setDrawingCacheEnabled(true);
-        recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+
+        // OPTYMALIZACJA: Usunięto przestarzałe i spowalniające UI metody DrawingCache
 
         flatAdapter = new FlatAdapter(this);
         flatAdapter.setHasStableIds(true);
@@ -179,15 +184,14 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     }
 
     private void setupTemplatesSpinner() {
+        // OPTYMALIZACJA: Usunięto runOnUiThread – LiveData zawsze przekazuje zdarzenia w głównym wątku UI
         LiveDataUtil.observeOnce(templateViewModel.getTemplatesInCatalog(block.catalog.id), this, templates -> {
-            runOnUiThread(() -> {
-                templatesList = new ArrayList<>(templates);
-                Template empty = new Template();
-                empty.name = "Brak szablonu";
-                empty.id = -1;
-                templatesList.add(empty);
-                updateFlatsDisplay();
-            });
+            templatesList = new ArrayList<>(templates);
+            Template empty = new Template();
+            empty.name = "Brak szablonu";
+            empty.id = -1;
+            templatesList.add(empty);
+            updateFlatsDisplay();
         });
     }
 
@@ -320,16 +324,36 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
         }
     }
 
+    // OPTYMALIZACJA: Funkcja czyści tekst z spacji za pomocą super szybkiego StringBuilder'a bez alokowania i kompilowania silnika Regex (replaceAll) w pętli sortującej.
+    private int parseFlatNumber(String number) {
+        if (number == null) return 0;
+        int len = number.length();
+        StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            char c = number.charAt(i);
+            if (!Character.isWhitespace(c)) {
+                sb.append(c);
+            }
+        }
+        try {
+            return Integer.parseInt(sb.toString());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private void updateFlatsDisplay() {
         if (currentFlats == null) return;
 
-        final android.os.Parcelable localScroll = (recyclerView != null && recyclerView.getLayoutManager() != null && !isFirstLoad && recyclerViewState == null) ?
-                recyclerView.getLayoutManager().onSaveInstanceState() : null;
+        final android.os.Parcelable localScroll = (recyclerView != null && gridLayoutManager != null && !isFirstLoad && recyclerViewState == null) ?
+                gridLayoutManager.onSaveInstanceState() : null;
 
         List<Flat> sortedFlats = new ArrayList<>(currentFlats);
 
         int readyCount = 0;
-        for (Flat f : sortedFlats) if (f.status != null && f.status.contains(Settings.measurementDone)) readyCount++;
+        for (Flat f : sortedFlats) {
+            if (f.status != null && f.status.contains(Settings.measurementDone)) readyCount++;
+        }
         String countText = sortedFlats.isEmpty()
                 ? "Brak mieszkań"
                 : "Znaleziono " + sortedFlats.size() + " mieszkań (gotowe: " + readyCount + "/" + sortedFlats.size() + ")";
@@ -338,10 +362,8 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
 
         switch (sortPos) {
             case 0:
-                Collections.sort(sortedFlats, Comparator.comparingInt(f -> {
-                    try { return Integer.parseInt(f.number.replaceAll("\\s+", "")); }
-                    catch (NumberFormatException e) { return 0; }
-                }));
+                // ZOPTYMALIZOWANO: Wywołanie zoptymalizowanej metody parseFlatNumber
+                Collections.sort(sortedFlats, Comparator.comparingInt(f -> parseFlatNumber(f.number)));
                 break;
             case 1:
                 Collections.sort(sortedFlats, (f1, f2) -> f2.creation_date.compareTo(f1.creation_date));
@@ -375,11 +397,10 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
 
         if (recyclerView != null) {
             recyclerView.post(() -> {
-                if (recyclerView.getLayoutManager() == null) return;
-                GridLayoutManager lm = (GridLayoutManager) recyclerView.getLayoutManager();
+                if (gridLayoutManager == null) return;
 
                 if (this.recyclerViewState != null) {
-                    lm.onRestoreInstanceState(this.recyclerViewState);
+                    gridLayoutManager.onRestoreInstanceState(this.recyclerViewState);
                     this.recyclerViewState = null;
                     isFirstLoad = false;
                 } else if (isFirstLoad && flatAdapter.getItemCount() > 1) {
@@ -387,7 +408,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                     int savedPos = prefs.getInt("scroll_pos_" + blockId, -1);
                     if (savedPos != -1) {
                         int savedOffset = prefs.getInt("scroll_offset_" + blockId, 0);
-                        lm.scrollToPositionWithOffset(savedPos, savedOffset);
+                        gridLayoutManager.scrollToPositionWithOffset(savedPos, savedOffset);
 
                         if (savedPos > 0 && scrollToTopButton != null) {
                             scrollToTopButton.setVisibility(View.VISIBLE);
@@ -398,7 +419,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
                     }
                     isFirstLoad = false;
                 } else if (localScroll != null) {
-                    lm.onRestoreInstanceState(localScroll);
+                    gridLayoutManager.onRestoreInstanceState(localScroll);
                 }
 
                 recyclerView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
