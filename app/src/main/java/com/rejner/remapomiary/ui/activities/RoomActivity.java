@@ -47,12 +47,15 @@ import com.rejner.remapomiary.ui.viewmodels.RoomViewModel;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class RoomActivity extends AppCompatActivity {
 
@@ -72,13 +75,12 @@ public class RoomActivity extends AppCompatActivity {
 
     private final Map<Integer, List<OutletMeasurement>> roomMeasurementsMap = new HashMap<>();
 
-    // OPTYMALIZACJA: Mapy do śledzenia aktywnych obiektów LiveData i ich obserwatorów (zapobieganie leakom)
     private final Map<Integer, LiveData<List<OutletMeasurement>>> observedRoomLiveData = new HashMap<>();
     private final Map<Integer, Observer<List<OutletMeasurement>>> roomObserversMap = new HashMap<>();
 
-    private String lastDefaultSwitchName = null;
-    private String lastDefaultBreakerType = null;
-    private Double lastDefaultAmps = null;
+    private volatile String lastDefaultSwitchName = null;
+    private volatile String lastDefaultBreakerType = null;
+    private volatile Double lastDefaultAmps = null;
     private CommonSpaceInfo currentCommonSpaceInfo;
     private int catalogId;
     private boolean isCommonSpace;
@@ -89,6 +91,9 @@ public class RoomActivity extends AppCompatActivity {
     private ActivityResultLauncher<Uri> takePhotoLauncher;
     private OutletMeasurement measurementPendingPhoto;
     private File tempPhotoFile;
+
+    // Pula wątków dla obliczeń domyślnych w tle (zapobieganie zamrażaniu UI przy starcie)
+    private final ExecutorService defaultCalcExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -110,11 +115,9 @@ public class RoomActivity extends AppCompatActivity {
                 new ActivityResultContracts.TakePicture(),
                 success -> {
                     if (success && measurementPendingPhoto != null && tempPhotoFile != null) {
-                        // Tworzymy kopię, aby DiffUtil w adapterze zauważył różnicę
-                        // (oryginalny obiekt na liście pozostaje bez ścieżki do czasu odświeżenia z bazy)
                         OutletMeasurement updateMe = measurementPendingPhoto.copy();
                         updateMe.photoPath = tempPhotoFile.getAbsolutePath();
-                        
+
                         outletViewModel.update(updateMe, null);
                         Toast.makeText(this, "Dodano zdjęcie do pomiaru", Toast.LENGTH_SHORT).show();
                     }
@@ -292,7 +295,7 @@ public class RoomActivity extends AppCompatActivity {
             if (flatId == -1) return;
             String name;
             int pos = binding.roomSpinner.getSelectedItemPosition();
-            if (pos >= 0 && pos < roomNames.length && "Inne".equals(roomNames[pos])) {
+            if (pos >= 0 && pos < roomNames.length && "Inne".equals(roomNames[pos]) || "Piętro -".equals(roomNames[pos])) {
                 name = binding.customRoomEditText.getText() != null ? binding.customRoomEditText.getText().toString().trim() : "";
                 if (name.isEmpty()) {
                     if (isCommonSpace) {
@@ -350,7 +353,6 @@ public class RoomActivity extends AppCompatActivity {
                 for (RoomInFlat r : rooms) currentRoomIds.add(r.id);
             }
 
-            // OPTYMALIZACJA: Wyczyszczenie obserwatorów dla usuniętych pokoi
             List<Integer> idsToRemove = new ArrayList<>();
             for (Integer oldId : roomObserversMap.keySet()) {
                 if (!currentRoomIds.contains(oldId)) {
@@ -401,14 +403,18 @@ public class RoomActivity extends AppCompatActivity {
         newOm.note = noteOptions[0];
         newOm.number = 0;
 
-        if (lastDefaultSwitchName != null && (newOm.switchName == null || newOm.switchName.trim().isEmpty())) {
-            newOm.switchName = lastDefaultSwitchName;
+        String sw = lastDefaultSwitchName;
+        String br = lastDefaultBreakerType;
+        Double am = lastDefaultAmps;
+
+        if (sw != null && (newOm.switchName == null || newOm.switchName.trim().isEmpty())) {
+            newOm.switchName = sw;
         }
-        if (lastDefaultBreakerType != null && (newOm.breakerType == null || newOm.breakerType.trim().isEmpty())) {
-            newOm.breakerType = lastDefaultBreakerType;
+        if (br != null && (newOm.breakerType == null || newOm.breakerType.trim().isEmpty())) {
+            newOm.breakerType = br;
         }
-        if (lastDefaultAmps != null && (newOm.amps == null || newOm.amps <= 0)) {
-            newOm.amps = lastDefaultAmps;
+        if (am != null && (newOm.amps == null || newOm.amps <= 0)) {
+            newOm.amps = am;
         } else {
             newOm.amps = 16.0;
         }
@@ -457,36 +463,44 @@ public class RoomActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Zoptymalizowano: Przeniesiono ciężkie obliczenia statystyczne do wątku tła
     private void recomputeGlobalDefaults() {
-        lastDefaultSwitchName = null;
-        lastDefaultBreakerType = null;
-        lastDefaultAmps = null;
-        Map<String, Integer> switchFreq = new HashMap<>();
-        Map<String, Integer> breakerFreq = new HashMap<>();
-        Map<Integer, Integer> ampsFreq = new HashMap<>();
-
+        // Robimy bezpieczną kopię danych, aby uniknąć ConcurrentModificationException na innym wątku
+        final List<List<OutletMeasurement>> snapshotLists = new ArrayList<>();
         for (List<OutletMeasurement> list : roomMeasurementsMap.values()) {
-            if (list == null) continue;
-            for (OutletMeasurement om : list) {
-                if (om == null) continue;
-                if (om.switchName != null && !om.switchName.trim().isEmpty()) {
-                    String key = om.switchName.trim();
-                    switchFreq.put(key, switchFreq.getOrDefault(key, 0) + 1);
-                }
-                if (om.breakerType != null && !om.breakerType.trim().isEmpty()) {
-                    String key = om.breakerType.trim();
-                    breakerFreq.put(key, breakerFreq.getOrDefault(key, 0) + 1);
-                }
-                if (om.amps != null && om.amps > 0) {
-                    Integer a = om.amps.intValue();
-                    ampsFreq.put(a, ampsFreq.getOrDefault(a, 0) + 1);
-                }
+            if (list != null) {
+                snapshotLists.add(new ArrayList<>(list));
             }
         }
-        lastDefaultSwitchName = selectModeString(switchFreq);
-        lastDefaultBreakerType = selectModeString(breakerFreq);
-        Integer ampsMode = selectModeInt(ampsFreq);
-        lastDefaultAmps = ampsMode != null ? ampsMode.doubleValue() : null;
+
+        defaultCalcExecutor.execute(() -> {
+            Map<String, Integer> switchFreq = new HashMap<>();
+            Map<String, Integer> breakerFreq = new HashMap<>();
+            Map<Integer, Integer> ampsFreq = new HashMap<>();
+
+            for (List<OutletMeasurement> list : snapshotLists) {
+                for (OutletMeasurement om : list) {
+                    if (om == null) continue;
+                    if (om.switchName != null && !om.switchName.trim().isEmpty()) {
+                        String key = om.switchName.trim();
+                        switchFreq.put(key, switchFreq.getOrDefault(key, 0) + 1);
+                    }
+                    if (om.breakerType != null && !om.breakerType.trim().isEmpty()) {
+                        String key = om.breakerType.trim();
+                        breakerFreq.put(key, breakerFreq.getOrDefault(key, 0) + 1);
+                    }
+                    if (om.amps != null && om.amps > 0) {
+                        Integer a = om.amps.intValue();
+                        ampsFreq.put(a, ampsFreq.getOrDefault(a, 0) + 1);
+                    }
+                }
+            }
+
+            lastDefaultSwitchName = selectModeString(switchFreq);
+            lastDefaultBreakerType = selectModeString(breakerFreq);
+            Integer ampsMode = selectModeInt(ampsFreq);
+            lastDefaultAmps = ampsMode != null ? ampsMode.doubleValue() : null;
+        });
     }
 
     private String selectModeString(Map<String, Integer> freqMap) {
@@ -727,6 +741,12 @@ public class RoomActivity extends AppCompatActivity {
         if (imm != null && view != null) {
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        defaultCalcExecutor.shutdown(); // Czyszczenie zasobów w celu uniknięcia leaków pamięci
     }
 
     public static class OhmsTextWatcher implements TextWatcher {

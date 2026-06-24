@@ -23,7 +23,9 @@ import com.rejner.remapomiary.ui.activities.RoomActivity;
 import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,7 +55,12 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
     private final ArrayAdapter<String> noteSpinnerAdapter;
     private final ArrayAdapter<String> ampsSpinnerAdapter;
 
-    // Jedna współdzielona pula wątków zamiast tworzenia nowej przy każdym kliknięciu spinnera
+    // Szybkie mapy indeksów (O(1) lookup zamiast pętli w bindzie)
+    private final Map<String, Integer> applianceIndexMap = new HashMap<>();
+    private final Map<String, Integer> breakerIndexMap = new HashMap<>();
+    private final Map<String, Integer> noteIndexMap = new HashMap<>();
+    private final Map<String, Integer> ampsIndexMap = new HashMap<>();
+
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     public MeasurementAdapter(RoomActivity activity, OutletMeasurementViewModel outletViewModel,
@@ -81,6 +88,12 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
         this.breakerSpinnerAdapter = createSpinnerAdapter(this.breakerTypes);
         this.noteSpinnerAdapter = createSpinnerAdapter(this.noteOptions);
         this.ampsSpinnerAdapter = createSpinnerAdapter(this.ampsOptions);
+
+        // Prekompilacja map wyszukiwania dla oszczędności CPU podczas skrolowania
+        for (int i = 0; i < this.applianceOptions.length; i++) applianceIndexMap.put(this.applianceOptions[i].toLowerCase(), i);
+        for (int i = 0; i < this.breakerTypes.length; i++) breakerIndexMap.put(this.breakerTypes[i].toLowerCase(), i);
+        for (int i = 0; i < this.noteOptions.length; i++) noteIndexMap.put(this.noteOptions[i].toLowerCase(), i);
+        for (int i = 0; i < this.ampsOptions.length; i++) ampsIndexMap.put(this.ampsOptions[i].toLowerCase(), i);
     }
 
     private ArrayAdapter<String> createSpinnerAdapter(String[] options) {
@@ -104,8 +117,7 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
     @Override
     public void onBindViewHolder(@NonNull MeasurementViewHolder holder, int position) {
-        OutletMeasurement om = getItem(position);
-        holder.bind(om);
+        holder.bind(getItem(position));
     }
 
     class MeasurementViewHolder extends RecyclerView.ViewHolder {
@@ -165,7 +177,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                     } else {
                         enableRcdEdits(true);
                         if (currentItem.rcdName == null || currentItem.rcdName.trim().isEmpty()) {
-                            // OPTYMALIZACJA: Użycie stałego dbExecutor zamiast ciągłego tworzenia nowego wątku
                             dbExecutor.execute(() -> {
                                 String fetchedName = outletViewModel.getLastRCDName(currentItem.roomId);
                                 final String finalName = (fetchedName != null) ? fetchedName : "";
@@ -519,7 +530,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
                     updateMe.photoPath = null;
                     outletViewModel.update(updateMe, null);
 
-                    // Natychmiastowa aktualizacja UI, aby uniknąć problemów z brakiem odświeżenia przez DiffUtil
                     binding.photoBtn.setText("📷");
                     binding.photoBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
                             android.graphics.Color.parseColor("#8C8C8C")));
@@ -549,7 +559,6 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             if (isCommonSpace && Settings.mainRoomName.equalsIgnoreCase(roomName) && om.appliance.toLowerCase().contains("lokal")) {
                 binding.customApplianceEdit.setEnabled(false);
-
                 binding.flatNumberTextView.setVisibility(View.VISIBLE);
                 binding.flatNumberTextView.setText(om.appliance);
                 binding.customApplianceEdit.setVisibility(View.GONE);
@@ -568,11 +577,11 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
 
             binding.switchEdit.setText(om.switchName != null ? om.switchName : "");
 
-            currentBreakerPos = findSpinnerIndex(breakerTypes, om.breakerType);
+            currentBreakerPos = findSpinnerIndexFast(breakerIndexMap, om.breakerType);
             binding.breakerSpinner.setSelection(currentBreakerPos, false);
 
             String ampsStr = (om.amps != null) ? String.valueOf(om.amps.longValue()) : "16";
-            currentAmpsPos = findSpinnerIndex(ampsOptions, ampsStr);
+            currentAmpsPos = findSpinnerIndexFast(ampsIndexMap, ampsStr);
             binding.ampsSpinner.setSelection(currentAmpsPos, false);
 
             binding.ohmsEdit.setText(String.format(Locale.GERMANY, "%.2f", om.ohms != null ? om.ohms : 0.0));
@@ -614,54 +623,46 @@ public class MeasurementAdapter extends ListAdapter<OutletMeasurement, Measureme
             isBinding = false;
         }
 
-        private int findSpinnerIndex(String[] options, String value) {
+        // Optymalizacja O(1) wyszukiwania indeksu
+        private int findSpinnerIndexFast(Map<String, Integer> map, String value) {
             if (value == null) return 0;
-            for (int i = 0; i < options.length; i++) {
-                if (options[i].equalsIgnoreCase(value)) {
-                    return i;
-                }
-            }
-            return 0;
+            Integer index = map.get(value.toLowerCase());
+            return index != null ? index : 0;
         }
 
-        private boolean isCustomValue(String[] options, String value) {
+        private boolean isCustomValueFast(Map<String, Integer> map, String value) {
             if (value == null) return false;
-            for (String predefined : options) {
-                if (predefined.equalsIgnoreCase(value)) {
-                    return false;
-                }
-            }
-            return true;
+            return !map.containsKey(value.toLowerCase());
         }
 
         private void setupApplianceField(OutletMeasurement om) {
-            if (isCustomValue(applianceOptions, om.appliance)) {
+            if (isCustomValueFast(applianceIndexMap, om.appliance)) {
                 binding.customApplianceEdit.setText(om.appliance);
                 binding.applianceSpinner.setVisibility(View.GONE);
                 binding.customApplianceContainer.setVisibility(View.VISIBLE);
-                currentAppliancePos = findSpinnerIndex(applianceOptions, "Inne");
+                currentAppliancePos = findSpinnerIndexFast(applianceIndexMap, "Inne");
                 binding.applianceSpinner.setSelection(currentAppliancePos, false);
             } else {
                 binding.customApplianceEdit.setText("");
                 binding.applianceSpinner.setVisibility(View.VISIBLE);
                 binding.customApplianceContainer.setVisibility(View.GONE);
-                currentAppliancePos = findSpinnerIndex(applianceOptions, om.appliance);
+                currentAppliancePos = findSpinnerIndexFast(applianceIndexMap, om.appliance);
                 binding.applianceSpinner.setSelection(currentAppliancePos, false);
             }
         }
 
         private void setupNoteField(OutletMeasurement om) {
-            if (isCustomValue(noteOptions, om.note)) {
+            if (isCustomValueFast(noteIndexMap, om.note)) {
                 binding.customNoteEdit.setText(om.note);
                 binding.noteSpinner.setVisibility(View.GONE);
                 binding.customNoteContainer.setVisibility(View.VISIBLE);
-                currentNotePos = findSpinnerIndex(noteOptions, "Inne");
+                currentNotePos = findSpinnerIndexFast(noteIndexMap, "Inne");
                 binding.noteSpinner.setSelection(currentNotePos, false);
             } else {
                 binding.customNoteEdit.setText("");
                 binding.noteSpinner.setVisibility(View.VISIBLE);
                 binding.customNoteContainer.setVisibility(View.GONE);
-                currentNotePos = findSpinnerIndex(noteOptions, om.note);
+                currentNotePos = findSpinnerIndexFast(noteIndexMap, om.note);
                 binding.noteSpinner.setSelection(currentNotePos, false);
             }
         }

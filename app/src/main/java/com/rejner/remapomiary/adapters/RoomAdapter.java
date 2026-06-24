@@ -105,8 +105,7 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
 
     @Override
     public void onBindViewHolder(@NonNull RoomViewHolder holder, int position) {
-        RoomInFlat room = getItem(position);
-        holder.bind(room);
+        holder.bind(getItem(position));
     }
 
     class RoomViewHolder extends RecyclerView.ViewHolder {
@@ -257,16 +256,17 @@ public class RoomAdapter extends ListAdapter<RoomInFlat, RoomAdapter.RoomViewHol
             }
         }
 
+        // Zoptymalizowano: Unikanie niepotrzebnych requestLayout() poprzez sprawdzanie aktualnej wartości wysokości
         private void adjustRecyclerViewHeight(int itemCount) {
             ViewGroup.LayoutParams params = binding.measurementsRecyclerView.getLayoutParams();
-            if (itemCount > 7) {
-                params.height = (int) (350 * context.getResources().getDisplayMetrics().density);
-                binding.measurementsRecyclerView.setNestedScrollingEnabled(true);
-            } else {
-                params.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-                binding.measurementsRecyclerView.setNestedScrollingEnabled(false);
+            int targetHeight = (itemCount > 7) ? (int) (350 * context.getResources().getDisplayMetrics().density) : ViewGroup.LayoutParams.WRAP_CONTENT;
+            boolean targetNestedScrolling = itemCount > 7;
+
+            if (params.height != targetHeight || binding.measurementsRecyclerView.isNestedScrollingEnabled() != targetNestedScrolling) {
+                params.height = targetHeight;
+                binding.measurementsRecyclerView.setNestedScrollingEnabled(targetNestedScrolling);
+                binding.measurementsRecyclerView.setLayoutParams(params);
             }
-            binding.measurementsRecyclerView.setLayoutParams(params);
         }
 
         private void startChunkedLoading() {

@@ -15,6 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:baselineAligned="false"
         android:gravity="center_vertical">
 
         <TextView
@@ -34,6 +35,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="2"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical"
             android:layout_marginEnd="8dp">
 
@@ -48,6 +50,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:baselineAligned="false"
                 android:visibility="gone"
                 tools:visibility="visible">
 
@@ -105,6 +108,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1.5"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical">
 
             <EditText
@@ -152,6 +156,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical">
 
             <EditText
@@ -195,6 +200,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="2"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical"
             android:visibility="gone"
             tools:visibility="visible"
@@ -273,6 +279,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:baselineAligned="false"
         android:visibility="gone"
         android:id="@+id/rcdHeaders"
         android:layout_marginTop="8dp"
@@ -301,6 +308,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:id="@+id/rcdRowContainer"
+        android:baselineAligned="false"
         android:visibility="gone"
         android:gravity="center_vertical"
         android:layout_marginTop="8dp">
@@ -320,6 +328,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="2"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical"
             android:layout_marginEnd="8dp">
 
@@ -355,6 +364,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical"
             android:layout_marginEnd="8dp">
 
@@ -390,6 +400,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             android:gravity="center_vertical">
 
             <EditText
