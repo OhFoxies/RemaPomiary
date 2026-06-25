@@ -40,6 +40,7 @@ import com.rejner.remapomiary.ui.utils.Settings;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
+import com.rejner.remapomiary.ui.viewmodels.ContractorsViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
 import com.rejner.remapomiary.ui.viewmodels.RCDViewModel;
@@ -64,6 +65,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     private RCDViewModel rcdViewModel;
     private OutletMeasurementViewModel outletMeasurementViewModel;
     private RoomViewModel roomViewModel;
+    private ContractorsViewModel contractorsViewModel;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
     private android.os.Parcelable recyclerViewState;
     private int blockId;
@@ -110,6 +112,7 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
         rcdViewModel = new ViewModelProvider(this).get(RCDViewModel.class);
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletMeasurementViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
+        contractorsViewModel = new ViewModelProvider(this).get(ContractorsViewModel.class);
 
         setupRecyclerView();
 
@@ -202,39 +205,60 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
             return;
         }
 
-        if (currentFlats != null) {
-            for (Flat f : currentFlats) {
-                if (f.number.equalsIgnoreCase(flatNumber)) {
-                    Toast.makeText(this, "Mieszkanie o tym numerze już istnieje!", Toast.LENGTH_SHORT).show();
-                    return;
+        LiveDataUtil.observeOnce(contractorsViewModel.getAllContractors(), this, contractors -> {
+            boolean hasActiveContractor = false;
+            boolean hasActiveChecker = false;
+            boolean hasDefaultContractor = false;
+            boolean hasDefaultChecker = false;
+
+            if (contractors != null) {
+                for (com.rejner.remapomiary.data.entities.Contractors c : contractors) {
+                    if (c.type == 1 && c.isActive) hasActiveContractor = true;
+                    if (c.type == 0 && c.isActive) hasActiveChecker = true;
+                    if (c.type == 1 && c.isDefault) hasDefaultContractor = true;
+                    if (c.type == 0 && c.isDefault) hasDefaultChecker = true;
                 }
             }
-        }
 
-        if (selectedTemplate == null || selectedTemplate.id == -1) {
-            Date now = new Date();
-            Flat newFlat = new Flat();
-            newFlat.number = flatNumber;
-            newFlat.creation_date = now;
-            newFlat.edition_date = now;
-            newFlat.status = Settings.measurementNotReady;
-            newFlat.blockId = blockId;
+            if (!hasActiveContractor || !hasActiveChecker || !hasDefaultContractor || !hasDefaultChecker) {
+                Toast.makeText(this, "Błąd: Brak przypisanych aktywnych lub domyślnych pracowników!", Toast.LENGTH_LONG).show();
+                return;
+            }
 
-            flatViewModel.insertWithId(newFlat, id -> {
-                RCD newRcd = new RCD();
-                newRcd.flatId = Math.toIntExact(id);
-                newRcd.type = "A";
-                rcdViewModel.insert(newRcd);
-                newFlat.id = Math.toIntExact(id);
-                Actions.saveAndMarkReady(newFlat, this);
-                Actions.markUnready(newFlat, this);
-            });
-            updateMetadata();
-            Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
-            hideKeyboard();
-        } else {
-            applyTemplate(selectedTemplate, flatNumber);
-        }
+            if (currentFlats != null) {
+                for (Flat f : currentFlats) {
+                    if (f.number.equalsIgnoreCase(flatNumber)) {
+                        Toast.makeText(this, "Mieszkanie o tym numerze już istnieje!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            }
+
+            if (selectedTemplate == null || selectedTemplate.id == -1) {
+                Date now = new Date();
+                Flat newFlat = new Flat();
+                newFlat.number = flatNumber;
+                newFlat.creation_date = now;
+                newFlat.edition_date = now;
+                newFlat.status = Settings.measurementNotReady;
+                newFlat.blockId = blockId;
+
+                flatViewModel.insertWithId(newFlat, id -> {
+                    RCD newRcd = new RCD();
+                    newRcd.flatId = Math.toIntExact(id);
+                    newRcd.type = "A";
+                    rcdViewModel.insert(newRcd);
+                    newFlat.id = Math.toIntExact(id);
+                    Actions.saveAndMarkReady(newFlat, this);
+                    Actions.markUnready(newFlat, this);
+                });
+                updateMetadata();
+                Toast.makeText(this, "Dodano mieszkanie nr " + flatNumber, Toast.LENGTH_SHORT).show();
+                hideKeyboard();
+            } else {
+                applyTemplate(selectedTemplate, flatNumber);
+            }
+        });
     }
 
     private void applyTemplate(Template selectedTemplate, String flatNumber) {
@@ -475,16 +499,23 @@ public class FlatsActivity extends AppCompatActivity implements FlatAdapter.OnFl
     @Override
     public void onFlatEdit(Flat flat, String newNumber) {
         if (newNumber.isEmpty()) return;
-        flat.number = newNumber;
-        flat.edition_date = new Date();
-        flatViewModel.update(flat);
-        updateMetadata();
-        hideKeyboard();
+        int id = flat.id;
+        flatViewModel.getFlatByIdSync(id, flatFullData -> {
+            if (flatFullData != null) {
+                flatFullData.flat.number = newNumber;
+                flatFullData.flat.edition_date = new Date();
+                flatViewModel.update(flatFullData.flat);
+                runOnUiThread(() -> {
+                    updateMetadata();
+                    hideKeyboard();
+                });
+            }
+        });
     }
 
     @Override
     public void onFlatMark(Flat flat) {
-        if (flat.status != null && flat.status.contains("gotowy")) {
+        if (flat.status != null && flat.status.contains(Settings.measurementDone)) {
             Actions.markUnready(flat, this);
         } else {
             Actions.saveAndMarkReady(flat, this);

@@ -16,6 +16,9 @@ public interface SignatureDao {
     @Query("SELECT * FROM signatures WHERE flatId = :flatId LIMIT 1")
     LiveData<Signature> getSignatureForFlat(int flatId);
 
+    @Query("SELECT * FROM signatures WHERE flatId = :flatId LIMIT 1")
+    Signature getSignatureForFlatSync(int flatId);
+
     @Query("DELETE FROM signatures WHERE flatId = :flatId")
     void deleteSignatureForFlat(int flatId);
 

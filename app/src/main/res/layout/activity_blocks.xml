@@ -57,7 +57,7 @@
                 android:layout_marginBottom="10dp"
                 android:gravity="center"
                 android:padding="6sp"
-                android:text="Dodaj nowy blok"
+                android:text="Dodaj nowy budynek"
                 android:textSize="24sp" />
 
 
@@ -66,7 +66,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="15dp"
-                android:text="📍Adres bloku: "
+                android:text="📍Adres budynku: "
                 android:textSize="20sp" />
 
             <TextView
@@ -141,7 +141,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:text="Numer bloku: "
+                android:text="Numer bloku/domu: "
 
                 android:textSize="18sp" />
 
@@ -154,7 +154,7 @@
                 android:ems="10"
                 android:padding="6sp"
 
-                android:hint="Numer bloku"
+                android:hint="Numer domu/bloku"
                 android:inputType="text" />
 
             <TextView
@@ -170,6 +170,15 @@
                 android:layout_marginStart="20dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
+
+            <CheckBox
+                android:id="@+id/checkHouse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="10dp"
+                android:text="Dom jednorodzinny"
+                android:textSize="18sp" />
 
 
             <LinearLayout
@@ -223,7 +232,7 @@
                 android:layout_marginBottom="20dp"
                 android:gravity="center"
                 android:padding="6sp"
-                android:text="Utworzone bloki"
+                android:text="Utworzone budynki"
                 android:textSize="34sp" />
 
             <LinearLayout

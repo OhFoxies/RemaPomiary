@@ -1,21 +1,34 @@
 package com.rejner.remapomiary.ui.activities;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
+import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
@@ -116,6 +129,15 @@ public class BlockActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+
+        Button generateProtocolBtn = findViewById(R.id.generateCommonSpaceProtocol);
+        generateProtocolBtn.setOnClickListener(v -> {
+            if (commonSpaceId == 0) {
+                Toast.makeText(this, "Pobieranie danych części wspólnej, spróbuj ponownie za chwilę", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            onGenerateCommonSpaceProtocol();
+        });
 //
 //        lps.setOnClickListener(new View.OnClickListener() {
 //            @Override
@@ -123,5 +145,37 @@ public class BlockActivity extends AppCompatActivity {
 //            }
 //        });
 
+    }
+
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
+
+    private void onGenerateCommonSpaceProtocol() {
+        new AlertDialog.Builder(this)
+                .setTitle("Potwierdzenie")
+                .setMessage("Generować protokół dla części wspólnej?")
+                .setPositiveButton("Tak", (d, w) -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                            && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                REQUEST_NOTIFICATION_PERMISSION);
+                        return;
+                    }
+                    startProtocolWorker(blockId, block.catalog.id, commonSpaceId, 0);
+                })
+                .setNegativeButton("Nie", null)
+                .show();
+    }
+
+    private void startProtocolWorker(int b, int c, int f, int p) {
+        Data data = new Data.Builder()
+                .putInt("blockId", b)
+                .putInt("catalogId", c)
+                .putInt("flatId", f)
+                .putInt("protocolNumber", p)
+                .build();
+        WorkManager.getInstance(getApplicationContext())
+                .enqueue(new OneTimeWorkRequest.Builder(ProtocolWorker.class).setInputData(data).build());
+        Toast.makeText(this, "🔄 Rozpoczęto generowanie protokołu części wspólnej.", Toast.LENGTH_SHORT).show();
     }
 }

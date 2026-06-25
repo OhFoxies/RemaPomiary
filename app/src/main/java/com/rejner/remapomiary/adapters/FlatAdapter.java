@@ -99,7 +99,10 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                         Objects.equals(oldFlat.notes, newFlat.notes) &&
                         Objects.equals(oldFlat.circuitNotes, newFlat.circuitNotes) &&
                         Objects.equals(oldFlat.creation_date, newFlat.creation_date) &&
-                        Objects.equals(oldFlat.edition_date, newFlat.edition_date);
+                        Objects.equals(oldFlat.edition_date, newFlat.edition_date) &&
+                        Objects.equals(oldFlat.contractorId, newFlat.contractorId) &&
+                        Objects.equals(oldFlat.checkerId, newFlat.checkerId) &&
+                        Objects.equals(oldFlat.markedReadyDate, newFlat.markedReadyDate);
             }
         }).dispatchUpdatesTo(this);
     }

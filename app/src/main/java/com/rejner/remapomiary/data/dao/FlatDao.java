@@ -34,6 +34,9 @@ public interface FlatDao {
     @Query("SELECT * FROM flat WHERE id = :flatId")
     LiveData<Flat> getFlatById(int flatId);
 
+    @Query("SELECT * FROM flat WHERE id = :flatId")
+    Flat getFlatByIdSync(int flatId);
+
 
     @Query("SELECT * FROM flat WHERE blockId = :blockId and isCommonSpace = 1;")
     LiveData<Flat> getCommonSpace(int blockId);

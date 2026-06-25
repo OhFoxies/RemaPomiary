@@ -30,7 +30,31 @@ public class ContractorsViewModel extends AndroidViewModel {
         repository.update(contractor);
     }
 
+    public void delete(Contractors contractor) {
+        repository.delete(contractor);
+    }
+
+    public void setActive(Contractors contractor) {
+        repository.setActive(contractor);
+    }
+
+    public void setDefault(Contractors contractor) {
+        repository.setDefault(contractor);
+    }
+
+    public void deactivateAll(int type) {
+        repository.deactivateAll(type);
+    }
+
+    public void deactivateAllDefaults(int type) {
+        repository.deactivateAllDefaults(type);
+    }
+
     public LiveData<List<Contractors>> getAllContractors() {
         return allContractors;
+    }
+
+    public LiveData<List<Contractors>> getContractorsByType(int type) {
+        return repository.getContractorsByType(type);
     }
 }

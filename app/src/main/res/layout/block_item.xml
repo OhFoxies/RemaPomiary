@@ -189,5 +189,13 @@
         android:backgroundTint="#03A9F4"
         android:text="Utwórz protokoły" />
 
+    <Button
+        android:id="@+id/quickSummary"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#FF9800"
+        android:text="Szybkie podsumowanie" />
+
 
 </LinearLayout>

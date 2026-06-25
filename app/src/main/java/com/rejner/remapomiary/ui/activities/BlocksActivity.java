@@ -15,6 +15,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
@@ -45,6 +46,7 @@ import com.rejner.remapomiary.ui.utils.ProtocolWorker;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CatalogViewModel;
 import com.rejner.remapomiary.ui.viewmodels.ClientViewModel;
+import com.rejner.remapomiary.ui.viewmodels.ContractorsViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 
 import org.w3c.dom.Text;
@@ -67,11 +69,13 @@ public class BlocksActivity extends AppCompatActivity {
     private ArrayAdapter arrayAdapter;
     private BlockViewModel blockViewModel;
     private CatalogViewModel catalogViewModel;
+    private ContractorsViewModel contractorsViewModel;
     private Catalog catalog;
     private EditText city;
     private EditText street;
     private EditText postal_code;
     private EditText number;
+    private CheckBox checkHouse;
     private List<EditText> inputs;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
 
@@ -85,6 +89,7 @@ public class BlocksActivity extends AppCompatActivity {
         street = findViewById(R.id.inputBlockStreet);
         number = findViewById(R.id.inputBlockNumber);
         postal_code = findViewById(R.id.inputBlockPostalCode);
+        checkHouse = findViewById(R.id.checkHouse);
         spinnerCreation = findViewById(R.id.spinner);
         postal_code.addTextChangedListener(new PostalCodeTextWatcher(postal_code));
 
@@ -92,6 +97,7 @@ public class BlocksActivity extends AppCompatActivity {
         catalogId = getIntent().getIntExtra("catalogId", 0);
         blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
         catalogViewModel = new ViewModelProvider(BlocksActivity.this).get(CatalogViewModel.class);
+        contractorsViewModel = new ViewModelProvider(this).get(ContractorsViewModel.class);
         catalogViewModel.getCatalogById(catalogId, catalog1 -> {
             catalog = catalog1;
             runOnUiThread(() -> {
@@ -141,7 +147,7 @@ public class BlocksActivity extends AppCompatActivity {
 
     private void resetBlockInput() {
         TextView blocksTitle = findViewById(R.id.blocksTitle);
-        blocksTitle.setText("Bloki dla katalogu - " + catalog.title);
+        blocksTitle.setText("Budynki dla katalogu - " + catalog.title);
         city.setText(catalog.city);
         street.setText(catalog.street);
         postal_code.setText(catalog.postal_code);
@@ -212,27 +218,45 @@ public class BlocksActivity extends AppCompatActivity {
             Toast.makeText(BlocksActivity.this, "Nie wybrano zleceniodawcy!", Toast.LENGTH_SHORT).show();
             return;
         }
-        Block newBlock = new Block(catalogId, street.getText().toString(), city.getText().toString(), number.getText().toString(), postal_code.getText().toString(), selectedClient.id, new Date(), new Date());
-        blockViewModel.insertWithId(newBlock, id -> {
-            Date now = new Date();
-            FlatViewModel flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
 
-            Flat commonSpace = new Flat();
-            commonSpace.isCommonSpace = 1;
-            commonSpace.blockId = Math.toIntExact(id);
-            commonSpace.number = "Część wspólna";
-            commonSpace.creation_date = now;
-            commonSpace.edition_date = now;
-            commonSpace.status = "";
-            flatViewModel.insert(commonSpace);
+        LiveDataUtil.observeOnce(contractorsViewModel.getAllContractors(), this, contractors -> {
+            boolean hasActiveContractor = false;
+            boolean hasActiveChecker = false;
+            boolean hasDefaultContractor = false;
+            boolean hasDefaultChecker = false;
 
+            if (contractors != null) {
+                for (com.rejner.remapomiary.data.entities.Contractors c : contractors) {
+                    if (c.type == 1 && c.isActive) hasActiveContractor = true;
+                    if (c.type == 0 && c.isActive) hasActiveChecker = true;
+                    if (c.type == 1 && c.isDefault) hasDefaultContractor = true;
+                    if (c.type == 0 && c.isDefault) hasDefaultChecker = true;
+                }
+            }
 
+            if (!hasActiveContractor || !hasActiveChecker || !hasDefaultContractor || !hasDefaultChecker) {
+                Toast.makeText(this, "Błąd: Brak przypisanych aktywnych lub domyślnych pracowników!", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            Block newBlock = new Block(catalogId, street.getText().toString(), city.getText().toString(), number.getText().toString(), postal_code.getText().toString(), selectedClient.id, new Date(), new Date(), checkHouse.isChecked() ? 1 : 0);
+            blockViewModel.insertWithId(newBlock, id -> {
+                Date now = new Date();
+                FlatViewModel flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+
+                Flat commonSpace = new Flat();
+                commonSpace.isCommonSpace = 1;
+                commonSpace.blockId = Math.toIntExact(id);
+                commonSpace.number = "Część wspólna";
+                commonSpace.creation_date = now;
+                commonSpace.edition_date = now;
+                commonSpace.status = "";
+                flatViewModel.insert(commonSpace);
+            });
+
+            catalogViewModel.updateEdition(catalogId);
+            resetBlockInput();
         });
-
-        catalogViewModel.updateEdition(catalogId);
-        resetBlockInput();
-
-
     }
 
     private void updateBlocks(List<BlockFullData> blocks) {
@@ -279,11 +303,23 @@ public class BlocksActivity extends AppCompatActivity {
             postalCode.setText(block.block.postal_code);
             clientName.setText(block.getClient().name);
             clientAddress.setText(block.getClient().city + ", " + block.getClient().street + ", " + block.getClient().postal_code);
-            blockTitle.setText("Blok - " + block.block.number);
+            String typePrefix = block.block.buildingType == 1 ? "Dom - " : "Blok - ";
+            blockTitle.setText(typePrefix + block.block.number);
 
             Button deleteButton = blockView.findViewById(R.id.blockDelete);
             Button editButton = blockView.findViewById(R.id.blockEdit);
             Button createPro = blockView.findViewById(R.id.createProtocols);
+            Button quickSummary = blockView.findViewById(R.id.quickSummary);
+
+            if (block.block.buildingType == 1) {
+                quickSummary.setVisibility(View.GONE);
+            } else {
+                quickSummary.setVisibility(View.VISIBLE);
+                quickSummary.setOnClickListener(v -> {
+                    startSummaryWorker(block.block.id, catalogId);
+                });
+            }
+
             createPro.setOnClickListener(v -> {
                 createProtocols(block.block.id, catalogId);
             });
@@ -349,6 +385,22 @@ public class BlocksActivity extends AppCompatActivity {
         Toast.makeText(this, "🔄 Generowanie protokołów rozpoczęte w tle.", Toast.LENGTH_LONG).show();
     }
 
+    private void startSummaryWorker(int blockId, int catalogId) {
+        Data inputData = new Data.Builder()
+                .putInt("blockId", blockId)
+                .putInt("catalogId", catalogId)
+                .putBoolean("isSummary", true)
+                .build();
+
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ProtocolWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        WorkManager.getInstance(getApplicationContext()).enqueue(request);
+
+        Toast.makeText(this, "🔄 Generowanie podsumowania rozpoczęte w tle.", Toast.LENGTH_LONG).show();
+    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -364,6 +416,22 @@ public class BlocksActivity extends AppCompatActivity {
     }
 
     private void openBlock(BlockFullData block) {
+        if (block.block.buildingType == 1) {
+            LiveDataUtil.observeOnce(new ViewModelProvider(this).get(FlatViewModel.class).getCommonSpace(block.block.id), this, flat -> {
+                if (flat != null) {
+                    Intent intent = new Intent(BlocksActivity.this, BoardCommonSpace.class);
+                    intent.putExtra("flatId", flat.id);
+                    intent.putExtra("blockId", block.block.id);
+                    intent.putExtra("commonSpace", 1);
+                    startActivity(intent);
+                } else {
+                    Intent intent = new Intent(BlocksActivity.this, BlockActivity.class);
+                    intent.putExtra("blockId", block.block.id);
+                    startActivity(intent);
+                }
+            });
+            return;
+        }
         Intent intent = new Intent(BlocksActivity.this, BlockActivity.class);
         intent.putExtra("blockId", block.block.id);
         startActivity(intent);
@@ -372,13 +440,13 @@ public class BlocksActivity extends AppCompatActivity {
     private void deleteBlock(BlockFullData block) {
         AlertDialog.Builder builder = new AlertDialog.Builder(BlocksActivity.this);
         builder.setTitle("Potwierdzenie");
-        builder.setMessage("Czy na pewno chcesz usunąć ten blok?");
+        builder.setMessage("Czy na pewno chcesz usunąć ten budynek?");
         builder.setPositiveButton("Tak", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 blockViewModel.repository.delete(block.block);
                 catalogViewModel.updateEdition(catalogId);
-                Toast.makeText(BlocksActivity.this, "Blok oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
+                Toast.makeText(BlocksActivity.this, "Budynek oraz jego zawartość została usunięta", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -445,6 +513,12 @@ public class BlocksActivity extends AppCompatActivity {
         createClientsSpinner(spinner);
         clientLayout.addView(spinner, index);
 
+        CheckBox editCheckHouse = new CheckBox(BlocksActivity.this);
+        editCheckHouse.setText("Dom jednorodzinny");
+        editCheckHouse.setChecked(block.block.buildingType == 1);
+        editCheckHouse.setLayoutParams(params);
+        clientLayout.addView(editCheckHouse);
+
         editButton.setText("✅ Zapisz");
         deleteButton.setText("❌ Anuluj");
 
@@ -468,7 +542,7 @@ public class BlocksActivity extends AppCompatActivity {
 
             }
 
-            Block newBlock = new Block(catalogId, list.get(1), list.get(0), list.get(2), list.get(3), selectedClient.id, block.block.creation_date, new Date());
+            Block newBlock = new Block(catalogId, list.get(1), list.get(0), list.get(2), list.get(3), selectedClient.id, block.block.creation_date, new Date(), editCheckHouse.isChecked() ? 1 : 0);
             newBlock.id = block.block.id;
             blockViewModel.update(newBlock);
             catalogViewModel.updateEdition(catalogId);

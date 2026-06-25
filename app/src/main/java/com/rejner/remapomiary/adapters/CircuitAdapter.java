@@ -24,16 +24,31 @@ import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
 import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitViewHolder> {
-    String[] items = new String[]{"Oświetlenie", "Oświetlenie -", "Gniazda 230V", "Gniazda -", "Piekarnik", "Płyta indukcyjna", "inne"};
-    private boolean isWLZ;
+    private final String[] items;
+    private final Map<String, Integer> itemIndexMap = new HashMap<>();
+    private final int inneIndex;
 
-    public CircuitAdapter(OnCircuitActionListener listener, boolean isWLZ) {
+    private boolean isWLZ;
+    private final OnCircuitActionListener listener;
+    private List<CircuitCommonSpace> circuits = new ArrayList<>();
+    private Context context;
+    private RecyclerView attachedRecyclerView;
+
+    public CircuitAdapter(OnCircuitActionListener listener, boolean isWLZ, String[] items) {
         this.listener = listener;
         this.isWLZ = isWLZ;
+        this.items = items != null ? items : new String[]{"Oświetlenie", "Oświetlenie -", "Gniazda 230V", "Gniazda -", "Piekarnik", "Płyta indukcyjna", "inne"};
+
+        for (int i = 0; i < this.items.length; i++) {
+            itemIndexMap.put(this.items[i].toLowerCase(), i);
+        }
+        Integer inneIdx = itemIndexMap.get("inne");
+        this.inneIndex = inneIdx != null ? inneIdx : -1;
     }
 
     public void setIsWLZ(boolean isWLZ) {
@@ -46,12 +61,6 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         void onCircuitNameSave_(CircuitCommonSpace circuit, String name);
         void onCircuitNameSpinner_(CircuitCommonSpace circuit, String name);
     }
-
-    private final OnCircuitActionListener listener;
-    private List<CircuitCommonSpace> circuits = new ArrayList<>();
-    private Context context;
-
-    private RecyclerView attachedRecyclerView;
 
     @Override
     public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
@@ -70,13 +79,14 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         int newSize = circuits != null ? circuits.size() : 0;
 
         this.circuits = circuits;
-
         notifyDataSetChanged();
 
         if (newSize > oldSize && oldSize > 0) {
             if (attachedRecyclerView != null) {
                 attachedRecyclerView.post(() -> {
-                    attachedRecyclerView.smoothScrollToPosition(newSize - 1);
+                    if (attachedRecyclerView != null) {
+                        attachedRecyclerView.smoothScrollToPosition(newSize - 1);
+                    }
                 });
             }
         }
@@ -93,10 +103,11 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
     @Override
     public void onBindViewHolder(@NonNull CircuitViewHolder holder, int position) {
         CircuitCommonSpace circuit = circuits.get(position);
-        holder.number.setText((position + 1) + ".");
+        holder.number.setText(String.format(java.util.Locale.US, "%d.", position + 1));
 
-        int inneIndex = Arrays.asList(items).indexOf("inne");
-        int nameIndex = Arrays.asList(items).indexOf(circuit.name);
+        // Zoptymalizowano pobieranie indeksu za pomocą prekompilowanej mapy
+        Integer nameIndexObj = circuit.name != null ? itemIndexMap.get(circuit.name.toLowerCase()) : null;
+        int nameIndex = nameIndexObj != null ? nameIndexObj : -1;
 
         holder.isUserAction = false;
 
@@ -122,7 +133,6 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
         }
 
         if (isWLZ && circuit.name != null && circuit.name.toLowerCase().contains("lokal")) {
-            Log.e("Wzium", "True dla " + circuit.name.toLowerCase());
             holder.circuitInputName.setEnabled(false);
             if (circuit.notes != null && !circuit.notes.isEmpty()) {
                 holder.status.setVisibility(View.VISIBLE);
@@ -252,7 +262,7 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
                             } else if ("Gniazda -".equalsIgnoreCase(selected)) {
                                 circuitInputName.setText("Gniazda ");
                             } else if ("inne".equalsIgnoreCase(selected)) {
-                                if (Arrays.asList(items).contains(currentCircuit.name) && !currentCircuit.name.equals("inne")) {
+                                if (currentCircuit.name != null && itemIndexMap.containsKey(currentCircuit.name.toLowerCase()) && !currentCircuit.name.equalsIgnoreCase("inne")) {
                                     circuitInputName.setText("");
                                 }
                             }
@@ -314,7 +324,7 @@ public class CircuitAdapter extends RecyclerView.Adapter<CircuitAdapter.CircuitV
                 hideKeyboard();
                 String name = circuitInputName.getText().toString().trim();
                 if (name.isEmpty()) {
-                    name = items[0]; // "Oświetlenie"
+                    name = items[0];
                     circuitNameSpinner.setSelection(0, false);
                     circuitInputName.setVisibility(View.GONE);
                     circuitNameSave.setVisibility(View.GONE);

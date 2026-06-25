@@ -31,15 +31,18 @@ import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
 import com.rejner.remapomiary.data.entities.Circuit;
+import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.FlatFullData;
 import com.rejner.remapomiary.data.entities.FlatPhoto;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.ProtocolNumber;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
+import com.rejner.remapomiary.data.entities.Signature;
 import com.rejner.remapomiary.generator.constants.ProFonts;
 import com.rejner.remapomiary.generator.helpers.CellGenerator;
 import com.rejner.remapomiary.generator.helpers.FlatPageNumberEvent;
+import com.rejner.remapomiary.ui.utils.LegalTexts;
 import com.rejner.remapomiary.ui.utils.Settings;
 
 import java.io.File;
@@ -88,6 +91,129 @@ public class ProtocolGenerator {
 
     }
 
+    public Uri generateSummary(String fileName, int blockId) {
+        try {
+            Uri fileUri = createPdfFileInDownloads(fileName);
+            if (fileUri == null) {
+                throw new IOException("Nie udało się utworzyć URI dla pliku PDF.");
+            }
+
+            document.open();
+            List<FlatFullData> flats = db.flatDao().getFlatsSync(blockId);
+            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
+
+            Collections.sort(flats, Comparator.comparingInt(f -> {
+                try {
+                    String cleanedNumber = f.flat.number.replaceAll("\\s+", "");
+                    return Integer.parseInt(cleanedNumber);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }));
+
+            totalFlats = flats.size() - 1;
+
+            for (FlatFullData flat : flats) {
+                boolean isCommonSpace = flat.flat.isCommonSpace == 1;
+
+                if (flat.flat.status.contains(Settings.measurementNotReady) && !isCommonSpace) {
+                    skippedFlats.add("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number);
+                    continue;
+                }
+
+                String addition = "";
+                if (isCommonSpace) {
+                    BoardCommonSpace bcp = db.boardCommonSpaceDao().getBoardByNameSync(flat.flat.id, Settings.mainBoardName);
+                    if (bcp != null && db.circuitCommonSpaceDao().areThereNotDoneFlatsBoard(bcp.id)) {
+                        addition = " Oprócz WLZ mieszkań, w których nie został wykonany przegląd";
+                    }
+                }
+
+                // Simulating generation to collect statistics
+                RCDTable rcdTableGenerator = new RCDTable(db);
+                if (flat.flat.hasRCD == 1 && !isCommonSpace) {
+                    rcdTableGenerator.createRCDTable(flat.flat);
+                    rcdIsGood = rcdTableGenerator.getRcdIsGood();
+                    if (!rcdTableGenerator.getMistakes().isEmpty()) {
+                        rcdMistakes.addAll(rcdTableGenerator.getMistakes());
+                    }
+                } else if (isCommonSpace) {
+                    rcdTableGenerator.createCommonSpaceRCDTable(flat.flat);
+                    rcdIsGood = rcdTableGenerator.getRcdIsGood();
+                    if (!rcdTableGenerator.getMistakes().isEmpty()) {
+                        rcdMistakes.addAll(rcdTableGenerator.getMistakes());
+                    }
+                }
+
+                List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
+                if (!circuits.isEmpty() || isCommonSpace) {
+                    OmTable omTableGenerator = new OmTable(db);
+                    if (isCommonSpace) {
+                        omTableGenerator.createCommonSpaceOmTable(flat.flat);
+                    } else {
+                        omTableGenerator.createOmTable(flat.flat);
+                    }
+                    omGrade = omTableGenerator.getGrade();
+                    if (!omTableGenerator.getMistakes().isEmpty()) {
+                        omMistakes.addAll(omTableGenerator.getMistakes());
+                    }
+                }
+
+                generatedFlats++;
+                updateGradesOnly(flat.flat, addition);
+            }
+
+            addSummary(blockFullData1.block);
+            document.close();
+
+            return fileUri;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Błąd podczas generowania podsumowania PDF", e);
+            return null;
+        } finally {
+            closeDocument();
+        }
+    }
+
+    private void updateGradesOnly(Flat flat, String addition) {
+        boolean shouldSetGradeTo1 = db.flatDao().shouldSetGradeToOneSync(flat.id);
+
+        if (flat.gradeByUser == 1 && flat.grade == 2) {
+            omGrade = 2;
+        }
+
+        String finalGrade;
+        if ((shouldSetGradeTo1 && flat.gradeByUser == 0) || rcdIsGood == 0) {
+            finalGrade = "Instalacja dopuszczona do użytku po usunięciu usterek.";
+        } else {
+            finalGrade = "Instalacja dopuszczona do użytku.";
+        }
+
+        if (omGrade == 2) {
+            finalGrade = "Instalacja niedopuszczona do użytku.";
+        }
+
+        if (finalGrade.equals("Instalacja dopuszczona do użytku po usunięciu usterek.")) {
+            if (flat.isCommonSpace == 0) {
+
+                grade1Flats.add(flat.number);
+            }
+        }
+        if (finalGrade.equals("Instalacja dopuszczona do użytku.")) {
+            if (flat.isCommonSpace == 0) {
+
+                grade0Flats.add(flat.number);
+            }
+        }
+        if (finalGrade.equals("Instalacja niedopuszczona do użytku.")) {
+            if (flat.isCommonSpace == 0) {
+
+                grade2Flats.add(flat.number);
+            }
+        }
+    }
+
     public Uri generate(String fileName, int blockId, Integer flatId, Integer protocolNumberProvided) {
         try {
             Uri fileUri = createPdfFileInDownloads(fileName);
@@ -113,7 +239,7 @@ public class ProtocolGenerator {
             }
             BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
 
-            if (allFlats) {
+            if (allFlats && blockFullData1.block.buildingType == 0) {
                 Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
                 p.setAlignment(Element.ALIGN_CENTER);
                 float pageHeight = document.getPageSize().getHeight();
@@ -204,11 +330,13 @@ public class ProtocolGenerator {
                 boolean isCommonSpace = flat.flat.isCommonSpace == 1;
 
                 if (isCommonSpace) {
-                    pageEvent.startNewFlat("Część wspólna/administracyjna blok: " + blockFullData1.block.street + " " + blockFullData1.block.number, writer);
-
+                    if (blockFullData1.block.buildingType == 1) {
+                        pageEvent.startNewFlat("Dom jednorodzinny: " + blockFullData1.block.street + " " + blockFullData1.block.number, writer);
+                    } else {
+                        pageEvent.startNewFlat("Część wspólna/administracyjna blok: " + blockFullData1.block.street + " " + blockFullData1.block.number, writer);
+                    }
                 } else {
                     pageEvent.startNewFlat("Mieszkanie " + blockFullData1.block.number + "/" + flat.flat.number, writer);
-
                 }
 
                 addHeader();
@@ -225,12 +353,15 @@ public class ProtocolGenerator {
                 String clientData = blockFullData.client.name + "\n" +
                         "ul. " + blockFullData.client.street + ", " + blockFullData.client.postal_code + " " + blockFullData.client.city;
                 String objectData;
+                String buildingDescription = blockFullData.block.buildingType == 1 ? "Dom jednorodzinny" : "Budynek wielorodzinny";
                 if (isCommonSpace) {
-                    objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
-
+                    if (blockFullData.block.buildingType == 1) {
+                        objectData = buildingDescription + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "Napięcie znamionowe: 230V/400V";
+                    } else {
+                        objectData = buildingDescription + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
+                    }
                 } else {
-                    objectData = "Budynek wielorodzinny" + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
-
+                    objectData = buildingDescription + "\n" + "ul. " + blockFullData.block.street + " " + blockFullData.block.number + ", " + blockFullData.block.postal_code + " " + blockFullData.block.city + "\n" + "LOKAL: " + flat.flat.number + "\n" + "Napięcie znamionowe: 230V/400V";
                 }
                 addDetailsTable(clientData, objectData);
 
@@ -259,10 +390,26 @@ public class ProtocolGenerator {
                     table.setWidths(new float[]{1f, 1f});
 
                     Paragraph p1 = new Paragraph();
-                    p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
-                    p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
-                    p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
-                    p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+
+                    Contractors contractor = null;
+                    if (flat.flat.contractorId != null) {
+                        contractor = db.contractorsDao().getContractorByIdSync(flat.flat.contractorId);
+                    }
+                    if (contractor == null) {
+                        contractor = db.contractorsDao().getDefaultContractorSync();
+                    }
+
+                    if (contractor != null) {
+                        p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+                        p1.add(new Chunk(contractor.name + " " + contractor.surname + "\n", ProFonts.fontNormalBold));
+                        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + contractor.e_permit +"\n", ProFonts.fontNormal));
+                        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + contractor.d_permit + "\n", ProFonts.fontNormal));
+                    } else {
+                        p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+                        p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
+                        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
+                        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+                    }
 
                     PdfPCell cell1 = new PdfPCell(p1);
                     cell1.setPaddingLeft(15f);
@@ -271,11 +418,26 @@ public class ProtocolGenerator {
                     cell1.setHorizontalAlignment(Element.ALIGN_LEFT);
 
                     Paragraph p2 = new Paragraph();
-                    p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
-                    p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
-                    p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
-                    p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
 
+                    Contractors checker = null;
+                    if (flat.flat.checkerId != null) {
+                        checker = db.contractorsDao().getContractorByIdSync(flat.flat.checkerId);
+                    }
+                    if (checker == null) {
+                        checker = db.contractorsDao().getDefaultCheckerSync();
+                    }
+
+                    if (checker != null) {
+                        p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+                        p2.add(new Chunk(checker.name + " " + checker.surname + "\n", ProFonts.fontNormalBold));
+                        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + checker.e_permit +"\n", ProFonts.fontNormal));
+                        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + checker.d_permit + "\n", ProFonts.fontNormal));
+                    } else {
+                        p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+                        p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
+                        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
+                        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
+                    }
                     PdfPCell cell2 = new PdfPCell(p2);
                     cell2.setBorder(PdfPCell.NO_BORDER);
                     cell2.setVerticalAlignment(Element.ALIGN_MIDDLE);
@@ -494,6 +656,8 @@ public class ProtocolGenerator {
                 createGrade(next, flat.flat, addition);
                 next++;
                 createEndSummary(next, flat.flat);
+                next++;
+                next = addSignatureSection(next, flat.flat);
 
                 // ZMIANA: Przekazujemy teraz również dane obiektu block, aby sformatować odpowiednio nagłówek
                 addPhotoPages(flat.flat, blockFullData1.block);
@@ -507,9 +671,14 @@ public class ProtocolGenerator {
             document.newPage();
             pageEvent.finishDocument(writer);
             writer.setPageEvent(null);
-            if (flatId == null) {
+            if (blockFullData1.block.buildingType == 1) {
+                if (!rcdMistakes.isEmpty() || !omMistakes.isEmpty()) {
+                    addSummary(blockFullData1.block);
+                }
+            } else if (flatId == null) {
                 addSummary(blockFullData1.block);
             }
+
             document.close();
 
 
@@ -793,10 +962,25 @@ public class ProtocolGenerator {
         table.setWidths(new float[]{1f, 1f});
 
         Paragraph p1 = new Paragraph();
-        p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
-        p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
-        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
-        p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+        Contractors contractor = null;
+        if (flat.contractorId != null) {
+            contractor = db.contractorsDao().getContractorByIdSync(flat.contractorId);
+        }
+        if (contractor == null) {
+            contractor = db.contractorsDao().getDefaultContractorSync();
+        }
+
+        if (contractor != null) {
+            p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+            p1.add(new Chunk(contractor.name + " " + contractor.surname + "\n", ProFonts.fontNormalBold));
+            p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + contractor.e_permit + "\n", ProFonts.fontNormal));
+            p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + contractor.d_permit, ProFonts.fontNormal));
+        } else {
+            p1.add(new Chunk("Wykonał: ", ProFonts.fontNormal));
+            p1.add(new Chunk("Paweł Rejner\n", ProFonts.fontNormalBold));
+            p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/405/2131/21\n", ProFonts.fontNormal));
+            p1.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/405/2132/21", ProFonts.fontNormal));
+        }
 
         PdfPCell cell1 = new PdfPCell(p1);
         cell1.setPaddingLeft(15f);
@@ -805,10 +989,25 @@ public class ProtocolGenerator {
         cell1.setHorizontalAlignment(Element.ALIGN_LEFT);
 
         Paragraph p2 = new Paragraph();
-        p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
-        p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
-        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
-        p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
+        Contractors checker = null;
+        if (flat.checkerId != null) {
+            checker = db.contractorsDao().getContractorByIdSync(flat.checkerId);
+        }
+        if (checker == null) {
+            checker = db.contractorsDao().getDefaultCheckerSync();
+        }
+
+        if (checker != null) {
+            p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+            p2.add(new Chunk(checker.name + " " + checker.surname + "\n", ProFonts.fontNormalBold));
+            p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + checker.e_permit + "\n", ProFonts.fontNormal));
+            p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr " + checker.d_permit, ProFonts.fontNormal));
+        } else {
+            p2.add(new Chunk("Sprawdził: ", ProFonts.fontNormal));
+            p2.add(new Chunk("Marek Rejner\n", ProFonts.fontNormalBold));
+            p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr E/180/21/23\n", ProFonts.fontNormal));
+            p2.add(new Chunk("Zaświadczenie kwalifikacyjne nr D/180/25/23", ProFonts.fontNormal));
+        }
 
         PdfPCell cell2 = new PdfPCell(p2);
         cell2.setBorder(PdfPCell.NO_BORDER);
@@ -821,6 +1020,51 @@ public class ProtocolGenerator {
         document.add(table);
 
 
+    }
+
+    private int addSignatureSection(int next, Flat flat) throws DocumentException, IOException {
+        Signature signature = db.signatureDao().getSignatureForFlatSync(flat.id);
+        if (signature == null) return next;
+
+        Paragraph signatureTitle = new Paragraph(next + 1 + ". Akceptacja pomiarów przez lokatora/właściciela:", ProFonts.fontNormalBold);
+        signatureTitle.setSpacingBefore(titleSpacing);
+        signatureTitle.setSpacingAfter(titleSpacingA);
+        signatureTitle.setAlignment(Element.ALIGN_LEFT);
+        document.add(signatureTitle);
+
+        Paragraph terms = new Paragraph(LegalTexts.SIGNATURE_TERMS, ProFonts.fontNormal);
+        terms.setIndentationLeft(indentation);
+        terms.setSpacingAfter(10f);
+        document.add(terms);
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.5f, 1f});
+
+        Paragraph p = new Paragraph();
+        p.add(new Chunk("Podpisał(a): ", ProFonts.fontNormal));
+        p.add(new Chunk(signature.signerName + "\n", ProFonts.fontNormalBold));
+        p.add(new Chunk("Data: ", ProFonts.fontNormal));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
+        p.add(new Chunk(sdf.format(signature.signatureDate), ProFonts.fontNormal));
+
+        PdfPCell textCell = new PdfPCell(p);
+        textCell.setPaddingLeft(indentation);
+        textCell.setBorder(PdfPCell.NO_BORDER);
+        textCell.setVerticalAlignment(Element.ALIGN_TOP);
+        table.addCell(textCell);
+
+        Image img = Image.getInstance(signature.signatureData);
+        img.scaleToFit(150, 75);
+        PdfPCell imageCell = new PdfPCell(img);
+        imageCell.setBorder(PdfPCell.NO_BORDER);
+        imageCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        imageCell.setVerticalAlignment(Element.ALIGN_TOP);
+        table.addCell(imageCell);
+
+        document.add(table);
+
+        return next + 1;
     }
 
     private void createNotes(String endNotes) throws DocumentException {
@@ -870,19 +1114,24 @@ public class ProtocolGenerator {
                     finalGrade += additon;
                 }
             }
-            grade1Flats.add(flat.number);
-        }
+            if (flat.isCommonSpace == 0) {
+                grade1Flats.add(flat.number);
+            }        }
         if (finalGrade.equals("Instalacja dopuszczona do użytku.")) {
             if (flat.isCommonSpace == 1) {
                 if (additon != null && !additon.isEmpty()) {
                     finalGrade += additon;
                 }
             }
-            grade0Flats.add(flat.number);
+            if (flat.isCommonSpace == 0) {
+                grade0Flats.add(flat.number);
+            }
 
         }
         if (finalGrade.equals("Instalacja niedopuszczona do użytku.")) {
-            grade2Flats.add(flat.number);
+            if (flat.isCommonSpace == 0) {
+                grade2Flats.add(flat.number);
+            }
 
         }
         Paragraph gradeDesc = new Paragraph(finalGrade, ProFonts.fontNormal);
@@ -900,37 +1149,89 @@ public class ProtocolGenerator {
         title.setSpacingAfter(15f);
         document.add(title);
 
-
-        Paragraph flatsNumtitle = new Paragraph("Informacje o mieszkaniach:", ProFonts.fontNormalBold);
-        flatsNumtitle.setAlignment(Element.ALIGN_LEFT);
-        flatsNumtitle.setSpacingAfter(titleSpacingA);
-        flatsNumtitle.setSpacingBefore(titleSpacing);
-        document.add(flatsNumtitle);
-
-        Paragraph flatsNumDesc = new Paragraph("Łącznie mieszkań: " + totalFlats, ProFonts.fontNormal);
-        flatsNumDesc.setAlignment(Element.ALIGN_LEFT);
-        flatsNumDesc.setIndentationLeft(indentation);
-        document.add(flatsNumDesc);
-
-
-        Paragraph flatsNumDesc2 = new Paragraph("Wygenerowano protokoły dla mieszkań: " + generatedFlats + " (" + generatedFlats + "/" + totalFlats + ")", ProFonts.fontNormal);
-        flatsNumDesc2.setAlignment(Element.ALIGN_LEFT);
-        flatsNumDesc2.setIndentationLeft(indentation);
-        document.add(flatsNumDesc2);
+        if (block.buildingType != 1) {
+            Paragraph flatsNumtitle = new Paragraph("Informacje o mieszkaniach:", ProFonts.fontNormalBold);
+            flatsNumtitle.setAlignment(Element.ALIGN_LEFT);
+            flatsNumtitle.setSpacingAfter(titleSpacingA);
+            flatsNumtitle.setSpacingBefore(titleSpacing);
+            document.add(flatsNumtitle);
+            Paragraph flatsNumDesc = new Paragraph("Łącznie mieszkań: " + totalFlats, ProFonts.fontNormal);
+            flatsNumDesc.setAlignment(Element.ALIGN_LEFT);
+            flatsNumDesc.setIndentationLeft(indentation);
+            document.add(flatsNumDesc);
 
 
-        Paragraph flatsNumDesc3 = new Paragraph("Pominięte mieszkania (nikt nie otwarł): " + (totalFlats - generatedFlats), ProFonts.fontNormal);
-        flatsNumDesc3.setAlignment(Element.ALIGN_LEFT);
-        flatsNumDesc3.setIndentationLeft(indentation);
-        document.add(flatsNumDesc3);
+            Paragraph flatsNumDesc2 = new Paragraph("Wygenerowano protokoły dla mieszkań: " + generatedFlats + " (" + generatedFlats + "/" + totalFlats + ")", ProFonts.fontNormal);
+            flatsNumDesc2.setAlignment(Element.ALIGN_LEFT);
+            flatsNumDesc2.setIndentationLeft(indentation);
+            document.add(flatsNumDesc2);
 
-        int index = 1;
-        for (String s : skippedFlats) {
-            Paragraph skippedFlat = new Paragraph(index + ". " + s, ProFonts.fontNormal);
-            skippedFlat.setAlignment(Element.ALIGN_LEFT);
-            skippedFlat.setIndentationLeft(25f);
-            document.add(skippedFlat);
-            index++;
+
+            Paragraph flatsNumDesc3 = new Paragraph("Pominięte mieszkania (nikt nie otwarł): " + (totalFlats - generatedFlats), ProFonts.fontNormal);
+            flatsNumDesc3.setAlignment(Element.ALIGN_LEFT);
+            flatsNumDesc3.setIndentationLeft(indentation);
+            document.add(flatsNumDesc3);
+
+            int index = 1;
+            for (String s : skippedFlats) {
+                Paragraph skippedFlat = new Paragraph(index + ". " + s, ProFonts.fontNormal);
+                skippedFlat.setAlignment(Element.ALIGN_LEFT);
+                skippedFlat.setIndentationLeft(25f);
+                document.add(skippedFlat);
+                index++;
+            }
+
+            Paragraph statsTitle = new Paragraph("Statystyki pomiarów:", ProFonts.fontNormalBold);
+            statsTitle.setAlignment(Element.ALIGN_LEFT);
+            statsTitle.setSpacingAfter(titleSpacingA);
+            statsTitle.setSpacingBefore(titleSpacing);
+            document.add(statsTitle);
+
+
+            Paragraph s1 = new Paragraph("Mieszkania z orzeczeniem `Instalacja niedopuszczona do użytku` (" + grade2Flats.size() + "):", ProFonts.fontNormal);
+            s1.setAlignment(Element.ALIGN_LEFT);
+            s1.setIndentationLeft(indentation);
+            document.add(s1);
+            index = 1;
+            for (String g2 : grade2Flats) {
+                Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g2, ProFonts.fontNormal);
+                gradedFlat.setAlignment(Element.ALIGN_LEFT);
+                gradedFlat.setIndentationLeft(25f);
+                document.add(gradedFlat);
+                index++;
+            }
+
+            Paragraph s3 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku` (" + grade0Flats.size() + "):", ProFonts.fontNormal);
+            s3.setAlignment(Element.ALIGN_LEFT);
+            s3.setIndentationLeft(indentation);
+            document.add(s3);
+
+            index = 1;
+            for (String g0 : grade0Flats) {
+
+
+                Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g0, ProFonts.fontNormal);
+
+
+                gradedFlat.setAlignment(Element.ALIGN_LEFT);
+                gradedFlat.setIndentationLeft(25f);
+                document.add(gradedFlat);
+                index++;
+            }
+
+            Paragraph s5 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku po usunięciu usterek` (" + grade1Flats.size() + "):", ProFonts.fontNormal);
+            s5.setAlignment(Element.ALIGN_LEFT);
+            s5.setIndentationLeft(indentation);
+            document.add(s5);
+            index = 1;
+            for (String g1 : grade1Flats) {
+                Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g1, ProFonts.fontNormal);
+                gradedFlat.setAlignment(Element.ALIGN_LEFT);
+                gradedFlat.setIndentationLeft(25f);
+                document.add(gradedFlat);
+                index++;
+            }
+
         }
 
         if (!rcdMistakes.isEmpty() || !omMistakes.isEmpty()) {
@@ -967,55 +1268,6 @@ public class ProtocolGenerator {
             }
 
         }
-
-        Paragraph statsTitle = new Paragraph("Statystyki pomiarów:", ProFonts.fontNormalBold);
-        statsTitle.setAlignment(Element.ALIGN_LEFT);
-        statsTitle.setSpacingAfter(titleSpacingA);
-        statsTitle.setSpacingBefore(titleSpacing);
-        document.add(statsTitle);
-
-
-        Paragraph s1 = new Paragraph("Mieszkania z orzeczeniem `Instalacja niedopuszczona do użytku` (" + grade2Flats.size() + "):", ProFonts.fontNormal);
-        s1.setAlignment(Element.ALIGN_LEFT);
-        s1.setIndentationLeft(indentation);
-        document.add(s1);
-        index = 1;
-        for (String g2 : grade2Flats) {
-            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g2, ProFonts.fontNormal);
-            gradedFlat.setAlignment(Element.ALIGN_LEFT);
-            gradedFlat.setIndentationLeft(25f);
-            document.add(gradedFlat);
-            index++;
-        }
-
-        Paragraph s3 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku` (" + grade0Flats.size() + "):", ProFonts.fontNormal);
-        s3.setAlignment(Element.ALIGN_LEFT);
-        s3.setIndentationLeft(indentation);
-        document.add(s3);
-
-        index = 1;
-        for (String g0 : grade0Flats) {
-            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g0, ProFonts.fontNormal);
-            gradedFlat.setAlignment(Element.ALIGN_LEFT);
-            gradedFlat.setIndentationLeft(25f);
-            document.add(gradedFlat);
-            index++;
-        }
-
-        Paragraph s5 = new Paragraph("Mieszkania z orzeczeniem `Instalacja dopuszczona do użytku po usunięciu usterek` (" + grade1Flats.size() + "):", ProFonts.fontNormal);
-        s5.setAlignment(Element.ALIGN_LEFT);
-        s5.setIndentationLeft(indentation);
-        document.add(s5);
-        index = 1;
-        for (String g1 : grade1Flats) {
-            Paragraph gradedFlat = new Paragraph(index + ". Mieszkanie " + block.number + "/" + g1, ProFonts.fontNormal);
-            gradedFlat.setAlignment(Element.ALIGN_LEFT);
-            gradedFlat.setIndentationLeft(25f);
-            document.add(gradedFlat);
-            index++;
-        }
-
-
     }
 
     private void addData(String type, Date date, Flat flat) throws DocumentException {

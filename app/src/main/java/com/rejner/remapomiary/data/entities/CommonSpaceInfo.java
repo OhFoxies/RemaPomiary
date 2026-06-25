@@ -22,17 +22,17 @@ public class CommonSpaceInfo {
     public int blockId;
 
     @ColumnInfo(name = "switchName")
-    public String switchName;
+    public String switchName = "";
 
     // Typ zabezpieczenia (B, C, D, Gg)
     @ColumnInfo(name = "breakerType")
-    public String breakerType;
+    public String breakerType = "B";
 
     // Wartość zabezpieczenia w Amperach
     @ColumnInfo(name = "amps", defaultValue = "16.0")
     public Double amps = 16.0;
 
     @ColumnInfo(name = "ohms_base")
-    public Double ohmsBase;
+    public Double ohmsBase = 0.0;
 
 }

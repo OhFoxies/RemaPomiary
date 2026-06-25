@@ -1,7 +1,6 @@
 package com.rejner.remapomiary.adapters;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Handler;
@@ -58,13 +57,15 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
 
     private final OnBoardActionListener listener;
     private List<BoardsFullData> boards = new ArrayList<>();
+    private String[] circuitItems;
     private final Set<Integer> expandedBoardIds = new HashSet<>();
     private final Set<Integer> expandedBoardPhotoIds = new HashSet<>();
     private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public BoardAdapter(OnBoardActionListener listener) {
+    public BoardAdapter(OnBoardActionListener listener, String[] circuitItems) {
         this.listener = listener;
+        this.circuitItems = circuitItems;
     }
 
     public void setBoards(List<BoardsFullData> boards) {
@@ -81,8 +82,7 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
 
     @Override
     public void onBindViewHolder(@NonNull BoardViewHolder holder, int position) {
-        BoardsFullData board = boards.get(position);
-        holder.bind(board);
+        holder.bind(boards.get(position));
     }
 
     private int dpToPx(View view, int dp) {
@@ -108,7 +108,6 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
         ProgressBar progressBarCircuits;
         LinearLayout circuitsHeader;
 
-        // Widoki sekcji zdjęć rozdzielni
         Button togglePhotosButton, addBoardPhotoBtn;
         HorizontalScrollView boardPhotosScrollView;
         LinearLayout boardPhotosContainer;
@@ -140,7 +139,6 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
             progressBarCircuits = itemView.findViewById(R.id.progressBarCircuits);
             circuitsHeader = itemView.findViewById(R.id.circuitsHeader);
 
-            // Inicjalizacja nowych widoków zdjęć rozdzielni
             togglePhotosButton = itemView.findViewById(R.id.togglePhotosButton);
             addBoardPhotoBtn = itemView.findViewById(R.id.addBoardPhotoBtn);
             boardPhotosScrollView = itemView.findViewById(R.id.boardPhotosScrollView);
@@ -195,9 +193,7 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
                 boolean isExpanded = expandedBoardIds.contains(board.board.id);
 
                 updateExpansionUI(isExpanded);
-                refresh.setOnClickListener(v -> {
-                    listener.onRefresh(board);
-                });
+                refresh.setOnClickListener(v -> listener.onRefresh(board));
                 toggleCircuitsButton.setOnClickListener(v -> {
                     if (isLoadingChunks) {
                         expandedBoardIds.remove(board.board.id);
@@ -260,7 +256,6 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
                 adjustRecyclerViewHeight(0);
             }
 
-            // LOGIKA I WIDOKI ZDJĘĆ ROZDZIELNI
             boolean photosExpanded = expandedBoardPhotoIds.contains(board.board.id);
             boardPhotosScrollView.setVisibility(photosExpanded ? View.VISIBLE : View.GONE);
             togglePhotosButton.setText(photosExpanded ? "Ukryj zdjęcia" : "Pokaż zdjęcia");
@@ -281,74 +276,75 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
                 if (listener != null) listener.onAddBoardPhoto(board);
             });
 
-            // Dynamiczne renderowanie większych miniaturek zdjęć rozdzielni z przyciskiem USUŃ
-            boardPhotosContainer.removeAllViews();
-            Context context = itemView.getContext();
+            // Optymalizacja: Przebudowuj kontenery zdjęć TYLKO gdy ścieżki uległy zmianie (Unikanie Jank)
+            String rawPaths = board.board.photoPaths != null ? board.board.photoPaths : "";
+            String existingPathsTag = (String) boardPhotosContainer.getTag();
 
-            if (board.board.photoPaths != null && !board.board.photoPaths.trim().isEmpty()) {
-                String[] paths = board.board.photoPaths.split(",");
-                for (String path : paths) {
-                    if (path.trim().isEmpty()) continue;
+            if (!rawPaths.equals(existingPathsTag)) {
+                boardPhotosContainer.setTag(rawPaths);
+                boardPhotosContainer.removeAllViews();
+                Context context = itemView.getContext();
 
-                    FrameLayout frameLayout = new FrameLayout(context);
+                if (!rawPaths.trim().isEmpty()) {
+                    String[] paths = rawPaths.split(",");
+                    for (String path : paths) {
+                        if (path.trim().isEmpty()) continue;
 
-                    // Zwiększone wymiary kontenera do 200dp szerokości i 270dp wysokości
-                    LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
-                            dpToPx(itemView, 200), dpToPx(itemView, 270));
-                    frameParams.setMargins(0, 0, dpToPx(itemView, 12), 0);
-                    frameLayout.setLayoutParams(frameParams);
+                        FrameLayout frameLayout = new FrameLayout(context);
+                        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
+                                dpToPx(itemView, 200), dpToPx(itemView, 270));
+                        frameParams.setMargins(0, 0, dpToPx(itemView, 12), 0);
+                        frameLayout.setLayoutParams(frameParams);
 
-                    ImageView imageView = new ImageView(context);
-                    FrameLayout.LayoutParams imgParams = new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-                    // Dodajemy dolny margines zdjęciu równy wysokości przycisku (44dp), aby go nie zasłaniał
-                    imgParams.bottomMargin = dpToPx(itemView, 44);
-                    imageView.setLayoutParams(imgParams);
-                    imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    imageView.setImageURI(Uri.fromFile(new File(path)));
-                    frameLayout.addView(imageView);
+                        ImageView imageView = new ImageView(context);
+                        FrameLayout.LayoutParams imgParams = new FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                        imgParams.bottomMargin = dpToPx(itemView, 44);
+                        imageView.setLayoutParams(imgParams);
+                        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        imageView.setImageURI(Uri.fromFile(new File(path)));
+                        frameLayout.addView(imageView);
 
-                    // Gwarancja widoczności przycisku: zwykły Button + bezpośrednie setBackgroundColor
-                    Button delBtn = new Button(context);
-                    FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(itemView, 44));
-                    btnParams.gravity = android.view.Gravity.BOTTOM;
-                    delBtn.setLayoutParams(btnParams);
-                    delBtn.setText("USUŃ");
-                    delBtn.setTextSize(13);
-                    delBtn.setPadding(0, 0, 0, 0);
-                    delBtn.setBackgroundColor(Color.parseColor("#D32F2F")); // Głębszy czerwony
-                    delBtn.setTextColor(Color.WHITE); // Biały czytelny napis
+                        Button delBtn = new Button(context);
+                        FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(itemView, 44));
+                        btnParams.gravity = android.view.Gravity.BOTTOM;
+                        delBtn.setLayoutParams(btnParams);
+                        delBtn.setText("USUŃ");
+                        delBtn.setTextSize(13);
+                        delBtn.setPadding(0, 0, 0, 0);
+                        delBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
+                        delBtn.setTextColor(Color.WHITE);
 
-                    delBtn.setOnClickListener(v -> {
-                        File file = new File(path);
-                        if (file.exists()) {
-                            file.delete();
-                        }
-                        List<String> list = new ArrayList<>(Arrays.asList(paths));
-                        list.remove(path);
+                        delBtn.setOnClickListener(v -> {
+                            File file = new File(path);
+                            if (file.exists()) {
+                                file.delete();
+                            }
+                            List<String> list = new ArrayList<>(Arrays.asList(paths));
+                            list.remove(path);
 
-                        StringBuilder sb = new StringBuilder();
-                        for (int i = 0; i < list.size(); i++) {
-                            sb.append(list.get(i));
-                            if (i < list.size() - 1) sb.append(",");
-                        }
-                        board.board.photoPaths = sb.toString();
-                        if (listener != null) {
-                            listener.onUpdateBoard(board.board);
-                        }
-                    });
-                    frameLayout.addView(delBtn);
-                    boardPhotosContainer.addView(frameLayout);
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < list.size(); i++) {
+                                sb.append(list.get(i));
+                                if (i < list.size() - 1) sb.append(",");
+                            }
+                            board.board.photoPaths = sb.toString();
+                            if (listener != null) {
+                                listener.onUpdateBoard(board.board);
+                            }
+                        });
+                        frameLayout.addView(delBtn);
+                        boardPhotosContainer.addView(frameLayout);
+                    }
+                } else {
+                    TextView noPhotosTv = new TextView(context);
+                    noPhotosTv.setText("Brak zdjęć dla tej rozdzielni");
+                    noPhotosTv.setTextSize(16);
+                    noPhotosTv.setTextColor(Color.parseColor("#757575"));
+                    noPhotosTv.setPadding(dpToPx(itemView, 8), dpToPx(itemView, 16), dpToPx(itemView, 8), dpToPx(itemView, 16));
+                    boardPhotosContainer.addView(noPhotosTv);
                 }
-            } else {
-                // Dodanie tekstu w przypadku braku jakichkolwiek zdjęć w rozdzielni
-                TextView noPhotosTv = new TextView(context);
-                noPhotosTv.setText("Brak zdjęć dla tej rozdzielni");
-                noPhotosTv.setTextSize(16);
-                noPhotosTv.setTextColor(Color.parseColor("#757575")); // Neutralny szary odcień tekstowy
-                noPhotosTv.setPadding(dpToPx(itemView, 8), dpToPx(itemView, 16), dpToPx(itemView, 8), dpToPx(itemView, 16));
-                boardPhotosContainer.addView(noPhotosTv);
             }
         }
 
@@ -446,8 +442,11 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
             int maxHeight = dpToPx(itemView, maxHeightDp);
 
             ViewGroup.LayoutParams params = circuitsRecyclerView.getLayoutParams();
-            params.height = Math.min(desiredHeight, maxHeight);
-            circuitsRecyclerView.setLayoutParams(params);
+            int finalHeight = Math.min(desiredHeight, maxHeight);
+            if (params.height != finalHeight) {
+                params.height = finalHeight;
+                circuitsRecyclerView.setLayoutParams(params);
+            }
         }
 
         private void setupNestedRecyclerView() {
@@ -487,7 +486,7 @@ public class BoardAdapter extends RecyclerView.Adapter<BoardAdapter.BoardViewHol
                 public void onCircuitNameSpinner_(CircuitCommonSpace circuit, String name) {
                     listener.onCircuitNameSpinner(circuit, name);
                 }
-            }, isWLZ);
+            }, isWLZ, circuitItems);
             circuitsRecyclerView.setAdapter(circuitAdapter);
         }
 

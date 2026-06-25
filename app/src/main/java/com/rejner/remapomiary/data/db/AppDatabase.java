@@ -47,7 +47,7 @@ import com.rejner.remapomiary.data.entities.Template;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class, FlatPhoto.class}, version = 28)
+@Database(entities = {CommonSpaceInfo.class, Contractors.class, Signature.class, Catalog.class, Block.class, CircuitCommonSpace.class, BoardCommonSpace.class, Client.class, Flat.class, Circuit.class, RoomInFlat.class, RCD.class, OutletMeasurement.class, Template.class, ProtocolNumber.class, FlatPhoto.class}, version = 32)
 @TypeConverters(DateConverter.class)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
@@ -239,13 +239,56 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_28_29 = new Migration(28, 29) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE blocks ADD COLUMN building_type INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
+    static final Migration MIGRATION_29_30 = new Migration(29, 30) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // OutletMeasurement: Naprawa NULLi w istniejących rekordach
+            database.execSQL("UPDATE outletMeasurement SET appliance = 'Gniazdko' WHERE appliance IS NULL");
+            database.execSQL("UPDATE outletMeasurement SET switchName = '' WHERE switchName IS NULL");
+            database.execSQL("UPDATE outletMeasurement SET breakerType = 'B' WHERE breakerType IS NULL");
+            database.execSQL("UPDATE outletMeasurement SET amps = 16.0 WHERE amps IS NULL");
+            database.execSQL("UPDATE outletMeasurement SET ohms = 0.0 WHERE ohms IS NULL");
+            database.execSQL("UPDATE outletMeasurement SET note = 'brak uwag' WHERE note IS NULL");
+
+            // CommonSpaceInfo: Naprawa NULLi
+            database.execSQL("UPDATE common_space_info SET switchName = '' WHERE switchName IS NULL");
+            database.execSQL("UPDATE common_space_info SET breakerType = 'B' WHERE breakerType IS NULL");
+            database.execSQL("UPDATE common_space_info SET amps = 16.0 WHERE amps IS NULL");
+            database.execSQL("UPDATE common_space_info SET ohms_base = 0.0 WHERE ohms_base IS NULL");
+        }
+    };
+
+    static final Migration MIGRATION_30_31 = new Migration(30, 31) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE contractors ADD COLUMN isActive INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE flat ADD COLUMN contractorId INTEGER");
+            database.execSQL("ALTER TABLE flat ADD COLUMN checkerId INTEGER");
+            database.execSQL("ALTER TABLE flat ADD COLUMN markedReadyDate INTEGER");
+        }
+    };
+
+    static final Migration MIGRATION_31_32 = new Migration(31, 32) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE contractors ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public static AppDatabase getDatabase(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "pomiary_db")
-                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
+                            .addMigrations(MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32)
                             .build();
 
                 }

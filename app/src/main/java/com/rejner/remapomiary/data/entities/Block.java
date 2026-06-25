@@ -49,8 +49,11 @@ public class Block {
     @ColumnInfo(name = "clientId")
     public Integer clientId;
 
+    @ColumnInfo(name = "building_type", defaultValue = "0")
+    public int buildingType;
 
-    public Block(int catalogId, String street, String city, String number, String postal_code, Integer clientId, Date creation_date, Date edition_date) {
+
+    public Block(int catalogId, String street, String city, String number, String postal_code, Integer clientId, Date creation_date, Date edition_date, int buildingType) {
         this.catalogId = catalogId;
         this.street = street;
         this.city = city;
@@ -59,5 +62,6 @@ public class Block {
         this.clientId = clientId;
         this.creation_date = creation_date;
         this.edition_date = edition_date;
+        this.buildingType = buildingType;
     }
 }

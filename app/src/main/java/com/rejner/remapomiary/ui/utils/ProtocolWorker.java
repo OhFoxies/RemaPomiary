@@ -34,6 +34,7 @@ public class ProtocolWorker extends Worker {
         int catalogId = getInputData().getInt("catalogId", -1);
         int flatId = getInputData().getInt("flatId", -1);
         int providedNumber = getInputData().getInt("protocolNumber", -1);
+        boolean isSummary = getInputData().getBoolean("isSummary", false);
 
         if (blockId == -1 || catalogId == -1) {
             showNotification("❌ Błąd", "Brak wymaganych danych do wygenerowania protokołu.");
@@ -46,13 +47,36 @@ public class ProtocolWorker extends Worker {
         String nazwaPliku;
 
         ProtocolGenerator generator = new ProtocolGenerator(getApplicationContext());
+        if (isSummary) {
+            nazwaPliku = "Podsumowanie - " + block.block.street + " " + block.block.number + " - " + sdf.format(new Date()) + ".pdf";
+            Uri plikPdfUri = generator.generateSummary(nazwaPliku, blockId);
+            if (plikPdfUri != null) {
+                showNotification("✅ Sukces", "Podsumowanie zostało wygenerowane: " + nazwaPliku);
+                return Result.success();
+            } else {
+                showNotification("❌ Błąd", "Nie udało się wygenerować podsumowania.");
+                return Result.failure();
+            }
+        }
+
         if (flatId != -1) {
             FlatFullData flat = db.flatDao().getFlatFullDataSync(flatId);
-            nazwaPliku = "protokol_mieszkanie_" + block.block.number + "_" + flat.flat.number +  "_" + sdf.format(new Date()) + ".pdf";
+            if (flat.flat.isCommonSpace == 1) {
 
+
+                nazwaPliku = "Protokół - " + block.block.street + " " + block.block.number + " - Część wspólna - " + sdf.format(new Date()) + ".pdf";
+
+
+            } else {
+                nazwaPliku = "Protokół - " + block.block.street + " " + block.block.number + " - Mieszkanie " + flat.flat.number + " - " + sdf.format(new Date()) + ".pdf";
+            }
         } else {
+            if (block.block.buildingType == 1) {
+                nazwaPliku = "Protokół - dom - " + block.block.street + " " + block.block.number + " - " + sdf.format(new Date()) + ".pdf";
+            } else {
 
-            nazwaPliku = "protokol_" + block.block.number + "_" + sdf.format(new Date()) + ".pdf";
+                nazwaPliku = "Protokół - " + block.block.street + " " + block.block.number + " - " + sdf.format(new Date()) + ".pdf";
+            }
         }
         Integer _flatId;
         Integer _providedNumber;

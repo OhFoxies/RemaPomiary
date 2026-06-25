@@ -430,7 +430,7 @@
                             android:id="@+id/tvTermsText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Regulamin akceptacji pomiarów: \n1. Wykonawca oświadcza, że pomiary zostały przeprowadzone rzetelnie.\n2. Lokator potwierdza odbiór i stan instalacji."
+                            android:text="Regulamin akceptacji pomiarów"
                             android:textSize="14sp"
                             android:textColor="#333333"/>
 

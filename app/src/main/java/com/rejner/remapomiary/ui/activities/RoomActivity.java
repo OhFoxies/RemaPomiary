@@ -39,6 +39,7 @@ import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.databinding.ActivityRoomBinding;
 import com.rejner.remapomiary.ui.utils.Actions;
 import com.rejner.remapomiary.ui.utils.Settings;
+import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CommonSpaceInfoViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
 import com.rejner.remapomiary.ui.viewmodels.OutletMeasurementViewModel;
@@ -65,6 +66,8 @@ public class RoomActivity extends AppCompatActivity {
     private RoomAdapter roomAdapter;
     private int flatId;
     private Flat flat;
+    private com.rejner.remapomiary.data.entities.Block block;
+    private BlockViewModel blockViewModel;
     private com.google.android.material.floatingactionbutton.FloatingActionButton scrollToTopButton;
 
     public String[] roomNames = {"Pokój", "Sypialnia", "Korytarz", "Łazienka", "Kuchnia", "Inne"};
@@ -104,11 +107,12 @@ public class RoomActivity extends AppCompatActivity {
 
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
-        isCommonSpace = getIntent().getIntExtra("isCommonSpace", 0) == 1;
+        isCommonSpace = getIntent().getIntExtra("commonSpace", 0) == 1;
         blockName = getIntent().getStringExtra("name");
         roomViewModel = new ViewModelProvider(this).get(RoomViewModel.class);
         outletViewModel = new ViewModelProvider(this).get(OutletMeasurementViewModel.class);
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
+        blockViewModel = new ViewModelProvider(this).get(BlockViewModel.class);
         commonSpaceInfoViewModel = new ViewModelProvider(this).get(CommonSpaceInfoViewModel.class);
 
         takePhotoLauncher = registerForActivityResult(
@@ -130,15 +134,27 @@ public class RoomActivity extends AppCompatActivity {
             roomNames = new String[]{"Korytarz", "Garaż", "Piwnica", "Rowerownia", "Pralnia", "Piętro -", "Inne"};
             applianceOptions = new String[]{"Gniazdko", "Brama garażowa", "Inne"};
         }
+        setupScrollToTop();
+
         LiveDataUtil.observeOnce(flatViewModel.getFlatById(flatId), this, flat1 -> {
             flat = flat1;
-            runOnUiThread(this::setupUIElements);
+            if (flat == null) return;
+            blockViewModel.getBlockById(flat.blockId, blockFullData -> {
+                if (blockFullData != null && blockFullData.block != null) {
+                    block = blockFullData.block;
+                    if (block.buildingType == 1) {
+                        roomNames = new String[]{"Salon", "Sypialnia", "Kuchnia", "Łazienka", "Garaż", "Korytarz", "Piętro -", "Inne"};
+                        applianceOptions = new String[]{"Gniazdko", "Lodówka", "Piekarnik", "Telewizor", "Pralka", "Grzejnik", "Brama garażowa", "Inne"};
+                    }
+                }
+                runOnUiThread(() -> {
+                    setupUIElements();
+                    setupAddRoomUi();
+                    setupRecyclerView();
+                    observeRooms();
+                });
+            });
         });
-
-        setupAddRoomUi();
-        setupRecyclerView();
-        setupScrollToTop();
-        observeRooms();
     }
 
     private void setupScrollToTop() {
@@ -163,11 +179,15 @@ public class RoomActivity extends AppCompatActivity {
     private void setupUIElements() {
         if (flat == null) return;
         if (isCommonSpace) {
-            binding.flatTitle.setText("Pętla zwarcia - " + blockName);
+            String buildingLabel = block != null && block.buildingType == 1 ? "Dom" : "Część wspólna";
+            String title = buildingLabel + (block != null ? (" " + block.street + " " + block.number) : (" " + blockName)) + " - pętla zwarcia";
+            binding.flatTitle.setText(title);
             binding.customRoomEditText.setHint("Podaj nazwę pomieszczenia");
             binding.addRoomButton.setText("Dodaj pomieszczenie");
-            binding.commonSpaceInfoContainer.setVisibility(View.VISIBLE);
-            setupCommonSpaceInfoLogic();
+            if (block != null && block.buildingType == 0) {
+                binding.commonSpaceInfoContainer.setVisibility(View.VISIBLE);
+                setupCommonSpaceInfoLogic();
+            }
         } else {
             binding.flatTitle.setText("Mieszkanie numer - " + flat.number + " pętla zwarcia");
         }
@@ -204,7 +224,7 @@ public class RoomActivity extends AppCompatActivity {
 
         binding.notesButton.setOnClickListener(v -> {
             if (isCommonSpace) {
-                Intent intent = new Intent(RoomActivity.this, BoardCommonSpace.class);
+                Intent intent = new Intent(RoomActivity.this, NotesActivity.class);
                 intent.putExtra("flatId", flatId);
                 intent.putExtra("blockId", flat.blockId);
                 intent.putExtra("name", blockName);
@@ -235,9 +255,15 @@ public class RoomActivity extends AppCompatActivity {
         binding.backButton.setOnClickListener(v -> {
             if (flat == null) return;
             if (isCommonSpace) {
-                Intent intent = new Intent(RoomActivity.this, BlockActivity.class);
-                intent.putExtra("blockId", flat.blockId);
-                startActivity(intent);
+                if (block != null && block.buildingType == 1) {
+                    Intent intent = new Intent(RoomActivity.this, BlocksActivity.class);
+                    intent.putExtra("catalogId", block.catalogId);
+                    startActivity(intent);
+                } else {
+                    Intent intent = new Intent(RoomActivity.this, BlockActivity.class);
+                    intent.putExtra("blockId", flat.blockId);
+                    startActivity(intent);
+                }
             } else if (catalogId != -1) {
                 Intent intent = new Intent(RoomActivity.this, TemplatesActivity.class);
                 intent.putExtra("catalogId", catalogId);
@@ -397,31 +423,45 @@ public class RoomActivity extends AppCompatActivity {
         newOm.roomId = roomId;
         newOm.appliance = applianceOptions[0];
         newOm.switchName = "";
-        newOm.breakerType = null;
-        newOm.amps = null;
+        newOm.breakerType = breakerTypes[0];
+        newOm.amps = 16.0;
         newOm.ohms = 0.0;
         newOm.note = noteOptions[0];
         newOm.number = 0;
+
+        if (block != null && block.buildingType == 1) {
+            newOm.rcdStatus = 1;
+        }
 
         String sw = lastDefaultSwitchName;
         String br = lastDefaultBreakerType;
         Double am = lastDefaultAmps;
 
-        if (sw != null && (newOm.switchName == null || newOm.switchName.trim().isEmpty())) {
+        if (sw != null && !sw.trim().isEmpty()) {
             newOm.switchName = sw;
         }
-        if (br != null && (newOm.breakerType == null || newOm.breakerType.trim().isEmpty())) {
+        if (br != null && !br.trim().isEmpty()) {
             newOm.breakerType = br;
         }
-        if (am != null && (newOm.amps == null || newOm.amps <= 0)) {
+        if (am != null && am > 0) {
             newOm.amps = am;
-        } else {
-            newOm.amps = 16.0;
         }
 
-        outletViewModel.insert(newOm, lastId -> {
-            roomAdapter.setNewlyAddedMeasurementId(lastId);
-        });
+        if (block != null && block.buildingType == 1) {
+            com.rejner.remapomiary.data.db.AppDatabase.databaseWriteExecutor.execute(() -> {
+                String fetchedName = outletViewModel.getLastRCDName(roomId);
+                newOm.rcdName = (fetchedName != null) ? fetchedName : "";
+                runOnUiThread(() -> {
+                    outletViewModel.insert(newOm, lastId -> {
+                        roomAdapter.setNewlyAddedMeasurementId(lastId);
+                    });
+                });
+            });
+        } else {
+            outletViewModel.insert(newOm, lastId -> {
+                roomAdapter.setNewlyAddedMeasurementId(lastId);
+            });
+        }
     }
 
     private void onAddMeasurementPhoto(OutletMeasurement measurement) {
@@ -646,6 +686,7 @@ public class RoomActivity extends AppCompatActivity {
 
     private void generateMeasurements() {
         if (flat == null || currentCommonSpaceInfo == null) return;
+        if (block != null && block.buildingType == 1) return;
 
         roomViewModel.getOrCreateMainRoom(flatId, room -> {
             flatViewModel.getFlatsSync(flat.blockId, flats -> {

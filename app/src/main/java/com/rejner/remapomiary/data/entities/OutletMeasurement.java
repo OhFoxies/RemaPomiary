@@ -28,14 +28,14 @@ public class OutletMeasurement {
     public int number;
 
     @ColumnInfo(name = "appliance")
-    public String appliance;
+    public String appliance = "Gniazdko";
 
     @ColumnInfo(name = "switchName")
-    public String switchName;
+    public String switchName = "";
 
     // Typ zabezpieczenia (B, C, D, Gg)
     @ColumnInfo(name = "breakerType")
-    public String breakerType;
+    public String breakerType = "B";
 
     // Wartość zabezpieczenia w Amperach
     @ColumnInfo(name = "amps", defaultValue = "16.0")
@@ -43,10 +43,10 @@ public class OutletMeasurement {
 
     // Pomiar w omach
     @ColumnInfo(name = "ohms")
-    public Double ohms;
+    public Double ohms = 0.0;
 
     @ColumnInfo(name = "note")
-    public String note;
+    public String note = "brak uwag";
 
     //    0 - gone, 1 - good, 2 - broken
     @ColumnInfo(name = "rcd_status", defaultValue = "0")

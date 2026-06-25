@@ -103,6 +103,13 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Eksportuj bazę danych" />
+
+                <Button
+                    android:id="@+id/btnContractors"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Zarządzaj wykonawcami" />
             </LinearLayout>
 
         </LinearLayout>

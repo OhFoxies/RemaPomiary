@@ -97,7 +97,7 @@
                     android:id="@+id/blocksTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Bloki"
+                    android:text="Bloki i domy"
                     android:textSize="24sp"
                     android:textStyle="bold"
                     android:paddingBottom="8dp" />
@@ -106,7 +106,7 @@
                     android:id="@+id/blocksDesc"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tutaj znajdują się bloki przypisane do katalogu. Kliknij, aby przejść do ich edycji."
+                    android:text="Tutaj znajdują się budynki (domy i bloki) przypisane do katalogu. Kliknij, aby przejść do ich edycji."
                     android:textSize="16sp" />
             </LinearLayout>
 

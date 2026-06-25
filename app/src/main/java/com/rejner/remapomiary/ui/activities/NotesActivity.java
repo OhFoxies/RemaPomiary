@@ -43,6 +43,7 @@ import com.rejner.remapomiary.data.entities.Signature;
 import com.rejner.remapomiary.data.entities.Template;
 import com.rejner.remapomiary.data.utils.LiveDataUtil;
 import com.rejner.remapomiary.ui.utils.Actions;
+import com.rejner.remapomiary.ui.utils.LegalTexts;
 import com.rejner.remapomiary.ui.viewmodels.BlockViewModel;
 import com.rejner.remapomiary.ui.viewmodels.CircuitViewModel;
 import com.rejner.remapomiary.ui.viewmodels.FlatViewModel;
@@ -87,6 +88,7 @@ public class NotesActivity extends AppCompatActivity {
     private Button templateSave;
     private int catalogId;
     private boolean areButtonsSet = false;
+    private boolean isSignatureLogicSetup = false;
 
     // POLA DLA PODPISU
     private LinearLayout termsContainer;
@@ -123,7 +125,7 @@ public class NotesActivity extends AppCompatActivity {
 
         flatId = getIntent().getIntExtra("flatId", -1);
         catalogId = getIntent().getIntExtra("catalogId", -1);
-        isCommonSpace = getIntent().getIntExtra("isCommonSpace", 0);
+        isCommonSpace = getIntent().getIntExtra("commonSpace", 0);
         blockName = getIntent().getStringExtra("name");
         dpScale = getResources().getDisplayMetrics().density;
 
@@ -152,6 +154,11 @@ public class NotesActivity extends AppCompatActivity {
         btnShowTermsPostSign = findViewById(R.id.btnShowTermsPostSign);
         btnDeleteSignature = findViewById(R.id.btnDeleteSignature);
         tvSavedSignatureInfo = findViewById(R.id.tvSavedSignatureInfo);
+
+        TextView tvTermsText = findViewById(R.id.tvTermsText);
+        if (tvTermsText != null) {
+            tvTermsText.setText(LegalTexts.SIGNATURE_TERMS);
+        }
 
         termsContainer = findViewById(R.id.termsContainer);
         signaturePadContainer = findViewById(R.id.signaturePadContainer);
@@ -185,18 +192,6 @@ public class NotesActivity extends AppCompatActivity {
         signatureViewModel = new ViewModelProvider(this).get(SignatureViewModel.class);
         flatPhotoViewModel = new ViewModelProvider(this).get(FlatPhotoViewModel.class);
 
-        if (isCommonSpace == 1) {
-            termsContainer.setVisibility(View.GONE);
-            findViewById(R.id.other).setVisibility(View.GONE);
-            signaturePadContainer.setVisibility(View.GONE);
-            savedSignatureContainer.setVisibility(View.GONE);
-
-            ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do części wspólnej (niewidoczne w protokole)");
-            ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do części wspólnej (WIDOCZNE W PROTOKOLE)");
-            ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
-            findViewById(R.id.other).setVisibility(View.GONE);
-        }
-
         flatViewModel.getCombinedFlat(flatId).observe(this, flat -> {
             if (flat != null) {
                 currentFlat = flat;
@@ -204,16 +199,52 @@ public class NotesActivity extends AppCompatActivity {
                 notes2EditText.setText(flat.notesProtocol);
                 setGradeSelection();
                 gradeButtonState();
+
+                blockViewModel.getBlockById(flat.blockId, b -> {
+                    if (b == null || b.block == null) return;
+                    runOnUiThread(() -> {
+                        boolean isHouse = b.block.buildingType == 1;
+
+                        if (isCommonSpace == 1) {
+                            if (isHouse) {
+                                ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do domu (niewidoczne w protokole)");
+                                ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do domu (WIDOCZNE W PROTOKOLE)");
+                                ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
+                                findViewById(R.id.other).setVisibility(View.VISIBLE);
+
+                                if (!isSignatureLogicSetup) {
+                                    setupSignatureLogic();
+                                    isSignatureLogicSetup = true;
+                                }
+                            } else {
+                                ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do części wspólnej (niewidoczne w protokole)");
+                                ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do części wspólnej (WIDOCZNE W PROTOKOLE)");
+                                ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
+
+                                findViewById(R.id.other).setVisibility(View.GONE);
+                                termsContainer.setVisibility(View.GONE);
+                                signaturePadContainer.setVisibility(View.GONE);
+                                savedSignatureContainer.setVisibility(View.GONE);
+                            }
+                        } else {
+                            // Mieszkanie
+                            ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do mieszkania (niewidoczne w protokole)");
+                            ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do mieszkania (WIDOCZNE W PROTOKOLE)");
+                            findViewById(R.id.other).setVisibility(View.VISIBLE);
+
+                            if (!isSignatureLogicSetup) {
+                                setupSignatureLogic();
+                                isSignatureLogicSetup = true;
+                            }
+                        }
+                    });
+                });
             }
             if (!areButtonsSet) {
                 setupUIElements();
                 areButtonsSet = true;
             }
         });
-
-        if (isCommonSpace != 1) {
-            setupSignatureLogic();
-        }
 
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (currentFlat == null) return;
@@ -510,12 +541,9 @@ public class NotesActivity extends AppCompatActivity {
         });
 
         btnShowTermsPostSign.setOnClickListener(v -> {
-            TextView termsTv = findViewById(R.id.tvTermsText);
-            CharSequence termsContent = termsTv != null ? termsTv.getText() : "Treść regulaminu";
-
             new androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle("Regulamin")
-                    .setMessage(termsContent)
+                    .setMessage(LegalTexts.SIGNATURE_TERMS)
                     .setPositiveButton("Zamknij", (dialog, which) -> dialog.dismiss())
                     .show();
         });
@@ -620,9 +648,20 @@ public class NotesActivity extends AppCompatActivity {
         Button RCDButton = findViewById(R.id.RCDButton);
         Button boardButton = findViewById(R.id.boardButton);
         TextView titleView = findViewById(R.id.rcdTitle);
-        titleView.setText("Mieszkanie numer - " + currentFlat.number + " podsumowanie");
         if (isCommonSpace == 1) {
-            titleView.setText("Podsumowanie - " + blockName);
+            if (currentFlat != null) {
+                blockViewModel.getBlockById(currentFlat.blockId, b -> {
+                    if (b == null || b.block == null) return;
+                    runOnUiThread(() -> {
+                        String buildingLabel = b.block.buildingType == 1 ? "Dom" : "Blok";
+                        titleView.setText(buildingLabel + " " + b.block.street + " " + b.block.number + " - podsumowanie");
+                    });
+                });
+            } else {
+                titleView.setText("Podsumowanie - " + blockName);
+            }
+        } else {
+            titleView.setText("Mieszkanie numer - " + currentFlat.number + " podsumowanie");
         }
         Button backSave = findViewById(R.id.backSave);
         if (isCommonSpace == 1) {
@@ -639,7 +678,7 @@ public class NotesActivity extends AppCompatActivity {
         boardButton.setOnClickListener(v -> {
             if (isCommonSpace == 1) {
                 Intent intent = new Intent(NotesActivity.this, BoardCommonSpace.class);
-                intent.putExtra("isCommonSpace", 1);
+                intent.putExtra("commonSpace", 1);
                 intent.putExtra("blockId", currentFlat.blockId);
                 intent.putExtra("flatId", flatId);
                 startActivity(intent);
@@ -654,7 +693,7 @@ public class NotesActivity extends AppCompatActivity {
         roomButton.setOnClickListener(v -> {
             if (isCommonSpace == 1) {
                 Intent intent = new Intent(NotesActivity.this, RoomActivity.class);
-                intent.putExtra("isCommonSpace", 1);
+                intent.putExtra("commonSpace", 1);
                 intent.putExtra("name", blockName);
                 intent.putExtra("flatId", flatId);
                 startActivity(intent);
@@ -675,9 +714,17 @@ public class NotesActivity extends AppCompatActivity {
 
         backButton.setOnClickListener(v -> {
             if (isCommonSpace == 1) {
-                Intent intent = new Intent(this, BlockActivity.class);
-                intent.putExtra("blockId", currentFlat.blockId);
-                startActivity(intent);
+                blockViewModel.getBlockById(currentFlat.blockId, b -> {
+                    if (b.block.buildingType == 1) {
+                        Intent intent = new Intent(this, BlocksActivity.class);
+                        intent.putExtra("catalogId", b.block.catalogId);
+                        startActivity(intent);
+                    } else {
+                        Intent intent = new Intent(this, BlockActivity.class);
+                        intent.putExtra("blockId", currentFlat.blockId);
+                        startActivity(intent);
+                    }
+                });
                 return;
             }
             if (currentFlat == null) return;

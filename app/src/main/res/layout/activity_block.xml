@@ -109,6 +109,20 @@
                     android:layout_height="wrap_content"
                     android:text="Tutaj znajdują się pomiary części wspólnej - korytarze, piwnica, garaże"
                     android:textSize="16sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <Button
+                    android:id="@+id/generateCommonSpaceProtocol"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/design_default_color_secondary"
+                    android:text="Generuj protokół"
+                    android:textColor="@android:color/white" />
             </LinearLayout>
 
             <LinearLayout

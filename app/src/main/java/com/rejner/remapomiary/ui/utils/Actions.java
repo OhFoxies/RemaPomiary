@@ -4,9 +4,11 @@ import android.content.Context;
 import androidx.lifecycle.ViewModelStoreOwner;
 
 import com.rejner.remapomiary.data.db.AppDatabase;
+import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
 import com.rejner.remapomiary.data.entities.CommonSpaceInfo;
+import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
 import com.rejner.remapomiary.data.entities.OutletMeasurement;
 import com.rejner.remapomiary.data.entities.RoomInFlat;
@@ -19,17 +21,23 @@ public class Actions {
     private static final Random rand = new Random();
 
     public static void saveAndMarkReady(Flat flat, ViewModelStoreOwner owner) {
+        int flatId = flat.id;
+        int blockId = flat.blockId;
+        String flatNum = flat.number != null ? flat.number.trim() : "";
+
         AppDatabase.databaseWriteExecutor.execute(() -> {
             Context context = ((Context) owner).getApplicationContext();
             AppDatabase db = AppDatabase.getDatabase(context);
 
             db.runInTransaction(() -> {
-                String flatNum = flat.number != null ? flat.number.trim() : "";
+                // Pobieramy świeżą kopię obiektu Flat z bazy, aby nie modyfikować obiektu przekazanego przez referencję
+                Flat dbFlat = db.flatDao().getFlatByIdSync(flatId);
+                if (dbFlat == null) return;
 
                 // 1. Check if all required CommonSpaceInfo fields are filled for the block.
-                if (db.commonSpaceInfoDao().areAllFieldsFilledSync(flat.blockId)) {
+                if (db.commonSpaceInfoDao().areAllFieldsFilledSync(blockId)) {
 
-                    Flat commonSpace = db.flatDao().getCommonSpaceSync(flat.blockId);
+                    Flat commonSpace = db.flatDao().getCommonSpaceSync(blockId);
                     if (commonSpace != null) {
                         // 2. Ensure "Lokale" room exists for this block in the Common Space flat.
                         RoomInFlat mainRoom = db.roomDao().getMainRoomSync(commonSpace.id);
@@ -43,7 +51,7 @@ public class Actions {
 
                         if (mainRoom != null) {
                             // 3. Fetch the CommonSpaceInfo details to populate the measurement.
-                            CommonSpaceInfo info = db.commonSpaceInfoDao().getInfoByBlockIdSync(flat.blockId);
+                            CommonSpaceInfo info = db.commonSpaceInfoDao().getInfoByBlockIdSync(blockId);
                             if (info != null) {
                                 String applianceName = "Lokal - " + flatNum;
 
@@ -108,11 +116,11 @@ public class Actions {
                             ccs.name = circuitName;
                             ccs.notes = Settings.flatGotAccess;
                             // Check if flat has any 3-phase circuits
-                            boolean is3f = db.circuitDao().isFlat3fSync(flat.id);
+                            boolean is3f = db.circuitDao().isFlat3fSync(flatId);
                             ccs.type = is3f ? Settings.installation3f : Settings.installation1f;
                             db.circuitCommonSpaceDao().insert(ccs);
                         } else {
-                            boolean is3f = db.circuitDao().isFlat3fSync(flat.id);
+                            boolean is3f = db.circuitDao().isFlat3fSync(flatId);
                             ccsGet.type = is3f ? Settings.installation3f : Settings.installation1f;
                             if (ccsGet.notes.equals(Settings.flatNoAccess)) {
                                 ccsGet.notes = Settings.flatGotAccess;
@@ -123,26 +131,50 @@ public class Actions {
                 }
 
                 // 6. Update flat status and metadata
-                flat.edition_date = new Date();
-                flat.status = Settings.measurementDone;
-                db.flatDao().update(flat);
+                dbFlat.edition_date = new Date();
+                dbFlat.status = Settings.measurementDone;
+                dbFlat.markedReadyDate = new Date();
+
+                Contractors activeContractor = db.contractorsDao().getActiveContractorSync();
+                if (activeContractor != null) {
+                    if (dbFlat.contractorId == null || activeContractor.id != dbFlat.contractorId) {
+                        dbFlat.contractorId = activeContractor.id;
+                    }
+                }
+
+                Contractors activeChecker = db.contractorsDao().getActiveCheckerSync();
+                if (activeChecker != null) {
+                    if (dbFlat.checkerId == null || activeChecker.id != dbFlat.checkerId) {
+                        dbFlat.checkerId = activeChecker.id;
+                    }
+                }
+
+                db.flatDao().update(dbFlat);
 
                 // Update block and catalog edition time
-                db.blockDao().updateEditionTime(flat.blockId, flat.edition_date);
-                int catalogId = db.blockDao().getBlockById(flat.blockId).block.catalogId;
-                db.catalogDao().updateEdition(catalogId, flat.edition_date);
+                db.blockDao().updateEditionTime(blockId, dbFlat.edition_date);
+                BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
+                if (blockFullData != null && blockFullData.block != null) {
+                    db.catalogDao().updateEdition(blockFullData.block.catalogId, dbFlat.edition_date);
+                }
             });
         });
     }
 
     public static void markUnready(Flat flat, ViewModelStoreOwner owner) {
+        int flatId = flat.id;
+        int blockId = flat.blockId;
+        String flatNum = flat.number != null ? flat.number.trim() : "";
+
         AppDatabase.databaseWriteExecutor.execute(() -> {
             Context context = ((Context) owner).getApplicationContext();
             AppDatabase db = AppDatabase.getDatabase(context);
 
             db.runInTransaction(() -> {
-                String flatNum = flat.number != null ? flat.number.trim() : "";
-                Flat commonSpace = db.flatDao().getCommonSpaceSync(flat.blockId);
+                Flat dbFlat = db.flatDao().getFlatByIdSync(flatId);
+                if (dbFlat == null) return;
+
+                Flat commonSpace = db.flatDao().getCommonSpaceSync(blockId);
                 if (commonSpace != null) {
                     RoomInFlat mainRoom = db.roomDao().getMainRoomSync(commonSpace.id);
                     if (mainRoom != null) {
@@ -155,7 +187,7 @@ public class Actions {
                             db.outletMeasurementDao().update(om);
                         }
                     }
-
+//podczs tworzenia przypisac aktualnego wykonawce, potem przy ready sprawdzic czy sie zmienil. Przy unready tez. W przypadku
                     // Remove from Common Space board
                     String boardName = Settings.mainBoardName;
                     BoardCommonSpace board = db.boardCommonSpaceDao().getBoardByNameSync(commonSpace.id, boardName);
@@ -170,13 +202,28 @@ public class Actions {
                 }
 
                 // Update flat status and metadata
-                flat.edition_date = new Date();
-                flat.status = Settings.measurementNotReady;
-                db.flatDao().update(flat);
+                dbFlat.edition_date = new Date();
+                dbFlat.status = Settings.measurementNotReady;
+                Contractors activeContractor = db.contractorsDao().getActiveContractorSync();
+                if (activeContractor != null) {
+                    if (dbFlat.contractorId != null && activeContractor.id != dbFlat.contractorId) {
+                        dbFlat.contractorId = null;
+                    }
+                }
 
-                db.blockDao().updateEditionTime(flat.blockId, flat.edition_date);
-                int catalogId = db.blockDao().getBlockById(flat.blockId).block.catalogId;
-                db.catalogDao().updateEdition(catalogId, flat.edition_date);
+                Contractors activeChecker = db.contractorsDao().getActiveCheckerSync();
+                if (activeChecker != null) {
+                    if (dbFlat.checkerId != null && activeChecker.id != dbFlat.checkerId) {
+                        dbFlat.checkerId = null;
+                    }
+                }
+                db.flatDao().update(dbFlat);
+
+                db.blockDao().updateEditionTime(blockId, dbFlat.edition_date);
+                BlockFullData blockFullData = db.blockDao().getBlockById(blockId);
+                if (blockFullData != null && blockFullData.block != null) {
+                    db.catalogDao().updateEdition(blockFullData.block.catalogId, dbFlat.edition_date);
+                }
             });
         });
     }

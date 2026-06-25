@@ -96,6 +96,13 @@ public class AdvancedView extends AppCompatActivity {
         );
 
         btnImport.setOnClickListener(v -> openFilePicker());
+
+        Button btnContractors = findViewById(R.id.btnContractors);
+        btnContractors.setOnClickListener(v -> {
+            Intent intent = new Intent(AdvancedView.this, ContractorsActivity.class);
+            startActivity(intent);
+        });
+
         back.setOnClickListener(v-> {finish();});
     }
 

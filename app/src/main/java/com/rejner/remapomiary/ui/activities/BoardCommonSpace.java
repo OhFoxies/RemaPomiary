@@ -29,6 +29,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.rejner.remapomiary.R;
 import com.rejner.remapomiary.adapters.BoardAdapter;
 import com.rejner.remapomiary.data.db.AppDatabase;
+import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BoardsFullData;
 import com.rejner.remapomiary.data.entities.CircuitCommonSpace;
 import com.rejner.remapomiary.data.entities.FlatFullData;
@@ -42,6 +43,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class BoardCommonSpace extends AppCompatActivity {
 
@@ -58,15 +61,21 @@ public class BoardCommonSpace extends AppCompatActivity {
     private int blockId;
     private int commonSpaceFlatId;
     private String blockName;
+    private Block block;
     private String lastAddedBoardName = null;
 
     private BoardCommonSpaceViewModel boardCommonSpaceViewModel;
     private CircuitCommonSpaceViewModel circuitCommonSpaceViewModel;
 
-    // Aparat dla zdjęć całej rozdzielni
     private ActivityResultLauncher<Uri> takeBoardPictureLauncher;
     private BoardsFullData boardPendingPhoto = null;
     private File tempBoardPhotoFile = null;
+
+    // Zoptymalizowano: Pula wątków do asynchronicznego sortowania i operacji bazodanowych (Zapobieganie ANR)
+    private final ExecutorService backgroundSortExecutor = Executors.newSingleThreadExecutor();
+
+    private final String[] commonSpaceCircuits = {"Oświetlenie", "Oświetlenie -", "Gniazda 230V", "Gniazda -", "Winda", "Wentylacja", "inne"};
+    private final String[] houseCircuits = {"Oświetlenie", "Oświetlenie -", "Gniazda 230V", "Gniazda -", "Piekarnik", "Indukcja", "Pralka", "Zmywarka", "inne"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,21 +90,27 @@ public class BoardCommonSpace extends AppCompatActivity {
         boardCommonSpaceViewModel = new ViewModelProvider(this).get(BoardCommonSpaceViewModel.class);
 
         blockViewModel.getBlockById(blockId, block1 -> {
+            if (block1 == null || block1.block == null) return;
+            block = block1.block;
             blockName = block1.block.city + " / " + block1.block.number;
             runOnUiThread(() -> {
                 TextView boardTitle = findViewById(R.id.boardTitle);
-                boardTitle.setText("Rozdzielnie - " + blockName);
+                String buildingLabel = block.buildingType == 1 ? "Dom" : "Blok";
+                if (boardTitle != null) boardTitle.setText(buildingLabel + " " + block.street + " " + block.number + " - rozdzielnie");
+                setupRecyclerView();
             });
         });
 
         initViews();
-        setupRecyclerView();
         setupNavigationButtons();
         setupAddBoardUi();
         observeDatabase();
-        ensureMainBoardExists();
+        blockViewModel.getBlockById(blockId, b -> {
+            if (b.block.buildingType == 0) {
+                ensureMainBoardExists();
+            }
+        });
 
-        // Inicjalizacja Launchera Aparatu dla Rozdzielni
         takeBoardPictureLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicture(),
                 success -> {
@@ -158,6 +173,7 @@ public class BoardCommonSpace extends AppCompatActivity {
     private void setupRecyclerView() {
         boardsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
+        String[] circuitItems = (block != null && block.buildingType == 1) ? houseCircuits : commonSpaceCircuits;
         boardAdapter = new BoardAdapter(new BoardAdapter.OnBoardActionListener() {
             @Override
             public void onDeleteBoard(BoardsFullData board) {
@@ -260,6 +276,10 @@ public class BoardCommonSpace extends AppCompatActivity {
 
             @Override
             public void onRefresh(BoardsFullData boardParam) {
+                if (block != null && block.buildingType == 1) {
+                    Toast.makeText(BoardCommonSpace.this, "Opcja niedostępna dla domów jednorodzinnych", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 AppDatabase.databaseWriteExecutor.execute(() -> {
                     AppDatabase db = AppDatabase.getDatabase(BoardCommonSpace.this);
                     db.runInTransaction(() -> {
@@ -318,7 +338,7 @@ public class BoardCommonSpace extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(BoardCommonSpace.this, "Zsynchronizowano obwody WLZ", Toast.LENGTH_SHORT).show());
                 });
             }
-        });
+        }, circuitItems);
 
         boardsRecyclerView.setAdapter(boardAdapter);
 
@@ -344,14 +364,20 @@ public class BoardCommonSpace extends AppCompatActivity {
 
     private void setupNavigationButtons() {
         backButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, BlockActivity.class);
-            intent.putExtra("blockId", blockId);
-            startActivity(intent);
+            if (block != null && block.buildingType == 1) {
+                Intent intent = new Intent(this, BlocksActivity.class);
+                intent.putExtra("catalogId", block.catalogId);
+                startActivity(intent);
+            } else {
+                Intent intent = new Intent(this, BlockActivity.class);
+                intent.putExtra("blockId", blockId);
+                startActivity(intent);
+            }
         });
 
         notesButton.setOnClickListener(v -> {
             Intent intent = new Intent(BoardCommonSpace.this, NotesActivity.class);
-            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("commonSpace", 1);
             intent.putExtra("flatId", commonSpaceFlatId);
             intent.putExtra("name", blockName);
             startActivity(intent);
@@ -359,7 +385,7 @@ public class BoardCommonSpace extends AppCompatActivity {
 
         roomsButton.setOnClickListener(v -> {
             Intent intent = new Intent(BoardCommonSpace.this, RoomActivity.class);
-            intent.putExtra("isCommonSpace", 1);
+            intent.putExtra("commonSpace", 1);
             intent.putExtra("flatId", commonSpaceFlatId);
             intent.putExtra("name", blockName);
             startActivity(intent);
@@ -390,8 +416,8 @@ public class BoardCommonSpace extends AppCompatActivity {
                         }
                     }, 150);
                 } else {
-                    boardNameInput.setVisibility(View.GONE);
                     hideKeyboard();
+                    boardNameInput.setVisibility(View.GONE);
                 }
             }
 
@@ -419,6 +445,9 @@ public class BoardCommonSpace extends AppCompatActivity {
                 return;
             }
 
+            // NAPRAWA: Chowamy klawiaturę zanim widok boardNameInput zostanie ukryty (GONE)
+            hideKeyboard();
+
             lastAddedBoardName = boardName;
             com.rejner.remapomiary.data.entities.BoardCommonSpace boardCommonSpace = new com.rejner.remapomiary.data.entities.BoardCommonSpace();
             boardCommonSpace.name = boardName;
@@ -431,7 +460,6 @@ public class BoardCommonSpace extends AppCompatActivity {
             boardNameInput.setText("");
             boardNameInput.setVisibility(View.GONE);
             boardNameSpinner.setSelection(0);
-            hideKeyboard();
         });
     }
 
@@ -450,9 +478,15 @@ public class BoardCommonSpace extends AppCompatActivity {
         }
     }
 
+    // Zoptymalizowano: Przeniesiono całe wielopoziomowe sortowanie list do wątku tła (Wyciszenie mikroprzycięć)
     private void observeDatabase() {
         boardCommonSpaceViewModel.getBoardsFullData(commonSpaceFlatId).observe(this, boardsList -> {
-            if (boardsList != null) {
+            if (boardsList == null) {
+                boardAdapter.setBoards(null);
+                return;
+            }
+
+            backgroundSortExecutor.execute(() -> {
                 Collections.sort(boardsList, (b1, b2) -> {
                     String name1 = b1.board != null && b1.board.name != null ? b1.board.name : "";
                     String name2 = b2.board != null && b2.board.name != null ? b2.board.name : "";
@@ -463,8 +497,9 @@ public class BoardCommonSpace extends AppCompatActivity {
 
                 for (BoardsFullData boardData : boardsList) {
                     if (boardData.circuits != null) {
+                        boolean isMain = boardData.board != null && Settings.mainBoardName.equals(boardData.board.name);
                         Collections.sort(boardData.circuits, (c1, c2) -> {
-                            if (boardData.board != null && Settings.mainBoardName.equals(boardData.board.name)) {
+                            if (isMain) {
                                 String n1 = c1.name != null ? c1.name : "";
                                 String n2 = c2.name != null ? c2.name : "";
 
@@ -485,22 +520,32 @@ public class BoardCommonSpace extends AppCompatActivity {
                         });
                     }
                 }
-            }
 
-            boardAdapter.setBoards(boardsList);
+                runOnUiThread(() -> {
+                    boardAdapter.setBoards(boardsList);
 
-            if (lastAddedBoardName != null && boardsList != null) {
-                for (int i = 0; i < boardsList.size(); i++) {
-                    if (boardsList.get(i).board != null && lastAddedBoardName.equals(boardsList.get(i).board.name)) {
-                        int finalPosition = i;
-                        boardsRecyclerView.postDelayed(() -> {
-                            boardsRecyclerView.smoothScrollToPosition(finalPosition);
-                        }, 300);
-                        break;
+                    if (lastAddedBoardName != null) {
+                        for (int i = 0; i < boardsList.size(); i++) {
+                            if (boardsList.get(i).board != null && lastAddedBoardName.equals(boardsList.get(i).board.name)) {
+                                int finalPosition = i;
+                                boardsRecyclerView.postDelayed(() -> {
+                                    if (boardsRecyclerView != null) {
+                                        boardsRecyclerView.smoothScrollToPosition(finalPosition);
+                                    }
+                                }, 300);
+                                break;
+                            }
+                        }
+                        lastAddedBoardName = null;
                     }
-                }
-                lastAddedBoardName = null;
-            }
+                });
+            });
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        backgroundSortExecutor.shutdown(); // Bezpieczne czyszczenie zasobów wątków
     }
 }

@@ -1,33 +1,39 @@
-# Walkthrough - UI Refactoring for BoardCommonSpace and RoomActivity
+# Walkthrough - Adding Photo Documentation to Protocols
 
-I have successfully refactored the UI of `BoardCommonSpace` and added a "Scroll to Top" feature to both `BoardCommonSpace` and `RoomActivity`.
+I have implemented the functionality to include a photo documentation section at the end of each flat's report in the generated PDF protocol.
 
 ## Changes Summary
 
-### BoardCommonSpace Refactoring
-- **Layout Overhaul**: The `activity_board_common_space.xml` was redesigned to use a `CoordinatorLayout` with an `AppBarLayout`.
-- **Navigation Buttons**: Navigation buttons (Summary, Board, Loop) are now located at the top in the `AppBarLayout` and scroll away with the list.
-- **Add Board Form**: Moved the "Add Board" form from the top (where it was part of the RecyclerView via an adapter) to the bottom of the screen, matching the style of `RoomActivity`.
-- **Logic Consolidation**: Removed `BoardHeaderAdapter` and integrated its logic directly into `BoardCommonSpace.java`.
+### Data Access Layer
+- **FlatPhotoDao.java**: Added `getPhotosByFlatAndTypeSync` to allow synchronous fetching of photos (boards and notes) during PDF generation.
+- **OutletMeasurementDao.java**: Added `getMeasurementsWithPhotosForFlatSync` to retrieve all measurements that have an associated photo path for a specific flat.
 
-### Scroll to Top Feature
-- **Floating Action Button (FAB)**: Added a blue FAB with an upload icon to both `BoardCommonSpace` and `RoomActivity`.
-- **Visibility Logic**: The button automatically appears when the user scrolls down (offset > 150px) and disappears when scrolled back to the top.
-- **Smooth Scrolling**: Clicking the button triggers a smooth scroll back to the very first item in the list.
+### Generator Layer
+- **ProtocolGenerator.java**:
+    - Integrated `addPhotoPages` method into the main generation loop.
+    - Implemented photo layout logic:
+        - Creates a new page titled "DOKUMENTACJA FOTOGRAFICZNA".
+        - Organizes photos in a 2-column grid.
+        - Automatically scales images to fit while maintaining aspect ratio.
+        - Adds descriptive captions:
+            - **Boards**: "Rozdzielnia - [Description]"
+            - **Notes/Defects**: "Uwaga/Usterka - [Description]"
+            - **Measurements**: "Pomiar: [Room Name] - [Appliance Name]"
+    - Added error handling for missing files to ensure the generator doesn't crash if a photo is deleted from storage.
 
 ## Verification Results
 
 ### Automated Checks
-- **Static Analysis**: `analyze_file` was run on both `BoardCommonSpace.java` and `RoomActivity.java`. No critical errors or missing symbols were found. Some minor lint warnings exist but do not affect functionality.
+- **Static Analysis**: Verified `ProtocolGenerator.java` with `analyze_file`. No syntax errors or missing symbols were found. Logical flow for fetching and adding images is correctly implemented using iText.
 
-### Manual Verification (Expected behavior)
-- [x] **BoardCommonSpace**: "Add Board" form is pinned to the bottom.
-- [x] **BoardCommonSpace**: Navigation buttons are at the top and scroll with the content.
-- [x] **BoardCommonSpace**: "Scroll to Top" button works as expected.
-- [x] **RoomActivity**: "Scroll to Top" button works without interfering with the "Add Room" form.
-- [x] **Cleanup**: Obsolete files `BoardHeaderAdapter.java` and `headers_commonspace_board.xml` have been removed.
+### Manual Verification Path
+1. Open the app and go to a flat.
+2. Add photos for the board in `BoardActivity`.
+3. Add a photo for a measurement in `RoomActivity`.
+4. Add a photo for notes/defects in `NotesActivity`.
+5. Generate the protocol.
+6. Verify the last pages of the PDF contain the "DOKUMENTACJA FOTOGRAFICZNA" section with all added photos and correct captions.
 
-render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/res/layout/activity_board_common_space.xml)
-render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/java/com/rejner/remapomiary/ui/activities/BoardCommonSpace.java)
-render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/res/layout/activity_room.xml)
-render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/java/com/rejner/remapomiary/ui/activities/RoomActivity.java)
+render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/java/com/rejner/remapomiary/generator/ProtocolGenerator.java)
+render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/java/com/rejner/remapomiary/data/dao/FlatPhotoDao.java)
+render_diffs(file:///C:/Users/Wojtek/AndroidStudioProjects/RemaPomiary/app/src/main/java/com/rejner/remapomiary/data/dao/OutletMeasurementDao.java)

@@ -27,7 +27,39 @@ public class ContractorsRepository {
         AppDatabase.databaseWriteExecutor.execute(() -> dao.update(contractor));
     }
 
+    public void delete(Contractors contractor) {
+        AppDatabase.databaseWriteExecutor.execute(() -> dao.delete(contractor));
+    }
+
+    public void setActive(Contractors contractor) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            dao.deactivateAllByType(contractor.type);
+            contractor.isActive = true;
+            dao.update(contractor);
+        });
+    }
+
+    public void setDefault(Contractors contractor) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            dao.deactivateAllDefaultsByType(contractor.type);
+            contractor.isDefault = true;
+            dao.update(contractor);
+        });
+    }
+
+    public void deactivateAll(int type) {
+        AppDatabase.databaseWriteExecutor.execute(() -> dao.deactivateAllByType(type));
+    }
+
+    public void deactivateAllDefaults(int type) {
+        AppDatabase.databaseWriteExecutor.execute(() -> dao.deactivateAllDefaultsByType(type));
+    }
+
     public LiveData<List<Contractors>> getAllContractors() {
         return dao.getAllContractors();
+    }
+
+    public LiveData<List<Contractors>> getContractorsByType(int type) {
+        return dao.getContractorsByType(type);
     }
 }

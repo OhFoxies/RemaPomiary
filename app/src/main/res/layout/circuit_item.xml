@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     android:background="@color/white"
+    android:baselineAligned="false"
     android:orientation="horizontal"
+    android:gravity="center_vertical"
     android:padding="6dp">
 
     <TextView
@@ -18,6 +19,7 @@
         android:gravity="center"
         android:text="1."
         android:textSize="16sp" />
+
     <TextView
         android:id="@+id/status"
         android:layout_width="0dp"
@@ -29,17 +31,14 @@
         android:textStyle="bold"
         android:text="Brak dostępu"
         android:textSize="16sp" />
+
     <Spinner
         android:id="@+id/circuitNameSpinner"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-
         android:layout_marginEnd="10dp"
         android:layout_weight="2"
-
-
         android:textSize="16sp" />
-
 
     <EditText
         android:id="@+id/circuitInputName"
@@ -52,7 +51,6 @@
         android:ems="10"
         android:focusable="true"
         android:focusableInTouchMode="true"
-
         android:inputType="text"
         android:text="Test"
         android:textSize="16sp" />
@@ -62,8 +60,6 @@
         style="@style/Widget.MaterialComponents.Button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-
-
         android:layout_marginEnd="10dp"
         android:text="✔" />
 
@@ -74,7 +70,6 @@
         android:id="@+id/phasesGroup"
         android:layout_weight="1.5"
         android:gravity="center"
-
         android:orientation="horizontal">
 
         <RadioButton
@@ -82,7 +77,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-
             android:text="1f"
             android:textSize="16sp" />
 
@@ -90,10 +84,8 @@
             android:id="@+id/radio3f"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-
             android:layout_weight="1"
             android:text="3f"
-
             android:textSize="16sp" />
     </RadioGroup>
 
@@ -102,12 +94,9 @@
         style="@style/Widget.MaterialComponents.Button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-
         android:layout_weight="1.5"
-
         android:backgroundTint="#f23022"
         android:text="🗑️  Usuń"
         android:textSize="16sp" />
-
 
 </LinearLayout>

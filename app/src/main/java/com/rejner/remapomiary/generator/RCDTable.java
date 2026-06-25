@@ -280,7 +280,7 @@ public class RCDTable {
 
                 if (om.rcdName == null || om.rcdName.isEmpty()) {
                     values.add("-");
-                    mistakes.add("Różnicówka brak nazwy (częśc wspólna " + om.appliance + " pokój" + room.name);
+                    mistakes.add("Różnicówka brak nazwy (częśc wspólna/dom) " + om.appliance + " pokój " + room.name);
                 } else {
                     values.add(om.rcdName);
                 }

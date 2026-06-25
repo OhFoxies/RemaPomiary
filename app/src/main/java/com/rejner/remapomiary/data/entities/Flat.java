@@ -66,6 +66,15 @@ public class Flat {
     @ColumnInfo(name = "isCommonSpace", defaultValue = "0")
     public int isCommonSpace = 0;
 
+    @ColumnInfo(name = "contractorId")
+    public Integer contractorId;
+
+    @ColumnInfo(name = "checkerId")
+    public Integer checkerId;
+
+    @ColumnInfo(name = "markedReadyDate")
+    public Date markedReadyDate;
+
     public boolean getIsCommonSpace() {
         return isCommonSpace == 1;
     }
