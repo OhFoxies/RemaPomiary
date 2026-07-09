@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -80,6 +81,7 @@ public class NotesActivity extends AppCompatActivity {
     private RadioButton radioNiedopuszczona;
     private EditText notesEditText;
     private EditText notes2EditText;
+    private CheckBox cbRefusedInspection;
     private TextView currentMode;
     private Button saveButton;
     private Button notes2Save;
@@ -117,6 +119,7 @@ public class NotesActivity extends AppCompatActivity {
     private HorizontalScrollView notesPhotosScrollView;
     private Button toggleNotesPhotosButton, addNotesPhotoBtn;
     private float dpScale;
+    private TextView textViewRefused;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,6 +142,8 @@ public class NotesActivity extends AppCompatActivity {
         radioDopuszczona = findViewById(R.id.radio_dopuszczona);
         radioDopuszczonaUsterki = findViewById(R.id.radio_dopuszczona_usterki);
         radioNiedopuszczona = findViewById(R.id.radio_niedopuszczona);
+        cbRefusedInspection = findViewById(R.id.cbRefusedInspection);
+        textViewRefused = findViewById(R.id.textViewRefused);
         notesEditText = findViewById(R.id.notedEditText);
         notes2EditText = findViewById(R.id.notes2EditText);
         saveButton = findViewById(R.id.notesSave);
@@ -180,6 +185,7 @@ public class NotesActivity extends AppCompatActivity {
             blockGrade.setEnabled(false);
             templateName.setEnabled(false);
             templateSave.setEnabled(false);
+            cbRefusedInspection.setEnabled(false);
         }
 
         flatViewModel = new ViewModelProvider(this).get(FlatViewModel.class);
@@ -197,6 +203,8 @@ public class NotesActivity extends AppCompatActivity {
                 currentFlat = flat;
                 notesEditText.setText(flat.notes);
                 notes2EditText.setText(flat.notesProtocol);
+                cbRefusedInspection.setChecked(flat.refusedInspection == 1);
+                updateTermsText();
                 setGradeSelection();
                 gradeButtonState();
 
@@ -207,6 +215,7 @@ public class NotesActivity extends AppCompatActivity {
 
                         if (isCommonSpace == 1) {
                             if (isHouse) {
+
                                 ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do domu (niewidoczne w protokole)");
                                 ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do domu (WIDOCZNE W PROTOKOLE)");
                                 ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
@@ -217,6 +226,8 @@ public class NotesActivity extends AppCompatActivity {
                                     isSignatureLogicSetup = true;
                                 }
                             } else {
+                                cbRefusedInspection.setVisibility(View.GONE);
+                                textViewRefused.setVisibility(View.GONE);
                                 ((TextView) findViewById(R.id.notesTitle)).setText("Uwagi do części wspólnej (niewidoczne w protokole)");
                                 ((TextView) findViewById(R.id.notes2Title)).setText("Uwagi do części wspólnej (WIDOCZNE W PROTOKOLE)");
                                 ((TextView) findViewById(R.id.descNotes)).setText("Miejsce na dowolne informacje - braki, plany na następny pomiar itd. To co tutaj wpiszesz nie pojawi się w protokole.");
@@ -243,6 +254,20 @@ public class NotesActivity extends AppCompatActivity {
             if (!areButtonsSet) {
                 setupUIElements();
                 areButtonsSet = true;
+            }
+        });
+
+        cbRefusedInspection.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (currentFlat == null) return;
+            int refused = isChecked ? 1 : 0;
+            if (currentFlat.refusedInspection != refused) {
+                currentFlat.refusedInspection = refused;
+                flatViewModel.update(currentFlat);
+                updateTermsText();
+            }
+
+            if (refused == 1) {
+                Actions.saveAndMarkReady(currentFlat, NotesActivity.this);
             }
         });
 
@@ -543,7 +568,7 @@ public class NotesActivity extends AppCompatActivity {
         btnShowTermsPostSign.setOnClickListener(v -> {
             new androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle("Regulamin")
-                    .setMessage(LegalTexts.SIGNATURE_TERMS)
+                    .setMessage(currentFlat.refusedInspection == 1 ? LegalTexts.REFUSAL_TERMS : LegalTexts.SIGNATURE_TERMS)
                     .setPositiveButton("Zamknij", (dialog, which) -> dialog.dismiss())
                     .show();
         });
@@ -772,6 +797,14 @@ public class NotesActivity extends AppCompatActivity {
             } else if (currentFlat.grade == 2) {
                 radioNiedopuszczona.setChecked(true);
             }
+        }
+    }
+
+    private void updateTermsText() {
+        if (currentFlat == null) return;
+        TextView tvTermsText = findViewById(R.id.tvTermsText);
+        if (tvTermsText != null) {
+            tvTermsText.setText(currentFlat.refusedInspection == 1 ? LegalTexts.REFUSAL_TERMS : LegalTexts.SIGNATURE_TERMS);
         }
     }
 }

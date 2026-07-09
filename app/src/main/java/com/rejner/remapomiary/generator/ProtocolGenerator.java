@@ -26,10 +26,12 @@ import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
+import com.rejner.remapomiary.BuildConfig;
 import com.rejner.remapomiary.data.db.AppDatabase;
 import com.rejner.remapomiary.data.entities.Block;
 import com.rejner.remapomiary.data.entities.BlockFullData;
 import com.rejner.remapomiary.data.entities.BoardCommonSpace;
+import com.rejner.remapomiary.data.entities.Catalog;
 import com.rejner.remapomiary.data.entities.Circuit;
 import com.rejner.remapomiary.data.entities.Contractors;
 import com.rejner.remapomiary.data.entities.Flat;
@@ -93,14 +95,15 @@ public class ProtocolGenerator {
 
     public Uri generateSummary(String fileName, int blockId) {
         try {
-            Uri fileUri = createPdfFileInDownloads(fileName);
+            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
+
+            Uri fileUri = createPdfFileInDownloads(fileName, blockFullData1.catalog.title);
             if (fileUri == null) {
                 throw new IOException("Nie udało się utworzyć URI dla pliku PDF.");
             }
 
             document.open();
             List<FlatFullData> flats = db.flatDao().getFlatsSync(blockId);
-            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
 
             Collections.sort(flats, Comparator.comparingInt(f -> {
                 try {
@@ -111,7 +114,10 @@ public class ProtocolGenerator {
                 }
             }));
 
-            totalFlats = flats.size() - 1;
+            totalFlats = 0;
+            for (FlatFullData f : flats) {
+                if (f.flat.isCommonSpace == 0) totalFlats++;
+            }
 
             for (FlatFullData flat : flats) {
                 boolean isCommonSpace = flat.flat.isCommonSpace == 1;
@@ -145,8 +151,8 @@ public class ProtocolGenerator {
                     }
                 }
 
-                List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
-                if (!circuits.isEmpty() || isCommonSpace) {
+                List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsWithOhmsForFlatSync(flat.flat.id);
+                if (!oms.isEmpty() || isCommonSpace) {
                     OmTable omTableGenerator = new OmTable(db);
                     if (isCommonSpace) {
                         omTableGenerator.createCommonSpaceOmTable(flat.flat);
@@ -159,7 +165,9 @@ public class ProtocolGenerator {
                     }
                 }
 
-                generatedFlats++;
+                if (!isCommonSpace) {
+                    generatedFlats++;
+                }
                 updateGradesOnly(flat.flat, addition);
             }
 
@@ -208,15 +216,21 @@ public class ProtocolGenerator {
         }
         if (finalGrade.equals("Instalacja niedopuszczona do użytku.")) {
             if (flat.isCommonSpace == 0) {
+                if (flat.refusedInspection == 1) {
+                    grade2Flats.add(flat.number + " (lokator odmówił przeglądu)");
 
-                grade2Flats.add(flat.number);
+                } else {
+                    grade2Flats.add(flat.number);
+                }
             }
         }
     }
 
     public Uri generate(String fileName, int blockId, Integer flatId, Integer protocolNumberProvided) {
         try {
-            Uri fileUri = createPdfFileInDownloads(fileName);
+            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
+
+            Uri fileUri = createPdfFileInDownloads(fileName, blockFullData1.catalog.title);
             if (fileUri == null) {
                 throw new IOException("Nie udało się utworzyć URI dla pliku PDF.");
             }
@@ -237,7 +251,6 @@ public class ProtocolGenerator {
 
                 flats = db.flatDao().getFlatsSync(blockId);
             }
-            BlockFullData blockFullData1 = db.blockDao().getBlockById(blockId);
 
             if (allFlats && blockFullData1.block.buildingType == 0) {
                 Paragraph p = new Paragraph("BLOK " + blockFullData1.block.number, ProFonts.large);
@@ -319,7 +332,10 @@ public class ProtocolGenerator {
                 db.protocolNumberDao().insert(newProtocolNumber);
             }
 
-            totalFlats = flats.size();
+            totalFlats = 0;
+            for (FlatFullData f : flats) {
+                if (f.flat.isCommonSpace == 0) totalFlats++;
+            }
 
 
             for (FlatFullData flat : flats) {
@@ -328,7 +344,16 @@ public class ProtocolGenerator {
                 String endNotes = "";
                 document.newPage();
                 boolean isCommonSpace = flat.flat.isCommonSpace == 1;
+                boolean anyData = true;
 
+                if (flat.flat.refusedInspection == 1) {
+                    List<Circuit> circuits = db.circuitDao().getCircuitsForFlatSync(flat.flat.id);
+                    List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsWithOhmsForFlatSync(flat.flat.id);
+                    if (circuits.isEmpty() && oms.isEmpty()) {
+                        anyData = false;
+                    }
+
+                }
                 if (isCommonSpace) {
                     if (blockFullData1.block.buildingType == 1) {
                         pageEvent.startNewFlat("Dom jednorodzinny: " + blockFullData1.block.street + " " + blockFullData1.block.number, writer);
@@ -341,7 +366,9 @@ public class ProtocolGenerator {
 
                 addHeader();
                 String protocolNumberTitle;
-                if (!flat.flat.status.contains(Settings.measurementNotReady) || isCommonSpace) {
+                if (flat.flat.refusedInspection == 1) {
+                    protocolNumberTitle = "Oświadczenie";
+                } else if (!flat.flat.status.contains(Settings.measurementNotReady) || isCommonSpace) {
                     protocolNumberTitle = "Protokół nr w/" + currentProtocolNumber + "/" + new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
                 } else {
                     protocolNumberTitle = "Oświadczenie";
@@ -450,7 +477,9 @@ public class ProtocolGenerator {
 
                     continue;
                 }
-                addData(flat.flat.type, flat.flat.creation_date, flat.flat);
+                if (anyData) {
+                    addData(flat.flat.type, flat.flat.creation_date, flat.flat);
+                }
 
                 List<Circuit> circuits3f = db.circuitDao().getCircuitsForFlatSync3f(flat.flat.id);
                 if (!isCommonSpace) {
@@ -545,39 +574,43 @@ public class ProtocolGenerator {
                 }
 
                 if (flat.flat.hasRCD == 1 && !isCommonSpace) {
-                    Paragraph RCDTitle = new Paragraph("Wyniki z badania wyłączników różnicowoprądowych ", ProFonts.fontNormalBold);
-                    RCDTitle.setAlignment(Element.ALIGN_LEFT);
-                    RCDTitle.setSpacingAfter(5f);
-                    document.add(RCDTitle);
+                    List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsWithOhmsForFlatSync(flat.flat.id);
+                    if (!oms.isEmpty() ) {
+                        Paragraph RCDTitle = new Paragraph("Wyniki z badania wyłączników różnicowoprądowych ", ProFonts.fontNormalBold);
+                        RCDTitle.setAlignment(Element.ALIGN_LEFT);
+                        RCDTitle.setSpacingAfter(5f);
+                        document.add(RCDTitle);
 
-                    RCDTable rcdTableGenerator = new RCDTable(db);
+                        RCDTable rcdTableGenerator = new RCDTable(db);
 
-                    PdfPTable rcdTable = rcdTableGenerator.createRCDTable(flat.flat);
-                    document.add(rcdTable);
-                    rcdTable.setSpacingAfter(5f);
-                    rcdIsGood = rcdTableGenerator.getRcdIsGood();
-                    if (!rcdTableGenerator.getMistakes().isEmpty()) {
-                        rcdMistakes.addAll(rcdTableGenerator.getMistakes());
-                    }
-                    if (!rcdTableGenerator.getRcdNotes().isEmpty() || rcdIsGood == 0) {
-                        endNotes += "Różnicówka: ";
-                        if (rcdIsGood == 0) {
-                            endNotes += "Wyłącznik różnicowoprądowy jest niesprawny, zaleca się wymianę. ";
+                        PdfPTable rcdTable = rcdTableGenerator.createRCDTable(flat.flat);
+                        document.add(rcdTable);
+                        rcdTable.setSpacingAfter(5f);
+                        rcdIsGood = rcdTableGenerator.getRcdIsGood();
+                        if (!rcdTableGenerator.getMistakes().isEmpty()) {
+                            rcdMistakes.addAll(rcdTableGenerator.getMistakes());
                         }
-                        if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
-                            endNotes += rcdTableGenerator.getRcdNotes() + "\n";
+                        if (!rcdTableGenerator.getRcdNotes().isEmpty() || rcdIsGood == 0) {
+                            endNotes += "Różnicówka: ";
+                            if (rcdIsGood == 0) {
+                                endNotes += "Wyłącznik różnicowoprądowy jest niesprawny, zaleca się wymianę. ";
+                            }
+                            if (!rcdTableGenerator.getRcdNotes().isEmpty()) {
+                                endNotes += rcdTableGenerator.getRcdNotes() + "\n";
 
-                        } else {
-                            endNotes += "\n";
+                            } else {
+                                endNotes += "\n";
+                            }
+
                         }
 
+                        Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
+                                "Ia [mA]: prąd powodujący wyłączenie RCD, " +
+                                "t rcd [ms]: zmierzony czas wyłączenia RCD", ProFonts.mediumNotBold);
+                        rcdLegend.setSpacingAfter(7f);
+                        document.add(rcdLegend);
                     }
 
-                    Paragraph rcdLegend = new Paragraph("Typ: charakterystyka bezpiecznika, I∆n [mA]: różnicowy prąd wyłączający, " +
-                            "Ia [mA]: prąd powodujący wyłączenie RCD, " +
-                            "t rcd [ms]: zmierzony czas wyłączenia RCD", ProFonts.mediumNotBold);
-                    rcdLegend.setSpacingAfter(7f);
-                    document.add(rcdLegend);
 
                 } else if (isCommonSpace) {
                     RCDTable rcdTableGenerator = new RCDTable(db);
@@ -610,7 +643,8 @@ public class ProtocolGenerator {
                     }
                 }
 
-                if (!circuits.isEmpty() || isCommonSpace) {
+                List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsWithOhmsForFlatSync(flat.flat.id);
+                if (!oms.isEmpty() || isCommonSpace) {
                     OmTable omTableGenerator = new OmTable(db);
                     PdfPTable omTable;
                     if (isCommonSpace) {
@@ -643,16 +677,22 @@ public class ProtocolGenerator {
                     endNotes += "Rozdzielnia: " + flat.flat.circuitNotes + "\n";
                 }
                 if (!flat.flat.notesProtocol.isEmpty()) {
-                    endNotes += "Inne: " + flat.flat.notesProtocol;
+                    endNotes += flat.flat.notesProtocol;
                 }
                 int next = 7;
 
+                if (!anyData) {
+                    next = 3;
+                }
+
                 if (!endNotes.isEmpty()) {
                     endNotes = endNotes.strip();
-                    createNotes(endNotes);
-                    next = 8;
+                    createNotes(endNotes, next);
+                    next++;
                 }
-                generatedFlats++;
+                if (!isCommonSpace) {
+                    generatedFlats++;
+                }
                 createGrade(next, flat.flat, addition);
                 next++;
                 createEndSummary(next, flat.flat);
@@ -661,11 +701,13 @@ public class ProtocolGenerator {
 
                 // ZMIANA: Przekazujemy teraz również dane obiektu block, aby sformatować odpowiednio nagłówek
                 addPhotoPages(flat.flat, blockFullData1.block);
-
-                if (allFlats || saveData) {
-                    currentProtocolNumber++;
-                    db.protocolNumberDao().incrementNum();
+                if (flat.flat.refusedInspection == 0) {
+                    if (allFlats || saveData) {
+                        currentProtocolNumber++;
+                        db.protocolNumberDao().incrementNum();
+                    }
                 }
+
             }
 
             document.newPage();
@@ -933,23 +975,25 @@ public class ProtocolGenerator {
     }
 
     public void createEndSummary(int next, Flat flat) throws DocumentException {
+        if (flat.refusedInspection == 0) {
+            Paragraph nextTitle = new Paragraph(next + ". Data następnego badania", ProFonts.fontNormalBold);
+            nextTitle.setSpacingBefore(titleSpacing);
+            nextTitle.setSpacingAfter(titleSpacingA);
+            nextTitle.setAlignment(Element.ALIGN_LEFT);
+            Date now = new Date();
 
-        Paragraph nextTitle = new Paragraph(next + ". Data następnego badania", ProFonts.fontNormalBold);
-        nextTitle.setSpacingBefore(titleSpacing);
-        nextTitle.setSpacingAfter(titleSpacingA);
-        nextTitle.setAlignment(Element.ALIGN_LEFT);
-        Date now = new Date();
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(now);
+            cal.add(Calendar.YEAR, 5);
+            Date datePlus5Years = cal.getTime();
+            Paragraph nextDesc = new Paragraph("Nie później niż: " + formatMonthAndYear(datePlus5Years), ProFonts.fontNormal);
+            nextDesc.setAlignment(Element.ALIGN_LEFT);
+            nextDesc.setIndentationLeft(indentation);
+            next++;
+            document.add(nextTitle);
+            document.add(nextDesc);
+        }
 
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(now);
-        cal.add(Calendar.YEAR, 5);
-        Date datePlus5Years = cal.getTime();
-        Paragraph nextDesc = new Paragraph("Nie później niż: " + formatMonthAndYear(datePlus5Years), ProFonts.fontNormal);
-        nextDesc.setAlignment(Element.ALIGN_LEFT);
-        nextDesc.setIndentationLeft(indentation);
-        next++;
-        document.add(nextTitle);
-        document.add(nextDesc);
 
 
         Paragraph whoDidTitle = new Paragraph(next + ". Wykonawcy pomiarów:", ProFonts.fontNormalBold);
@@ -1018,21 +1062,26 @@ public class ProtocolGenerator {
         table.addCell(cell2);
 
         document.add(table);
-
-
     }
 
     private int addSignatureSection(int next, Flat flat) throws DocumentException, IOException {
         Signature signature = db.signatureDao().getSignatureForFlatSync(flat.id);
         if (signature == null) return next;
 
-        Paragraph signatureTitle = new Paragraph(next + 1 + ". Akceptacja pomiarów przez lokatora/właściciela:", ProFonts.fontNormalBold);
+        String titleText = (next + 1) + ". Akceptacja pomiarów przez lokatora/właściciela:";
+        String termsText = LegalTexts.SIGNATURE_TERMS;
+        if (flat.refusedInspection == 1) {
+            titleText = next + ". Oświadczenie lokatora/właściciela:";
+            termsText = LegalTexts.REFUSAL_TERMS;
+        }
+
+        Paragraph signatureTitle = new Paragraph(titleText, ProFonts.fontNormalBold);
         signatureTitle.setSpacingBefore(titleSpacing);
         signatureTitle.setSpacingAfter(titleSpacingA);
         signatureTitle.setAlignment(Element.ALIGN_LEFT);
         document.add(signatureTitle);
 
-        Paragraph terms = new Paragraph(LegalTexts.SIGNATURE_TERMS, ProFonts.fontNormal);
+        Paragraph terms = new Paragraph(termsText, ProFonts.fontNormal);
         terms.setIndentationLeft(indentation);
         terms.setSpacingAfter(10f);
         document.add(terms);
@@ -1067,10 +1116,10 @@ public class ProtocolGenerator {
         return next + 1;
     }
 
-    private void createNotes(String endNotes) throws DocumentException {
+    private void createNotes(String endNotes, int next) throws DocumentException {
 
 
-        Paragraph notesTitle = new Paragraph("7. Uwagi i wnioski", ProFonts.fontNormalBold);
+        Paragraph notesTitle = new Paragraph(next + ". Uwagi i wnioski", ProFonts.fontNormalBold);
         notesTitle.setSpacingBefore(titleSpacing);
         notesTitle.setSpacingAfter(titleSpacingA);
         notesTitle.setAlignment(Element.ALIGN_LEFT);
@@ -1130,8 +1179,12 @@ public class ProtocolGenerator {
         }
         if (finalGrade.equals("Instalacja niedopuszczona do użytku.")) {
             if (flat.isCommonSpace == 0) {
-                grade2Flats.add(flat.number);
-            }
+                if (flat.refusedInspection == 1) {
+                    grade2Flats.add(flat.number + " (lokator odmówił przeglądu)");
+
+                } else {
+                    grade2Flats.add(flat.number);
+                }            }
 
         }
         Paragraph gradeDesc = new Paragraph(finalGrade, ProFonts.fontNormal);
@@ -1167,7 +1220,7 @@ public class ProtocolGenerator {
             document.add(flatsNumDesc2);
 
 
-            Paragraph flatsNumDesc3 = new Paragraph("Pominięte mieszkania (nikt nie otwarł): " + (totalFlats - generatedFlats), ProFonts.fontNormal);
+            Paragraph flatsNumDesc3 = new Paragraph("Pominięte mieszkania (nikt nie otwarł): " + (long) skippedFlats.size(), ProFonts.fontNormal);
             flatsNumDesc3.setAlignment(Element.ALIGN_LEFT);
             flatsNumDesc3.setIndentationLeft(indentation);
             document.add(flatsNumDesc3);
@@ -1271,8 +1324,6 @@ public class ProtocolGenerator {
     }
 
     private void addData(String type, Date date, Flat flat) throws DocumentException {
-
-
         Paragraph measurementsCon = new Paragraph("3. Warunki pomiarów", ProFonts.fontNormalBold);
         measurementsCon.setAlignment(Element.ALIGN_LEFT);
         measurementsCon.setSpacingAfter(titleSpacingA);
@@ -1300,7 +1351,15 @@ public class ProtocolGenerator {
         meDate.setSpacingBefore(titleSpacing);
         meDate.setSpacingAfter(titleSpacingA);
         meDate.setAlignment(Element.ALIGN_LEFT);
-        Paragraph meDate1 = new Paragraph(formatMonthAndYear(date), ProFonts.fontNormal);
+        Paragraph meDate1;
+
+        if (flat.markedReadyDate != null) {
+             meDate1 = new Paragraph(formatMonthAndYear(flat.markedReadyDate), ProFonts.fontNormal);
+
+        } else {
+            meDate1 = new Paragraph(formatMonthAndYear(date), ProFonts.fontNormal);
+
+        }
         meDate1.setAlignment(Element.ALIGN_LEFT);
         meDate1.setIndentationLeft(indentation);
 
@@ -1311,7 +1370,7 @@ public class ProtocolGenerator {
         Paragraph device = new Paragraph("1. Sonel MPI 540, Miernik instalacji elektrycznych, AH 5137", ProFonts.fontNormal);
         device.setAlignment(Element.ALIGN_LEFT);
         device.setIndentationLeft(indentation);
-
+//        tutaj
         Paragraph me = new Paragraph("6. Wynik pomiarów", ProFonts.fontNormalBold);
         me.setSpacingBefore(titleSpacing);
         me.setSpacingAfter(titleSpacing);
@@ -1327,14 +1386,20 @@ public class ProtocolGenerator {
 
     }
 
-    private Uri createPdfFileInDownloads(String fileName) throws IOException, DocumentException {
+    private Uri createPdfFileInDownloads(String fileName, String catalogTitle) throws IOException, DocumentException {
         ContentResolver resolver = context.getContentResolver();
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
         values.put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf");
         String currentYear = new SimpleDateFormat("yyyy", Locale.getDefault()).format(new Date());
+        String relativePath;
+        if (BuildConfig.DEBUG) {
+            relativePath= Environment.DIRECTORY_DOWNLOADS + "/RemaPomiary/" + "DEBUG" + "/protokoły/" + currentYear + "/" + catalogTitle;
 
-        String relativePath = Environment.DIRECTORY_DOWNLOADS + "/RemaPomiary/protokoły/" + currentYear;
+        } else {
+            relativePath = Environment.DIRECTORY_DOWNLOADS + "/RemaPomiary/" + "/protokoły/" + currentYear + "/" + catalogTitle;
+
+        }
         values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath);
 
         Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
@@ -1422,9 +1487,13 @@ public class ProtocolGenerator {
         document.add(subtitle);
 
         if (flat.isCommonSpace == 0) {
-            Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
-            desc1.setAlignment(Element.ALIGN_LEFT);
-            document.add(desc1);
+            if (!db.circuitDao().getCircuitsForFlatSync(flat.id).isEmpty()) {
+                Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
+                desc1.setAlignment(Element.ALIGN_LEFT);
+                document.add(desc1);
+            }
+            
+          
         } else {
             boolean tnc = db.boardCommonSpaceDao().hasTncBoardSync(flat.id);
             boolean tns = db.boardCommonSpaceDao().hasTnsBoardSync(flat.id);
@@ -1432,27 +1501,48 @@ public class ProtocolGenerator {
                 type = "TN-C i TN-S";
             } else if (tnc) {
                 type = "TN-C";
-            } else {
+            } 
+            else {
                 type = "TN-S";
             }
-            Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
-            desc1.setAlignment(Element.ALIGN_LEFT);
-            document.add(desc1);
+
+            if (tnc || tns) {
+                Paragraph desc1 = new Paragraph("Wynik z pomiarów rezystancji izolacji instalacji " + type, ProFonts.fontNormal);
+                desc1.setAlignment(Element.ALIGN_LEFT);
+                document.add(desc1);
+            }
+
         }
-
-
-        Paragraph desc2 = new Paragraph("Wynik z pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormal);
-        desc2.setAlignment(Element.ALIGN_LEFT);
+        Paragraph desc2 = null;
+        List<OutletMeasurement> oms = db.outletMeasurementDao().getMeasurementsWithOhmsForFlatSync(flat.id);
+        if (!oms.isEmpty()) {
+            desc2 = new Paragraph("Wynik z pomiarów skuteczności samoczynnego wyłączenia", ProFonts.fontNormal);
+            desc2.setAlignment(Element.ALIGN_LEFT);
+            
+        }
+        
         if (flat.isCommonSpace == 0) {
             if (hasRCD == 1) {
-                Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
-                desc3.setAlignment(Element.ALIGN_LEFT);
-                desc3.setSpacingAfter(25f);
-                document.add(desc2);
-                document.add(desc3);
+                Paragraph desc3 = null;
+                if (!oms.isEmpty()) {
+                    desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
+                    desc3.setAlignment(Element.ALIGN_LEFT);
+                    desc3.setSpacingAfter(25f);
+                }
+
+                if (desc2 != null) {
+                    document.add(desc2);
+                    
+                }
+                if (desc3 !=null) {
+                    document.add(desc3);
+
+                }
             } else {
-                desc2.setSpacingAfter(25f);
-                document.add(desc2);
+                if (desc2 != null) {
+                    desc2.setSpacingAfter(25f);
+                    document.add(desc2);
+                }
             }
         } else {
             boolean rcdInCommonSpace = db.outletMeasurementDao().hasAnyCommonSpaceRcdSync(flat.id);
@@ -1460,11 +1550,16 @@ public class ProtocolGenerator {
                 Paragraph desc3 = new Paragraph("Wynik z badania wyłączników różnicowoprądowych", ProFonts.fontNormal);
                 desc3.setAlignment(Element.ALIGN_LEFT);
                 desc3.setSpacingAfter(25f);
-                document.add(desc2);
+                if (desc2 != null) {
+                    document.add(desc2);
+                }
                 document.add(desc3);
             } else {
-                desc2.setSpacingAfter(25f);
-                document.add(desc2);
+                if (desc2 != null) {
+                    desc2.setSpacingAfter(25f);
+                    document.add(desc2);
+                }
+
             }
         }
 

@@ -310,11 +310,17 @@ public class BlocksActivity extends AppCompatActivity {
             Button editButton = blockView.findViewById(R.id.blockEdit);
             Button createPro = blockView.findViewById(R.id.createProtocols);
             Button quickSummary = blockView.findViewById(R.id.quickSummary);
+            Button copyHouse = blockView.findViewById(R.id.copyHouse);
 
             if (block.block.buildingType == 1) {
                 quickSummary.setVisibility(View.GONE);
+                copyHouse.setVisibility(View.VISIBLE);
+                copyHouse.setOnClickListener(v -> {
+                    showCopyHouseDialog(block.block.id);
+                });
             } else {
                 quickSummary.setVisibility(View.VISIBLE);
+                copyHouse.setVisibility(View.GONE);
                 quickSummary.setOnClickListener(v -> {
                     startSummaryWorker(block.block.id, catalogId);
                 });
@@ -399,6 +405,144 @@ public class BlocksActivity extends AppCompatActivity {
         WorkManager.getInstance(getApplicationContext()).enqueue(request);
 
         Toast.makeText(this, "🔄 Generowanie podsumowania rozpoczęte w tle.", Toast.LENGTH_LONG).show();
+    }
+
+    private void showCopyHouseDialog(int blockId) {
+        EditText input = new EditText(this);
+        input.setHint("Wpisz nowy numer domu");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Kopiuj dom")
+                .setMessage("Podaj numer dla nowej kopii domu. Wszystkie dane zostaną skopiowane bez wartości pomiarów, zdjęć i uwag.")
+                .setView(input)
+                .setPositiveButton("Kopiuj", (dialog, which) -> {
+                    String newNumber = input.getText().toString().trim();
+                    if (newNumber.isEmpty()) {
+                        Toast.makeText(this, "Numer nie może być pusty", Toast.LENGTH_SHORT).show();
+                    } else {
+                        copyHouseTask(blockId, newNumber);
+                    }
+                })
+                .setNegativeButton("Anuluj", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
+
+    private void copyHouseTask(int blockId, String newNumber) {
+        Toast.makeText(this, "Rozpoczęto kopiowanie domu...", Toast.LENGTH_SHORT).show();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
+            try {
+                com.rejner.remapomiary.data.db.AppDatabase db = com.rejner.remapomiary.data.db.AppDatabase.getDatabase(getApplicationContext());
+                Block originalBlock = db.blockDao().getBlockById(blockId).block;
+                
+                // 1. Copy Block
+                Block newBlock = new Block(originalBlock.catalogId, originalBlock.street, originalBlock.city, newNumber, originalBlock.postal_code, originalBlock.clientId, new Date(), new Date(), originalBlock.buildingType);
+                long newBlockId = db.blockDao().insertWithId(newBlock);
+
+                // 2. Copy CommonSpaceInfo (if exists)
+                com.rejner.remapomiary.data.entities.CommonSpaceInfo csInfo = db.commonSpaceInfoDao().getInfoByBlockIdSync(blockId);
+                if (csInfo != null) {
+                    com.rejner.remapomiary.data.entities.CommonSpaceInfo newCsInfo = new com.rejner.remapomiary.data.entities.CommonSpaceInfo();
+                    newCsInfo.blockId = (int) newBlockId;
+                    newCsInfo.switchName = csInfo.switchName;
+                    newCsInfo.breakerType = csInfo.breakerType;
+                    newCsInfo.amps = csInfo.amps;
+                    newCsInfo.ohmsBase = 0.0; // Reset ohmsBase
+                    db.commonSpaceInfoDao().insert(newCsInfo);
+                }
+
+                // 3. Copy Flat (Common Space)
+                Flat originalFlat = db.flatDao().getCommonSpaceSync(blockId);
+                if (originalFlat != null) {
+                    Flat newFlat = new Flat();
+                    newFlat.blockId = (int) newBlockId;
+                    newFlat.number = originalFlat.number;
+                    newFlat.hasRCD = originalFlat.hasRCD;
+                    newFlat.type = originalFlat.type;
+                    newFlat.creation_date = new Date();
+                    newFlat.edition_date = new Date();
+                    newFlat.isCommonSpace = 1;
+                    newFlat.status = "";
+                    newFlat.grade = 0;
+                    newFlat.gradeByUser = 0;
+                    newFlat.notes = "";
+                    newFlat.notesProtocol = "";
+                    newFlat.circuitNotes = "";
+                    
+                    long newFlatId = db.flatDao().insertWithId(newFlat);
+
+                    // 3.1 Copy Boards
+                    List<com.rejner.remapomiary.data.entities.BoardCommonSpace> boards = db.boardCommonSpaceDao().getBoardsForFlatSync(originalFlat.id);
+                    for (com.rejner.remapomiary.data.entities.BoardCommonSpace board : boards) {
+                        com.rejner.remapomiary.data.entities.BoardCommonSpace newBoard = new com.rejner.remapomiary.data.entities.BoardCommonSpace();
+                        newBoard.flatId = (int) newFlatId;
+                        newBoard.name = board.name;
+                        newBoard.type = board.type;
+                        newBoard.notes = "";
+                        newBoard.creation_date = new Date();
+                        
+                        long newBoardId = db.boardCommonSpaceDao().insert(newBoard);
+
+                        // 3.1.1 Copy Circuits (Common Space)
+                        List<com.rejner.remapomiary.data.entities.CircuitCommonSpace> circuits = db.circuitCommonSpaceDao().getCircuitsForBoardSync(board.id);
+                        if (circuits == null) {
+                            // Fallback if generic getCircuitsForBoardSync doesn't exist, we might need to use 1f and 3f separately
+                            circuits = new ArrayList<>();
+                            circuits.addAll(db.circuitCommonSpaceDao().getCircuitsForBoardSync1f(board.id));
+                            circuits.addAll(db.circuitCommonSpaceDao().getCircuitsForBoardSync3f(board.id));
+                        }
+                        for (com.rejner.remapomiary.data.entities.CircuitCommonSpace circuit : circuits) {
+                            com.rejner.remapomiary.data.entities.CircuitCommonSpace newCircuit = new com.rejner.remapomiary.data.entities.CircuitCommonSpace();
+                            newCircuit.boardId = (int) newBoardId;
+                            newCircuit.name = circuit.name;
+                            newCircuit.type = circuit.type;
+                            newCircuit.notes = "";
+                            db.circuitCommonSpaceDao().insert(newCircuit);
+                        }
+                    }
+
+                    // 3.2 Copy Rooms
+                    List<com.rejner.remapomiary.data.entities.RoomInFlat> rooms = db.roomDao().getRoomsForFlatSync(originalFlat.id);
+                    for (com.rejner.remapomiary.data.entities.RoomInFlat room : rooms) {
+                        com.rejner.remapomiary.data.entities.RoomInFlat newRoom = new com.rejner.remapomiary.data.entities.RoomInFlat();
+                        newRoom.flatId = (int) newFlatId;
+                        newRoom.name = room.name;
+                        
+                        long newRoomId = db.roomDao().insertWithId(newRoom);
+
+                        // 3.2.1 Copy Measurements
+                        List<com.rejner.remapomiary.data.entities.OutletMeasurement> measurements = db.outletMeasurementDao().getMeasurementsForRoomSync(room.id);
+                        for (com.rejner.remapomiary.data.entities.OutletMeasurement om : measurements) {
+                            com.rejner.remapomiary.data.entities.OutletMeasurement newOm = new com.rejner.remapomiary.data.entities.OutletMeasurement();
+                            newOm.roomId = (int) newRoomId;
+                            newOm.number = om.number;
+                            newOm.appliance = om.appliance;
+                            newOm.switchName = om.switchName;
+                            newOm.breakerType = om.breakerType;
+                            newOm.amps = om.amps;
+                            newOm.ohms = 0.0; // Reset measurement
+                            newOm.note = "brak uwag";
+                            newOm.rcdStatus = om.rcdStatus != 0 ? 1 : 0; // If it was RCD, keep it as RCD but reset to good
+                            newOm.rcdName = om.rcdName;
+                            newOm.rcdCurrent = om.rcdCurrent;
+                            newOm.rcdTime = null; // Reset time
+                            newOm.photoPath = ""; // Clear photos
+                            db.outletMeasurementDao().insert(newOm);
+                        }
+                    }
+                }
+
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Dom został skopiowany pomyślnie!", Toast.LENGTH_SHORT).show();
+                    catalogViewModel.updateEdition(catalogId);
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(this, "Błąd podczas kopiowania domu", Toast.LENGTH_LONG).show());
+            }
+        });
     }
 
 

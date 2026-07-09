@@ -58,4 +58,14 @@ public interface OutletMeasurementDao {
             "INNER JOIN room r ON om.roomId = r.id " +
             "WHERE r.flatId = :flatId AND om.photo_path IS NOT NULL AND om.photo_path != ''")
     List<OutletMeasurement> getMeasurementsWithPhotosForFlatSync(int flatId);
+
+    @Query("SELECT EXISTS(SELECT 1 FROM outletMeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = :flatId AND om.ohms != 0.0 AND om.ohms IS NOT NULL)")
+    boolean hasMeasurementsWithOhmsSync(int flatId);
+
+    @Query("SELECT om.* FROM outletMeasurement om " +
+            "INNER JOIN room r ON om.roomId = r.id " +
+            "WHERE r.flatId = :flatId AND om.ohms != 0.0 AND om.ohms IS NOT NULL")
+    List<OutletMeasurement> getMeasurementsWithOhmsForFlatSync(int flatId);
 }

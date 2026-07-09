@@ -267,8 +267,11 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             title.setText("Mieszkanie nr " + flat.number);
             if (flat.creation_date != null) creationDate.setText(creationDateFormat.format(flat.creation_date));
             if (flat.edition_date != null) editDate.setText(editDateFormat.format(flat.edition_date));
-            status.setText(flat.status);
 
+            status.setText(flat.status);
+            if (flat.refusedInspection == 1) {
+                status.setText("Odmówiono przeglądu.");
+            }
             if ((flat.notes != null && !flat.notes.isEmpty()) || (flat.circuitNotes != null && !flat.circuitNotes.isEmpty())) {
                 StringBuilder sb = new StringBuilder();
                 if (flat.notes != null && !flat.notes.isEmpty()) sb.append("Notatki:\n").append(flat.notes).append("\n");
@@ -278,6 +281,7 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 notes.setText(Settings.noNotes);
             }
 
+
             if (flat.status != null && flat.status.contains(Settings.measurementDone)) {
                 markButton.setText("❌ Oznacz jako niewykonany");
                 flatMain.setBackgroundResource(R.drawable.border_done);
@@ -286,6 +290,11 @@ public class FlatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 markButton.setText("✅ Oznacz jako gotowy");
                 flatMain.setBackgroundResource(R.drawable.border);
                 markButton.setBackgroundTintList(colorReady); // ZOPTYMALIZOWANO
+            }
+
+            if (flat.refusedInspection == 1) {
+                markButton.setVisibility(View.GONE);
+                flatMain.setBackgroundResource(R.drawable.border_refused);
             }
 
             title.setVisibility(View.VISIBLE);

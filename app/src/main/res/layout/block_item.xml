@@ -197,5 +197,13 @@
         android:backgroundTint="#FF9800"
         android:text="Szybkie podsumowanie" />
 
+    <Button
+        android:id="@+id/copyHouse"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#9C27B0"
+        android:text="📋 Kopiuj dom"
+        android:visibility="gone" />
+
 
 </LinearLayout>

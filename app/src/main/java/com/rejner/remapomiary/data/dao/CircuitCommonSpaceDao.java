@@ -39,6 +39,9 @@ public interface CircuitCommonSpaceDao {
     @Query("SELECT * FROM circuit_common_space WHERE boardId = :boardId AND type = '" + Settings.installation3f + "'")
     List<CircuitCommonSpace> getCircuitsForBoardSync3f(int boardId);
 
+    @Query("SELECT * FROM circuit_common_space WHERE boardId = :boardId")
+    List<CircuitCommonSpace> getCircuitsForBoardSync(int boardId);
+
     @Query("SELECT * FROM circuit_common_space WHERE boardId = :boardId AND name = :name LIMIT 1")
     CircuitCommonSpace getCircuitByNameSync(int boardId, String name);
 

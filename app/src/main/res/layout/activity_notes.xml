@@ -161,6 +161,25 @@
                             android:textSize="22sp"
                             android:textStyle="bold" />
 
+                        <CheckBox
+                            android:id="@+id/cbRefusedInspection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Lokator odmówił przeglądu"
+                            android:textSize="20sp"
+                            android:textColor="@android:color/black"
+                            android:padding="12dp"
+                            android:layout_marginBottom="2dp" />
+                        <TextView
+                            android:id="@+id/textViewRefused"
+
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+
+                            android:text="W przypadku odmowy przeględu należy w sekcji uwagi sporządzić odpowiednią notatkę. Mieszkanie, w którym lokator odmówił przeglądu powinno zostać oznaczone jako wykonane!"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
                         <RadioGroup
                             android:id="@+id/radioGroup_instalacja"
                             android:layout_width="match_parent"

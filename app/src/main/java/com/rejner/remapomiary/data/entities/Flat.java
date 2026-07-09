@@ -75,6 +75,9 @@ public class Flat {
     @ColumnInfo(name = "markedReadyDate")
     public Date markedReadyDate;
 
+    @ColumnInfo(name = "refusedInspection", defaultValue = "0")
+    public int refusedInspection = 0;
+
     public boolean getIsCommonSpace() {
         return isCommonSpace == 1;
     }
